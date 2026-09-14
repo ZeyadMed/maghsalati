@@ -64,5 +64,9 @@
   "pick_up": "Pick up",
   "delivery": "Delivery",
   "delivery_price": "Delivery",
-  "currency": "LYD"
+  "currency": "LYD",
+  "welcome": "Welcome",
+  "app_name": "Maghsalati",
+  "search_hint": "Search for a laundry",
+  "cleaner_near_you": "Laundries near you"
 }

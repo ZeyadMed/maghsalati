@@ -35,39 +35,45 @@ class CleanerItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.whiteColor,
-          borderRadius: BorderRadius.circular(16.r),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.blackColor.withValues(alpha: 0.06),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
+    return IgnorePointer(
+      ignoring: !isAvailable,
+      child: Opacity(
+        opacity: isAvailable ? 1 : 0.5,
+        child: GestureDetector(
+          onTap: isAvailable ? onTap : null,
+          child: Container(
+            decoration: BoxDecoration(
+              color: AppColors.whiteColor,
+              borderRadius: BorderRadius.circular(16.r),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.blackColor.withValues(alpha: 0.06),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
-          ],
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildHeaderImage(),
-            Padding(
-              padding: EdgeInsets.all(12.w),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _buildRatingRow(),
-                  SizedBox(height: 12.h),
-                  _buildTimingRow(),
-                  SizedBox(height: 12.h),
-                  _buildServicesRow(),
-                ],
-              ),
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildHeaderImage(),
+                Padding(
+                  padding: EdgeInsets.all(12.w),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _buildRatingRow(),
+                      SizedBox(height: 12.h),
+                      _buildTimingRow(),
+                      SizedBox(height: 12.h),
+                      _buildServicesRow(),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -94,9 +100,20 @@ class CleanerItem extends StatelessWidget {
               ),
             ),
           ),
+
+          PositionedDirectional(
+            bottom: 10.h,
+            start: 12.w,
+            child: Text(
+              name,
+              style: TextStyles.whiteBold15,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
           PositionedDirectional(
             top: 10.h,
-            start: 10.w,
+            end: 10.w,
             child: Row(
               children: [
                 _buildBadge(
@@ -111,16 +128,6 @@ class CleanerItem extends StatelessWidget {
                   color: AppColors.primaryColor,
                 ),
               ],
-            ),
-          ),
-          PositionedDirectional(
-            bottom: 10.h,
-            end: 12.w,
-            child: Text(
-              name,
-              style: TextStyles.whiteBold15,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],
@@ -143,17 +150,17 @@ class CleanerItem extends StatelessWidget {
   Widget _buildRatingRow() {
     return Row(
       children: [
-        Text(
-          '$ratingCount ${'review'.tr()}',
-          style: TextStyles.greyLight10.copyWith(fontSize: 12.sp),
-        ),
-        const Spacer(),
+        Icon(Icons.star, size: 16.r, color: AppColors.lightOrangeColor),
+        SizedBox(width: 4.w),
         Text(
           rating.toStringAsFixed(1),
           style: TextStyles.boldStyle(14, color: AppColors.lightOrangeColor),
         ),
-        SizedBox(width: 4.w),
-        Icon(Icons.star, size: 16.r, color: AppColors.lightOrangeColor),
+        const Spacer(),
+        Text(
+          '$ratingCount ${'review'.tr()}',
+          style: TextStyles.greyLight10.copyWith(fontSize: 12.sp),
+        ),
       ],
     );
   }
@@ -165,7 +172,7 @@ class CleanerItem extends StatelessWidget {
         Expanded(
           child: _buildTimingBox(
             icon: Icons.inventory_2_outlined,
-            iconColor: AppColors.orangeColor,
+            iconColor: AppColors.primaryColor,
             title: 'pick_up'.tr(),
             value: pickUpTime,
           ),
@@ -199,7 +206,7 @@ class CleanerItem extends StatelessWidget {
         children: [
           Expanded(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
@@ -228,24 +235,23 @@ class CleanerItem extends StatelessWidget {
   Widget _buildServicesRow() {
     return Row(
       children: [
-        Text(
-          '${'delivery_price'.tr()} $deliveryPrice ${'currency'.tr()}',
-          style: TextStyles.boldStyle(13, color: AppColors.primaryColor),
-        ),
-        SizedBox(width: 8.w),
         Expanded(
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
-            reverse: true,
             child: Row(
               children: [
                 for (final service in services) ...[
+                  if (service != services.first) SizedBox(width: 6.w),
                   _buildServiceChip(service),
-                  SizedBox(width: 6.w),
                 ],
               ],
             ),
           ),
+        ),
+        SizedBox(width: 8.w),
+        Text(
+          '${'delivery_price'.tr()} $deliveryPrice ${'currency'.tr()}',
+          style: TextStyles.boldStyle(13, color: AppColors.primaryColor),
         ),
       ],
     );

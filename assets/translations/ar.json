@@ -64,5 +64,9 @@
   "pick_up": "الاستلام",
   "delivery": "التسليم",
   "delivery_price": "توصيل",
-  "currency": "د.ل"
+  "currency": "د.ل",
+  "welcome": "مرحباً بك",
+  "app_name": "مغسلتي",
+  "search_hint": "ابحث عن مغسلة",
+  "cleaner_near_you": "المغاسل القريبة منك"
 }
