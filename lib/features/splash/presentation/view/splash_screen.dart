@@ -23,18 +23,28 @@ class SplashScreen extends StatefulWidget {
 class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
-  late Animation<double> _animation;
+  late Animation<Offset> _slideAnimation;
+  late Animation<double> _fadeAnimation;
 
   @override
   void initState() {
     super.initState();
 
     _controller = AnimationController(
-      duration: const Duration(seconds: 3),
+      duration: const Duration(milliseconds: 1200),
       vsync: this,
     );
 
-    _animation = Tween<double>(begin: 0.0, end: 1.0).animate(_controller);
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(-1.5, 0.0),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
+
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeIn));
+
     _controller.forward();
     Timer(const Duration(seconds: 3), () {
       // Navigator.pushReplacementNamed(context, '/home');
@@ -79,51 +89,16 @@ class _SplashScreenState extends State<SplashScreen>
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Image.asset(
-                    Assets.assetsImagesFullLogo,
-                    width: 300,
-                    height: 300,
-                    color: AppColors.blackColor.withOpacity(0.8),
-                  ),
-                  LocalizedLabel(
-                    text: 'premium_arch',
-                    style: TextStyles.darkBold14.copyWith(
-                      fontSize: 14,
-                      color: AppColors.blackColor.withOpacity(0.7),
-                      letterSpacing: 1.5,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  Gap(
-                    context.screenHeight * 0.1,
-                  ), // Add spacing between logo and loading bar
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 60),
-                    child: AnimatedBuilder(
-                      animation: _animation,
-                      builder: (context, child) {
-                        return ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: LinearProgressIndicator(
-                            value: _animation.value,
-                            minHeight: 6,
-                            backgroundColor: Colors.white.withOpacity(0.3),
-                            valueColor: const AlwaysStoppedAnimation<Color>(
-                              Colors.black,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-
-                  Gap(16.h), // Add spacing between loading bar and loading text
-                  LocalizedLabel(
-                    text: 'loading',
-                    style: TextStyles.blackBold16.copyWith(
-                      color: AppColors.blackColor.withOpacity(0.7),
-                      fontSize: 14,
-                      letterSpacing: 3,
+                  SlideTransition(
+                    position: _slideAnimation,
+                    child: FadeTransition(
+                      opacity: _fadeAnimation,
+                      child: Image.asset(
+                        Assets.assetsImagesLogo,
+                        width: 500,
+                        height: 500,
+                        color: AppColors.blackColor.withOpacity(0.8),
+                      ),
                     ),
                   ),
                 ],

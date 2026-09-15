@@ -13,6 +13,7 @@ import 'package:maghsalati/core/theme/text_styles.dart';
 import 'package:maghsalati/core/widget/custom_button.dart';
 import 'package:maghsalati/core/widget/custom_text_field.dart';
 import 'package:maghsalati/core/widget/divider_widget.dart';
+import 'package:maghsalati/core/widget/flexiable_image.dart';
 
 import '../../../../../core/style/app_colors.dart';
 
@@ -41,6 +42,11 @@ class _LoginScreenState extends State<LoginScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              FlexibleImage(
+                source: Assets.assetsImagesLogoLight,
+                width: double.infinity,
+                // height: 200.h,
+              ),
               LocalizedLabel(
                 text: "welcome_back",
                 style: TextStyles.blackBold32,

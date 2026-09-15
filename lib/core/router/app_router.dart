@@ -6,7 +6,12 @@ import 'package:maghsalati/features/auth/login/presentation/view/login_screen.da
 import 'package:maghsalati/features/auth/otp/presentation/view/otp_screen.dart';
 import 'package:maghsalati/features/auth/register/presentation/view/register_screen.dart';
 import 'package:maghsalati/features/home/presentation/view/home_screen.dart';
+import 'package:maghsalati/features/laundry_details/presentation/view/laundry_details.dart';
 import 'package:maghsalati/features/on_boarding/presentation/views/on_boarding_screen.dart';
+import 'package:maghsalati/features/order_pending/data/model/pending_order_model.dart';
+import 'package:maghsalati/features/order_pending/presentation/view/confirm_order.dart';
+import 'package:maghsalati/features/order_pending/presentation/view/oreder_pending.dart';
+import 'package:maghsalati/features/order_pending/presentation/view/reject_order.dart';
 import 'package:maghsalati/features/orders/presentation/view/orders_screen.dart';
 import 'package:maghsalati/features/profile/presentation/view/profile_screen.dart';
 import 'package:maghsalati/features/splash/presentation/view/splash_screen.dart';
@@ -26,6 +31,10 @@ abstract class AppRouter {
   // ************* HOME *************
   static const String initialRoot = '/initialRoot';
   static const String homeScreen = '/HomeScreen';
+  static const String laundryDetails = '/laundryDetails';
+  static const String orderPending = '/orderPending';
+  static const String confirmOrder = '/confirmOrder';
+  static const String rejectOrder = '/rejectOrder';
 
   // ************* PROFILE *************
   static const String orderScreen = '/orderScreen';
@@ -86,6 +95,32 @@ abstract class AppRouter {
       GoRoute(
         path: homeScreen,
         builder: (context, state) => const HomeScreen(),
+      ),
+
+      GoRoute(
+        path: laundryDetails,
+        builder: (context, state) => const LaundryDetails(),
+      ),
+
+      // الطلب بيتبعت في state.extra جاي من شاشة تفاصيل المغسلة
+      GoRoute(
+        path: orderPending,
+        builder: (context, state) =>
+            OrederPending(order: state.extra as PendingOrderModel),
+      ),
+
+      // بيتفتح تلقائي من شاشة الانتظار ومعاه نفس الطلب
+      GoRoute(
+        path: confirmOrder,
+        builder: (context, state) =>
+            ConfirmOrder(order: state.extra as PendingOrderModel),
+      ),
+
+      // شاشة الرفض، بتاخد نفس الطلب عشان زرار "حاول مرة أخرى" يبعته تاني
+      GoRoute(
+        path: rejectOrder,
+        builder: (context, state) =>
+            RejectOrder(order: state.extra as PendingOrderModel),
       ),
 
       GoRoute(

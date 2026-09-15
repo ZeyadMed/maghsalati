@@ -2,7 +2,9 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
+import 'package:go_router/go_router.dart';
 import 'package:maghsalati/core/common_widget/label.dart';
+import 'package:maghsalati/core/router/app_router.dart';
 import 'package:maghsalati/core/style/app_colors.dart';
 import 'package:maghsalati/core/style/assets.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
@@ -57,15 +59,16 @@ class _HomeScreenState extends State<HomeScreen> {
                       physics: const NeverScrollableScrollPhysics(),
                       itemBuilder: (context, index) => Padding(
                         padding: EdgeInsets.only(bottom: 16.h),
-                        child: const CleanerItem(
+                        child: CleanerItem(
+                          onTap: () => context.push(AppRouter.laundryDetails),
                           image: Assets.assetsImagesCleaner,
                           name: 'John Doe',
                           distance: 2.5,
                           isAvailable: true,
                           rating: 4.5,
                           ratingCount: 120,
-                          pickUpTime: '30 min',
-                          deliveryTime: '1 hr',
+                          pickUpTime: 'اليوم',
+                          deliveryTime: 'غدا',
                           services: ['Laundry', 'Dry Cleaning'],
                           deliveryPrice: 5.0,
                         ),

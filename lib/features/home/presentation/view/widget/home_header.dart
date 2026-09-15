@@ -69,19 +69,23 @@ class HomeHeader extends StatelessWidget {
         GestureDetector(
           onTap: onLogoTap,
           child: Container(
-            width: 44.r,
-            height: 44.r,
-            padding: EdgeInsets.all(4.r),
+            height: 44.h,
+            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
             decoration: BoxDecoration(
-              color: AppColors.whiteColor.withValues(alpha: 0.18),
-              shape: BoxShape.circle,
+              color: AppColors.whiteColor,
+              borderRadius: BorderRadius.circular(12.r),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.blackColor.withValues(alpha: 0.12),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
-            child: ClipOval(
-              child: FlexibleImage(
-                source: Assets.assetsImagesLogo,
-                borderRadius: 0,
-                fit: BoxFit.contain,
-              ),
+            child: FlexibleImage(
+              source: Assets.assetsImagesLogoLight,
+              borderRadius: 0,
+              fit: BoxFit.contain,
             ),
           ),
         ),

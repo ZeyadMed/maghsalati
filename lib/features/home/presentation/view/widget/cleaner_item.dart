@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:maghsalati/core/style/app_colors.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
 import 'package:maghsalati/core/widget/flexiable_image.dart';
+import 'package:maghsalati/features/home/presentation/view/widget/timing_row.dart';
 
 class CleanerItem extends StatelessWidget {
   final String name;
@@ -65,7 +66,10 @@ class CleanerItem extends StatelessWidget {
                     children: [
                       _buildRatingRow(),
                       SizedBox(height: 12.h),
-                      _buildTimingRow(),
+                      TimingRow(
+                        pickUpTime: pickUpTime,
+                        deliveryTime: deliveryTime,
+                      ),
                       SizedBox(height: 12.h),
                       _buildServicesRow(),
                     ],
@@ -162,72 +166,6 @@ class CleanerItem extends StatelessWidget {
           style: TextStyles.greyLight10.copyWith(fontSize: 12.sp),
         ),
       ],
-    );
-  }
-
-  /// بوكسين الاستلام والتسليم
-  Widget _buildTimingRow() {
-    return Row(
-      children: [
-        Expanded(
-          child: _buildTimingBox(
-            icon: Icons.inventory_2_outlined,
-            iconColor: AppColors.primaryColor,
-            title: 'pick_up'.tr(),
-            value: pickUpTime,
-          ),
-        ),
-        SizedBox(width: 10.w),
-        Expanded(
-          child: _buildTimingBox(
-            icon: Icons.local_shipping_outlined,
-            iconColor: AppColors.redColor2,
-            title: 'delivery'.tr(),
-            value: deliveryTime,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTimingBox({
-    required IconData icon,
-    required Color iconColor,
-    required String title,
-    required String value,
-  }) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
-      decoration: BoxDecoration(
-        color: AppColors.semiWhiteColor3,
-        borderRadius: BorderRadius.circular(12.r),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  title,
-                  style: TextStyles.greyLight10.copyWith(fontSize: 11.sp),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Text(
-                  value,
-                  style: TextStyles.darkBold12,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-          SizedBox(width: 8.w),
-          Icon(icon, size: 20.r, color: iconColor),
-        ],
-      ),
     );
   }
 

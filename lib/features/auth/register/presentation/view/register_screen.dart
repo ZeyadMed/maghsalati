@@ -7,11 +7,13 @@ import 'package:maghsalati/core/common_widget/label.dart';
 import 'package:maghsalati/core/helpers/validators.dart';
 import 'package:maghsalati/core/router/app_router.dart';
 import 'package:maghsalati/core/style/app_colors.dart';
+import 'package:maghsalati/core/style/assets.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
 import 'package:maghsalati/core/widget/custom_button.dart';
 import 'package:maghsalati/core/widget/custom_phone_field.dart';
 import 'package:maghsalati/core/widget/custom_text_field.dart';
 import 'package:maghsalati/core/widget/divider_widget.dart';
+import 'package:maghsalati/core/widget/flexiable_image.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -43,7 +45,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Gap(50.h),
+              FlexibleImage(
+                source: Assets.assetsImagesLogoLight,
+                width: double.infinity,
+                // height: 200.h,
+              ),
+              Gap(20.h),
               LocalizedLabel(
                 text: "create_account",
                 style: TextStyles.blackBold32,
