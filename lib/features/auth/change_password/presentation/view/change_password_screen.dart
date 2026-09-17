@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:maghsalati/core/common_widget/label.dart';
+import 'package:maghsalati/core/extensions/context_extension.dart';
 import 'package:maghsalati/core/helpers/validators.dart';
 import 'package:maghsalati/core/router/app_router.dart';
 import 'package:maghsalati/core/style/app_colors.dart';
@@ -37,7 +38,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-     backgroundColor: AppColors.secondaryColor,
+      backgroundColor: AppColors.secondaryColor,
       body: Padding(
         padding: const EdgeInsets.all(25.0),
         child: Form(
@@ -47,13 +48,13 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               // App Logo
-              Center(
-                child: Image.asset(
-                  Assets.assetsImagesFullLogo,
-                  width: 160.w,
-                  color: AppColors.blackColor,
-                ),
+              Image.asset(
+                Assets.assetsImagesLogo,
+                width: double.infinity,
+                height: context.screenHeight * 0.2,
+                color: AppColors.blackColor,
               ),
+              Gap(40.h),
               // Header
               LocalizedLabel(
                 text: "change_password_title",
@@ -108,8 +109,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 obscureText: _obscureConfirmPassword,
                 suffix: IconButton(
                   onPressed: () {
-                    setState(() =>
-                        _obscureConfirmPassword = !_obscureConfirmPassword);
+                    setState(
+                      () => _obscureConfirmPassword = !_obscureConfirmPassword,
+                    );
                   },
                   icon: Icon(
                     _obscureConfirmPassword

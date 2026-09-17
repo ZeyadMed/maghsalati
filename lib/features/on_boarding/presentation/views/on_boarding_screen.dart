@@ -23,23 +23,24 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
   int currentPage = 0;
 
+  // مفاتيح الترجمة، و LocalizedLabel هي اللي بتترجمها وقت البناء
   final List<String> titles = [
-    'discover_premium_designs_title'.tr(),
-    'customize_with_experts_title'.tr(),
-    'download_build_easily_title'.tr(),
+    'onboarding_pickup_title',
+    'onboarding_care_title',
+    'onboarding_delivery_title',
   ];
 
   final List<String> descriptions = [
-    'discover_premium_designs_description'.tr(),
-    'customize_with_experts_description'.tr(),
-    'download_build_easily_description'.tr(),
+    'onboarding_pickup_description',
+    'onboarding_care_description',
+    'onboarding_delivery_description',
   ];
 
-  // غير الصور دي بصورك الثلاثة
+  // كل صورة معبرة عن خطوة من خطوات الخدمة
   final List<String> images = [
-    Assets.assetsImagesOnboarding1, // صورة 1
-    Assets.assetsImagesOnboarding3, // صورة 3
-    Assets.assetsImagesOnboarding2, // صورة 2
+    Assets.assetsImagesOnboarding1, // سلة الغسيل - الاستلام
+    Assets.assetsImagesOnboarding3, // الملابس مغسولة ومطوية - الغسيل والكي
+    Assets.assetsImagesOnboarding2, // غرفة غسيل نظيفة والملابس معلقة - التسليم
   ];
 
   @override
@@ -96,7 +97,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         child: Column(
                           children: [
                             LocalizedLabel(
-                              text: titles[index].tr(),
+                              text: titles[index],
                               maxLines: 2,
                               textAlign: TextAlign.center,
                               style: TextStyles.blackBold16.copyWith(
@@ -107,7 +108,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             ),
                             const SizedBox(height: 16),
                             LocalizedLabel(
-                              text: descriptions[index].tr(),
+                              text: descriptions[index],
                               textAlign: TextAlign.center,
                               maxLines: 3,
                               style: TextStyles.blackRegular16.copyWith(
@@ -171,8 +172,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   borderRadius: 24,
                   fontSize: 14.sp,
                   width: context.screenWidth * 0.3,
-                  title:
-                      currentPage == 2 ? "get_started".tr() : "continue".tr(),
+                  title: currentPage == 2
+                      ? "get_started".tr()
+                      : "continue".tr(),
                 ),
               ],
             ),
