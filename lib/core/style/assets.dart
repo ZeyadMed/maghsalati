@@ -54,6 +54,10 @@ class Assets {
   /// assets/images/full_logo.png
   static const String assetsImagesFullLogo = "assets/images/full_logo.png";
 
+  /// Assets for assetsImagesLaundry
+  /// assets/images/laundry.jpeg
+  static const String assetsImagesLaundry = "assets/images/laundry.jpeg";
+
   /// Assets for assetsImagesLogo
   /// assets/images/logo.png
   static const String assetsImagesLogo = "assets/images/logo.png";

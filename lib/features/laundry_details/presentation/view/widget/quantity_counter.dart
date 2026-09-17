@@ -4,17 +4,24 @@ import 'package:maghsalati/core/style/app_colors.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
 
 /// الكاونتر بتاع الكمية: زرار + وزرار - وبينهم البوكس بتاع الرقم
+/// و compact نسخة أصغر بتتحط جوا كروت الجريد اللي مساحتها ضيقة
 class QuantityCounter extends StatelessWidget {
   final int quantity;
   final VoidCallback onIncrement;
   final VoidCallback onDecrement;
+  final bool compact;
 
   const QuantityCounter({
     super.key,
     required this.quantity,
     required this.onIncrement,
     required this.onDecrement,
+    this.compact = false,
   });
+
+  double get _buttonSize => compact ? 24.r : 30.r;
+
+  double get _gap => compact ? 6.w : 8.w;
 
   @override
   Widget build(BuildContext context) {
@@ -25,19 +32,24 @@ class QuantityCounter extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         _buildButton(icon: Icons.add, onTap: onIncrement),
-        SizedBox(width: 8.w),
+        SizedBox(width: _gap),
         Container(
-          width: 42.w,
-          height: 30.h,
+          width: compact ? 28.w : 42.w,
+          height: compact ? 24.h : 30.h,
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: AppColors.whiteColor,
             borderRadius: BorderRadius.circular(8.r),
             border: Border.all(color: AppColors.primaryColor, width: 1),
           ),
-          child: Text('$quantity', style: TextStyles.darkBold14),
+          child: Text(
+            '$quantity',
+            style: compact
+                ? TextStyles.darkBold12.copyWith(fontSize: 11.sp)
+                : TextStyles.darkBold14,
+          ),
         ),
-        SizedBox(width: 8.w),
+        SizedBox(width: _gap),
         _buildButton(icon: Icons.remove, onTap: onDecrement),
       ],
     );
@@ -48,14 +60,18 @@ class QuantityCounter extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(8.r),
       child: Container(
-        width: 30.r,
-        height: 30.r,
+        width: _buttonSize,
+        height: _buttonSize,
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: AppColors.primaryColor,
           borderRadius: BorderRadius.circular(8.r),
         ),
-        child: Icon(icon, size: 18.r, color: AppColors.whiteColor),
+        child: Icon(
+          icon,
+          size: compact ? 14.r : 18.r,
+          color: AppColors.whiteColor,
+        ),
       ),
     );
   }

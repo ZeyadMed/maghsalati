@@ -11,6 +11,7 @@ import 'package:maghsalati/core/router/app_router.dart';
 import 'package:maghsalati/core/style/assets.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
 import 'package:maghsalati/core/widget/custom_button.dart';
+import 'package:maghsalati/core/widget/custom_phone_field.dart';
 import 'package:maghsalati/core/widget/custom_text_field.dart';
 import 'package:maghsalati/core/widget/divider_widget.dart';
 import 'package:maghsalati/core/widget/flexiable_image.dart';
@@ -25,10 +26,21 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final TextEditingController emailController = TextEditingController();
+  final TextEditingController phoneController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
+
+  /// الرقم كامل بكود الدولة (+218911234567)، بيتحدث مع كل تغيير في الحقل
+  /// بنستخدمه في تسجيل الدخول بدل نص الكنترولر اللي بيبقى الرقم المحلي بس
+  String completePhone = '';
   bool obscureText = true;
   final _formKey = GlobalKey<FormState>();
+
+  @override
+  void dispose() {
+    phoneController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -57,13 +69,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 style: TextStyles.blackRegular16,
               ),
               Gap(40.h),
-              // Email Field
-              Customtextfield(
-                textEditingController: emailController,
-                hintText: 'email'.tr(),
-                keyboardType: TextInputType.emailAddress,
-                prefix: const Icon(Icons.email_outlined),
-                validator: Validators.emailValidator,
+              // Phone Field
+              CustomPhoneField(
+                controller: phoneController,
+                onChanged: (phone) => completePhone = phone.completeNumber,
               ),
               Gap(10.h),
 

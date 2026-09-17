@@ -4,13 +4,13 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:maghsalati/core/common_widget/label.dart';
-import 'package:maghsalati/core/helpers/validators.dart';
+import 'package:maghsalati/core/extensions/context_extension.dart';
 import 'package:maghsalati/core/router/app_router.dart';
 import 'package:maghsalati/core/style/app_colors.dart';
 import 'package:maghsalati/core/style/assets.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
 import 'package:maghsalati/core/widget/custom_button.dart';
-import 'package:maghsalati/core/widget/custom_text_field.dart';
+import 'package:maghsalati/core/widget/custom_phone_field.dart';
 
 class ForgetPasswordScreen extends StatefulWidget {
   const ForgetPasswordScreen({super.key});
@@ -20,8 +20,18 @@ class ForgetPasswordScreen extends StatefulWidget {
 }
 
 class _ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
-  final TextEditingController emailController = TextEditingController();
+  final TextEditingController phoneController = TextEditingController();
+
+  /// الرقم كامل بكود الدولة (+218911234567)، بيتحدث مع كل تغيير في الحقل
+  /// ده اللي بيتبعتله كود التحقق، مش نص الكنترولر اللي بيبقى الرقم المحلي بس
+  String completePhone = '';
   final _formKey = GlobalKey<FormState>();
+
+  @override
+  void dispose() {
+    phoneController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,14 +47,16 @@ class _ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
             children: [
               // App Logo
               Image.asset(
-                Assets.assetsImagesFullLogo,
-                width: 160.w,
+                Assets.assetsImagesLogo,
+                width: double.infinity,
+                height: context.screenHeight * 0.2,
                 color: AppColors.blackColor,
               ),
+              Gap(40.h),
               // Header
               LocalizedLabel(
                 text: "forgot_password_title",
-                style: TextStyles.blackBold32,
+                style: TextStyles.blackBold20,
               ),
 
               Gap(10.h),
@@ -60,13 +72,10 @@ class _ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
 
               Gap(40.h),
 
-              // Email Field
-              Customtextfield(
-                textEditingController: emailController,
-                hintText: 'email'.tr(),
-                keyboardType: TextInputType.emailAddress,
-                prefix: const Icon(Icons.email_outlined),
-                validator: Validators.emailValidator,
+              // Phone Field
+              CustomPhoneField(
+                controller: phoneController,
+                onChanged: (phone) => completePhone = phone.completeNumber,
               ),
 
               Gap(30.h),

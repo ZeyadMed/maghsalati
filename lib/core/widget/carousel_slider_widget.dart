@@ -1,5 +1,7 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:maghsalati/core/style/app_colors.dart';
 
 class CarouselSliderWidget extends StatefulWidget {
   final List<Widget> widgets;
@@ -19,8 +21,7 @@ class CarouselSliderWidget extends StatefulWidget {
 
   @override
   // ignore: library_private_types_in_public_api
-  _CarouselSliderWidgetState createState() =>
-      _CarouselSliderWidgetState();
+  _CarouselSliderWidgetState createState() => _CarouselSliderWidgetState();
 }
 
 class _CarouselSliderWidgetState extends State<CarouselSliderWidget> {
@@ -65,7 +66,6 @@ class _CarouselSliderWidgetState extends State<CarouselSliderWidget> {
       children: [
         // Carousel Image
         SizedBox(
-          
           height: widget.height,
           child: PageView.builder(
             controller: _pageController,
@@ -92,14 +92,14 @@ class _CarouselSliderWidgetState extends State<CarouselSliderWidget> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: List.generate(
                 widget.widgets.length,
-                    (index) => AnimatedContainer(
+                (index) => AnimatedContainer(
                   duration: const Duration(milliseconds: 300),
                   margin: const EdgeInsets.symmetric(horizontal: 4),
                   width: _currentPage == index ? 24 : 8,
                   height: 8,
                   decoration: BoxDecoration(
                     color: _currentPage == index
-                        ? const Color.fromRGBO(81, 82, 221, 1)
+                        ? AppColors.primaryColor
                         : Colors.grey.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(4),
                   ),

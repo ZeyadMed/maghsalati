@@ -1,21 +1,29 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:maghsalati/core/extensions/context_extension.dart';
 import 'package:maghsalati/core/style/app_colors.dart';
 import 'package:maghsalati/core/style/assets.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
 import 'package:maghsalati/core/widget/custom_text_field.dart';
 import 'package:maghsalati/core/widget/flexiable_image.dart';
+import 'package:maghsalati/features/home/presentation/view_model/location_controller.dart';
 
 class HomeHeader extends StatelessWidget {
   final TextEditingController searchController;
+
+  /// بيمسك العنوان وحالة الصلاحية، والهيدر بيسمع عليه عشان يتحدث لوحده
+  final LocationController locationController;
   final String? Function(String?)? onSearchChanged;
+
+  /// بيتنفذ لما يدوس على العنوان وهو متجاب بالفعل (اختيار موقع تاني بعدين)
   final VoidCallback? onLocationTap;
   final VoidCallback? onLogoTap;
 
   const HomeHeader({
     super.key,
     required this.searchController,
+    required this.locationController,
     this.onSearchChanged,
     this.onLocationTap,
     this.onLogoTap,
@@ -40,7 +48,7 @@ class HomeHeader extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _buildTopRow(),
+          _buildTopRow(context),
           SizedBox(height: 18.h),
           _buildSearchField(),
         ],
@@ -48,46 +56,96 @@ class HomeHeader extends StatelessWidget {
     );
   }
 
-  /// اللوجو على الشمال + الترحيب واسم التطبيق على اليمين
-  Widget _buildTopRow() {
+  /// اللوجو على الشمال + موقع الاستلام على اليمين
+  Widget _buildTopRow(BuildContext context) {
     return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              '${'welcome'.tr()} 👋',
-              style: TextStyles.whiteText(12, weight: FontWeight.w300),
-            ),
-            SizedBox(height: 2.h),
-            Text('app_name'.tr(), style: TextStyles.whiteText(20)),
-          ],
+        // Flexible عشان العنوان الطويل ياخد راحته من غير ما يزق اللوجو
+        Flexible(child: _buildLocationBlock()),
+        // SizedBox(width: 12.w),
+        FlexibleImage(
+          height: context.screenHeight * 0.05,
+          width: context.screenWidth * 0.3,
+          source: Assets.assetsImagesLogoLight,
+          fit: BoxFit.contain,
         ),
+      ],
+    );
+  }
 
-        const Spacer(),
-        GestureDetector(
-          onTap: onLogoTap,
-          child: Container(
-            height: 44.h,
-            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
-            decoration: BoxDecoration(
+  /// "موقع الاستلام" وتحتها العنوان الحالي مع سهم
+  /// بيسمع على الكنترولر فالعنوان بيتحدث لوحده أول ما يوصل
+  Widget _buildLocationBlock() {
+    return AnimatedBuilder(
+      animation: locationController,
+      builder: (context, _) {
+        return GestureDetector(
+          onTap: locationController.hasAddress
+              ? onLocationTap
+              : locationController.retry,
+          behavior: HitTestBehavior.opaque,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'pickup_location'.tr(),
+                style: TextStyles.whiteText(
+                  11,
+                  weight: FontWeight.w300,
+                ).copyWith(color: AppColors.whiteColor.withValues(alpha: 0.8)),
+              ),
+              SizedBox(height: 2.h),
+              _buildAddressRow(),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// العنوان نفسه: لودر وهو بيجيب، والعنوان أو "حدد موقعك" بعد كده
+  Widget _buildAddressRow() {
+    if (locationController.isLoading) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 12.r,
+            height: 12.r,
+            child: CircularProgressIndicator(
+              strokeWidth: 1.6,
               color: AppColors.whiteColor,
-              borderRadius: BorderRadius.circular(12.r),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.blackColor.withValues(alpha: 0.12),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: FlexibleImage(
-              source: Assets.assetsImagesLogoLight,
-              borderRadius: 0,
-              fit: BoxFit.contain,
             ),
           ),
+          SizedBox(width: 8.w),
+          Text(
+            'locating'.tr(),
+            style: TextStyles.whiteText(13, weight: FontWeight.w500),
+          ),
+        ],
+      );
+    }
+
+    final hasAddress = locationController.hasAddress;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Flexible(
+          child: Text(
+            hasAddress ? locationController.address : 'set_location'.tr(),
+            style: TextStyles.whiteText(14, weight: FontWeight.w600),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        SizedBox(width: 4.w),
+        Icon(
+          hasAddress ? Icons.keyboard_arrow_down : Icons.refresh,
+          size: 16.r,
+          color: AppColors.whiteColor,
         ),
       ],
     );

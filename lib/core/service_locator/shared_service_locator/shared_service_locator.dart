@@ -5,8 +5,10 @@ import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
 import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 import 'package:maghsalati/core/cache_manager/cache_manager.dart';
+import 'package:maghsalati/core/helpers/location_service.dart';
 import 'package:maghsalati/core/http/api_consumer.dart';
 import 'package:maghsalati/core/http/endpoints.dart';
+import 'package:maghsalati/features/home/presentation/view_model/location_controller.dart';
 
 class SharedServiceLocator {
   static Future<void> execute({required GetIt getIt}) async {
@@ -54,6 +56,14 @@ class SharedServiceLocator {
     });
     getIt.registerLazySingleton<ApiConsumer>(
       () => BaseApiConsumer(dio: getIt<Dio>()),
+    );
+
+    getIt.registerLazySingleton<LocationService>(() => LocationService());
+
+    // singleton مش lazy عشان العنوان يفضل محفوظ ويتشارك بين الشاشات
+    // فأي شاشة تانية (زي تأكيد الطلب) تقرا نفس العنوان من غير ما تجيبه تاني
+    getIt.registerLazySingleton<LocationController>(
+      () => LocationController(service: getIt<LocationService>()),
     );
 
     // getIt.registerLazySingleton<PusherConsumer>(() => PusherConsumerImpl(appKey: "69d83bf354bcf8c0a712",cluster:"mt1" ));

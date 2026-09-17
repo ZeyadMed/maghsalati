@@ -12,8 +12,15 @@ import 'package:maghsalati/features/order_pending/data/model/pending_order_model
 import 'package:maghsalati/features/order_pending/presentation/view/confirm_order.dart';
 import 'package:maghsalati/features/order_pending/presentation/view/oreder_pending.dart';
 import 'package:maghsalati/features/order_pending/presentation/view/reject_order.dart';
+import 'package:maghsalati/features/orders/data/model/order_model.dart';
+import 'package:maghsalati/features/orders/presentation/view/order_details_screen.dart';
 import 'package:maghsalati/features/orders/presentation/view/orders_screen.dart';
+import 'package:maghsalati/features/profile/data/model/user_model.dart';
+import 'package:maghsalati/features/profile/presentation/view/about_us_screen.dart';
+import 'package:maghsalati/features/profile/presentation/view/contact_us_screen.dart';
+import 'package:maghsalati/features/profile/presentation/view/privacy_policy_screen.dart';
 import 'package:maghsalati/features/profile/presentation/view/profile_screen.dart';
+import 'package:maghsalati/features/profile/presentation/view/update_profile_screen.dart';
 import 'package:maghsalati/features/splash/presentation/view/splash_screen.dart';
 import 'package:maghsalati/main.dart';
 
@@ -38,6 +45,7 @@ abstract class AppRouter {
 
   // ************* PROFILE *************
   static const String orderScreen = '/orderScreen';
+  static const String orderDetails = '/orderDetails';
   static const String profileScreen = '/profileScreen';
   static const String contactUsScreen = '/contactUsScreen';
   static const String notificationScreen = '/notificationScreen';
@@ -127,10 +135,34 @@ abstract class AppRouter {
         path: orderScreen,
         builder: (context, state) => const OrdersScreen(),
       ),
+
+      // الطلب بيتبعت في state.extra جاي من كارت الطلب في شاشة الطلبات
+      GoRoute(
+        path: orderDetails,
+        builder: (context, state) =>
+            OrderDetailsScreen(order: state.extra as OrderModel),
+      ),
       GoRoute(
         path: profileScreen,
         builder: (context, state) => const ProfileScreen(),
       ),
+
+      // بيانات المستخدم بتتبعت في state.extra جاية من شاشة حسابي
+      // والشاشة بترجع النسخة المعدلة لما يدوس حفظ
+      GoRoute(
+        path: updateProfileScreen,
+        builder: (context, state) =>
+            UpdateProfileScreen(user: state.extra as UserModel),
+      ),
+      GoRoute(
+        path: privacyPolicy,
+        builder: (context, state) => const PrivacyPolicyScreen(),
+      ),
+      GoRoute(
+        path: contactUsScreen,
+        builder: (context, state) => const ContactUsScreen(),
+      ),
+      GoRoute(path: aboutUs, builder: (context, state) => const AboutUsScreen()),
     ],
   );
 }

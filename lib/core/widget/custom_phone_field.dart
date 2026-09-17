@@ -15,11 +15,15 @@ class CustomPhoneField extends StatelessWidget {
   final String? Function(String?)? validator;
   final TextEditingController? controller;
 
+  /// كود الدولة اللي الحقل بيفتح بيه، ليبيا هي الافتراضي
+  final String initialCountryCode;
+
   const CustomPhoneField({
     super.key,
     this.onChanged,
     this.validator,
     this.controller,
+    this.initialCountryCode = 'LY',
   });
 
   @override
@@ -28,7 +32,8 @@ class CustomPhoneField extends StatelessWidget {
       textDirection: ui.TextDirection.ltr,
       child: IntlPhoneField(
         controller: controller,
-        initialCountryCode: 'EG',
+        initialCountryCode: initialCountryCode,
+        validator: validator == null ? null : (phone) => validator!(phone?.number),
         style: TextStyles.darkRegular16,
         dropdownTextStyle: TextStyles.darkRegular16,
         dropdownDecoration: const BoxDecoration(),

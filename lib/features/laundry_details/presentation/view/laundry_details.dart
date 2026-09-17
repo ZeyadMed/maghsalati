@@ -10,6 +10,7 @@ import 'package:maghsalati/core/theme/text_styles.dart';
 import 'package:maghsalati/features/home/presentation/view/widget/timing_row.dart';
 import 'package:maghsalati/features/laundry_details/data/mock/mock_services_data.dart';
 import 'package:maghsalati/features/laundry_details/data/model/service_category_model.dart';
+import 'package:maghsalati/features/laundry_details/presentation/view/category_items_screen.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view/widget/laundry_details_header.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view/widget/order_summary_bar.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view/widget/services_section.dart';
@@ -65,6 +66,27 @@ class _LaundryDetailsState extends State<LaundryDetails> {
   void dispose() {
     _servicesController.dispose();
     super.dispose();
+  }
+
+  /// بيفتح شاشة القطع وهي واقفة على القسم اللي اتداس عليه
+  /// الكنترولر بيتبعت زي ما هو فالسلة مشتركة بين الشاشتين
+  void _openCategory(int index) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => CategoryItemsScreen(
+          categories: _categories,
+          controller: _servicesController,
+          title: widget.name,
+          initialIndex: index,
+          // إتمام الطلب من شيت السلة بيقفل شاشة القطع الأول عشان لما يرجع
+          // من شاشة الانتظار يلاقي نفسه في شاشة التفاصيل
+          onConfirmOrder: () {
+            Navigator.of(context).maybePop();
+            _onConfirmOrder();
+          },
+        ),
+      ),
+    );
   }
 
   /// بيبني الطلب من الكميات المختارة ويودّي على شاشة انتظار موافقة المغسلة
@@ -137,6 +159,7 @@ class _LaundryDetailsState extends State<LaundryDetails> {
                   ServicesSection(
                     categories: _categories,
                     controller: _servicesController,
+                    onCategoryTap: _openCategory,
                   ),
                   Gap(16.h),
                 ],

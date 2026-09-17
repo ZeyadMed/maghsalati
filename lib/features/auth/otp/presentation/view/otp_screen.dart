@@ -7,6 +7,7 @@ import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:maghsalati/core/common_widget/label.dart';
 import 'package:maghsalati/core/common_widget/otp_text_field.dart';
+import 'package:maghsalati/core/extensions/context_extension.dart';
 import 'package:maghsalati/core/router/app_router.dart';
 import 'package:maghsalati/core/style/app_colors.dart';
 import 'package:maghsalati/core/style/assets.dart';
@@ -73,15 +74,14 @@ class _OtpScreenState extends State<OtpScreen> {
           children: [
             // App Logo
             Image.asset(
-              Assets.assetsImagesFullLogo,
-              width: 160.w,
+              Assets.assetsImagesLogo,
+              width: double.infinity,
+              height: context.screenHeight * 0.2,
               color: AppColors.blackColor,
             ),
+            // Gap(40.h),
             // Header
-            LocalizedLabel(
-              text: "otp_title",
-              style: TextStyles.blackBold32,
-            ),
+            LocalizedLabel(text: "otp_title", style: TextStyles.blackBold20),
 
             Gap(10.h),
 
