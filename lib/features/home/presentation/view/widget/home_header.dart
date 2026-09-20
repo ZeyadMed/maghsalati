@@ -16,6 +16,9 @@ class HomeHeader extends StatelessWidget {
   final LocationController locationController;
   final String? Function(String?)? onSearchChanged;
 
+  /// بيتبعت من تاب البحث عشان الكيبورد يفتح على الخانة أول ما التاب يتفتح
+  final FocusNode? searchFocusNode;
+
   /// بيتنفذ لما يدوس على العنوان وهو متجاب بالفعل (اختيار موقع تاني بعدين)
   final VoidCallback? onLocationTap;
   final VoidCallback? onLogoTap;
@@ -25,6 +28,7 @@ class HomeHeader extends StatelessWidget {
     required this.searchController,
     required this.locationController,
     this.onSearchChanged,
+    this.searchFocusNode,
     this.onLocationTap,
     this.onLogoTap,
   });
@@ -156,6 +160,7 @@ class HomeHeader extends StatelessWidget {
     return Customtextfield(
       hintText: 'search_hint',
       textEditingController: searchController,
+      focusNode: searchFocusNode,
       onChanged: onSearchChanged,
       borderRadious: 14.r,
       prefix: Padding(

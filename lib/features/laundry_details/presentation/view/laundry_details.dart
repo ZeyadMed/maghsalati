@@ -1,9 +1,11 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:maghsalati/core/common_widget/label.dart';
 import 'package:maghsalati/core/router/app_router.dart';
+import 'package:maghsalati/core/service_locator/service_locator.dart';
 import 'package:maghsalati/core/style/app_colors.dart';
 import 'package:maghsalati/core/style/assets.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
@@ -46,7 +48,9 @@ class LaundryDetails extends StatefulWidget {
 
 class _LaundryDetailsState extends State<LaundryDetails> {
   /// بيمسك الكميات المختارة، والشاشة تقدر تقرا منه الطلب كله وقت الإرسال
-  late final SelectedServicesController _servicesController;
+  /// جاي من get_it عشان السلة تفضل عايشة لما تخرج من الشاشة ويشوفها تاب السلة
+  final SelectedServicesController _servicesController =
+      getIt<SelectedServicesController>();
 
   /// بنبنيها مرة واحدة عشان ماتتعادش في كل build
   late final List<ServiceCategoryModel> _categories;
@@ -54,18 +58,74 @@ class _LaundryDetailsState extends State<LaundryDetails> {
   @override
   void initState() {
     super.initState();
-    _servicesController = SelectedServicesController();
     // TODO: امسح الـ MockServicesData لما ال endpoint يجهز
     _categories = widget.categories ?? MockServicesData.categories;
+    // السلة لمغسلة واحدة بس، فلو فيها حاجة من مغسلة تانية بنسأل الأول
+    if (_servicesController.belongsToOtherLaundry(widget.name)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _askToReplaceCart();
+      });
+    } else {
+      _prepareCart();
+    }
+  }
+
+  /// بتجهز السلة للمغسلة دي: الأسعار والأقسام واسم المغسلة وسعر التوصيل
+  void _prepareCart() {
     // الأسعار بتتحمل مرة واحدة عشان البار تحت يحسب الإجمالي لوحده
     _servicesController.loadPrices(_categories);
+    _servicesController.setLaundryName(widget.name);
     _servicesController.setDeliveryPrice(widget.deliveryPrice);
   }
 
-  @override
-  void dispose() {
-    _servicesController.dispose();
-    super.dispose();
+  /// لما يفتح مغسلة تانية والسلة لسه فيها حاجات من مغسلة قبلها
+  /// يا إما يمسح ويكمل هنا، يا إما يرجع لمغسلته الأولى
+  Future<void> _askToReplaceCart() async {
+    final previousLaundry = _servicesController.laundryName;
+
+    final replace = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppColors.whiteColor,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16.r),
+        ),
+        title: Text('replace_cart_title'.tr(), style: TextStyles.darkBold16),
+        content: Text(
+          'replace_cart_message'.tr(args: [previousLaundry]),
+          style: TextStyles.greyColor2Regular14,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(
+              'cancel'.tr(),
+              style: TextStyles.greyColor2Regular14,
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(
+              'replace_cart_confirm'.tr(),
+              style: TextStyles.darkBold14.copyWith(
+                color: AppColors.primaryColor,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (!mounted) return;
+
+    if (replace ?? false) {
+      _servicesController.clear();
+      _prepareCart();
+    } else {
+      // رجعه للمغسلة اللي سلته منها بدل ما يفضل في شاشة سلتها مش بتاعتها
+      Navigator.of(context).maybePop();
+    }
   }
 
   /// بيفتح شاشة القطع وهي واقفة على القسم اللي اتداس عليه

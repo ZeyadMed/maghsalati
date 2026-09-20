@@ -14,6 +14,9 @@ class SelectedService {
 /// بيمسك الكميات المختارة لكل قطعة (itemId -> الكمية)
 /// مفصول عن الـ UI عشان لما الداتا تيجي من ال endpoint مايتأثرش حاجة،
 /// وكمان عشان الشاشة تقدر تقرا الطلب كله وتبعته بعدين
+///
+/// singleton في get_it عشان تاب السلة في البوتوم ناف يقرا من نفس السلة
+/// اللي اتملت في شاشة تفاصيل المغسلة، فالسلة بتفضل عايشة بعد ما تخرج منها
 class SelectedServicesController extends ChangeNotifier {
   final Map<int, int> _quantities = {};
 
@@ -24,12 +27,24 @@ class SelectedServicesController extends ChangeNotifier {
   /// سعر التوصيل بينضاف على الإجمالي، وبيتحدد من بره
   num _deliveryPrice = 0;
 
+  /// الأقسام بتاعة المغسلة اللي السلة اتملت منها، محفوظة هنا عشان تاب السلة
+  /// يقدر يعرض القطع ويبني الطلب من غير ما يكون داخل من شاشة التفاصيل
+  List<ServiceCategoryModel> _categories = const [];
+
+  /// المغسلة اللي السلة تبعها، السلة كلها لمغسلة واحدة بس
+  String _laundryName = '';
+
   Map<int, int> get quantities => Map.unmodifiable(_quantities);
 
   num get deliveryPrice => _deliveryPrice;
 
+  List<ServiceCategoryModel> get categories => _categories;
+
+  String get laundryName => _laundryName;
+
   /// بتتنادى مرة واحدة بعد ما الأقسام توصل عشان نعرف سعر كل قطعة
   void loadPrices(List<ServiceCategoryModel> categories) {
+    _categories = categories;
     _prices.clear();
     for (final category in categories) {
       for (final ServiceItemModel item in category.items) {
@@ -37,6 +52,17 @@ class SelectedServicesController extends ChangeNotifier {
       }
     }
   }
+
+  /// بيتنادى من شاشة التفاصيل أول ما تفتح عشان السلة تعرف هي لمين
+  void setLaundryName(String name) {
+    if (_laundryName == name) return;
+    _laundryName = name;
+  }
+
+  /// السلة لمغسلة واحدة بس، فلو فيها حاجة من مغسلة تانية بترجع true
+  /// والشاشة بتسأل المستخدم يمسح القديم الأول
+  bool belongsToOtherLaundry(String name) =>
+      _quantities.isNotEmpty && _laundryName.isNotEmpty && _laundryName != name;
 
   void setDeliveryPrice(num price) {
     if (_deliveryPrice == price) return;
@@ -108,6 +134,10 @@ class SelectedServicesController extends ChangeNotifier {
     }
     return selected;
   }
+
+  /// القطع المختارة من الأقسام المحفوظة، تاب السلة بيستخدمها عشان
+  /// مامعهوش الأقسام في إيده زي شاشة التفاصيل
+  List<SelectedService> get currentSelection => selectedServices(_categories);
 
   void clear() {
     if (_quantities.isEmpty) return;

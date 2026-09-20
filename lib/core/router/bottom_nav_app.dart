@@ -6,7 +6,9 @@ import 'package:maghsalati/core/theme/text_styles.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:maghsalati/features/cart/presentation/view/cart_screen.dart';
 import 'package:maghsalati/features/home/presentation/view/home_screen.dart';
+import 'package:maghsalati/features/home/presentation/view/search_screen.dart';
 import 'package:maghsalati/features/orders/presentation/view/orders_screen.dart';
 import 'package:maghsalati/features/profile/presentation/view/profile_screen.dart';
 import 'package:maghsalati/features/splash/presentation/view/splash_screen.dart';
@@ -24,6 +26,12 @@ class _BottomNavAppState extends State<BottomNavApp> {
   //final List<Widget?> _pages = List.filled(4, null);
   final Map<int, Widget> _cachedPages = {};
 
+  /// مفتاح تاب البحث عشان نقدر نفتح الكيبورد على خانة البحث أول ما يتفتح
+  final GlobalKey<SearchScreenState> _searchKey =
+      GlobalKey<SearchScreenState>();
+
+  /// الترتيب زي الديزاين: الرئيسية - البحث - السلة - الطلبات - حسابي
+  /// وفي العربي الصف بيتقلب لوحده فالرئيسية بتظهر على اليمين
   final List<_BottomNavItemData> _items = const [
     _BottomNavItemData(
       labelKey: 'home',
@@ -31,9 +39,19 @@ class _BottomNavAppState extends State<BottomNavApp> {
       selectedIcon: Icons.home_rounded,
     ),
     _BottomNavItemData(
+      labelKey: 'search',
+      unselectedIcon: Icons.search,
+      selectedIcon: Icons.search,
+    ),
+    _BottomNavItemData(
+      labelKey: 'cart',
+      unselectedIcon: Icons.shopping_cart_outlined,
+      selectedIcon: Icons.shopping_cart,
+    ),
+    _BottomNavItemData(
       labelKey: 'my_orders',
-      unselectedIcon: Icons.shopping_bag_outlined,
-      selectedIcon: Icons.shopping_bag_rounded,
+      unselectedIcon: Icons.receipt_long_outlined,
+      selectedIcon: Icons.receipt_long,
     ),
     _BottomNavItemData(
       labelKey: 'profile',
@@ -61,9 +79,15 @@ class _BottomNavAppState extends State<BottomNavApp> {
         page = HomeScreen();
         break;
       case 1:
-        page = OrdersScreen();
+        page = SearchScreen(key: _searchKey);
         break;
       case 2:
+        page = const CartScreen();
+        break;
+      case 3:
+        page = OrdersScreen();
+        break;
+      case 4:
         page = ProfileScreen();
         break;
       default:
@@ -79,6 +103,14 @@ class _BottomNavAppState extends State<BottomNavApp> {
       _selectedIndex = index;
       _getPage(index);
     });
+
+    // تاب البحث بيفتح الكيبورد على خانة البحث على طول
+    // بعد الفريم عشان الشاشة تكون اتبنت لو دي أول مرة تتفتح
+    if (index == 1) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _searchKey.currentState?.focusSearch();
+      });
+    }
 
     // if (index != previousIndex) {
     //   WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -146,7 +178,7 @@ class _BottomNavAppState extends State<BottomNavApp> {
 
     // Build children list with only loaded pages
     final children = <Widget>[];
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < _items.length; i++) {
       if (_cachedPages.containsKey(i)) {
         children.add(_cachedPages[i]!);
       } else {
@@ -169,7 +201,7 @@ class _BottomNavAppState extends State<BottomNavApp> {
               ),
             ),
           ),
-          padding: EdgeInsets.only(bottom: 0, left: 8.w, right: 8.w),
+          padding: EdgeInsets.only(bottom: 0, left: 4.w, right: 4.w),
           child: SafeArea(
             top: false,
             child: Row(
@@ -182,36 +214,44 @@ class _BottomNavAppState extends State<BottomNavApp> {
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
                     onTap: () => _onItemTapped(index),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 400),
-                      curve: Curves.easeOut,
-                      padding: EdgeInsets.symmetric(vertical: 10.h),
-                      margin: EdgeInsets.symmetric(horizontal: 4.w),
-                      decoration: BoxDecoration(
-                        color: isSelected ? selectedItemBg : Colors.transparent,
-                        borderRadius: BorderRadius.only(
-                          topLeft: Radius.circular(26.r),
-                          topRight: Radius.circular(26.r),
-                        ),
-                      ),
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8.h),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(
-                            isSelected
-                                ? item.selectedIcon
-                                : item.unselectedIcon,
-                            size: 26.sp,
-                            color: isSelected
-                                ? selectedItemColor
-                                : unselectedItemColor,
+                          // الأيقونة بس اللي جواها الخلفية الملونة زي الديزاين
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 300),
+                            curve: Curves.easeOut,
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 16.w,
+                              vertical: 5.h,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? selectedItemBg
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(20.r),
+                            ),
+                            child: Icon(
+                              isSelected
+                                  ? item.selectedIcon
+                                  : item.unselectedIcon,
+                              size: 24.sp,
+                              color: isSelected
+                                  ? selectedItemColor
+                                  : unselectedItemColor,
+                            ),
                           ),
-                          SizedBox(height: 6.h),
+                          SizedBox(height: 4.h),
                           Text(
                             item.labelKey.tr(),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                            // أصغر شوية عشان الخمس تابات تاخد راحتها من غير قص
                             style: TextStyles.blackBold14.copyWith(
+                              fontSize: 11.sp,
                               color: isSelected
                                   ? selectedItemColor
                                   : unselectedItemColor,

@@ -29,9 +29,13 @@ class Customtextfield extends StatefulWidget {
     this.hieght,
     this.onDateSelected,
     this.onTap,
+    this.focusNode,
   });
   final String hintText;
   final TextEditingController textEditingController;
+
+  /// بيتبعت من بره لما الشاشة عايزة تفتح الكيبورد على الخانة دي
+  final FocusNode? focusNode;
   final int? maxLines;
   final int? minLines;
   final int? maxLength;
@@ -128,6 +132,7 @@ class _CustomtextfieldState extends State<Customtextfield> {
           keyboardType: widget.keyboardType,
           validator: widget.validator,
           controller: widget.textEditingController,
+          focusNode: widget.focusNode,
           onChanged: widget.onChanged,
           obscureText: hidden,
           style: widget.style ?? TextStyles.darkRegular16,

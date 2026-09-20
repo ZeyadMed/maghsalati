@@ -9,6 +9,7 @@ import 'package:maghsalati/core/helpers/location_service.dart';
 import 'package:maghsalati/core/http/api_consumer.dart';
 import 'package:maghsalati/core/http/endpoints.dart';
 import 'package:maghsalati/features/home/presentation/view_model/location_controller.dart';
+import 'package:maghsalati/features/laundry_details/presentation/view_model/selected_services_controller.dart';
 
 class SharedServiceLocator {
   static Future<void> execute({required GetIt getIt}) async {
@@ -64,6 +65,12 @@ class SharedServiceLocator {
     // فأي شاشة تانية (زي تأكيد الطلب) تقرا نفس العنوان من غير ما تجيبه تاني
     getIt.registerLazySingleton<LocationController>(
       () => LocationController(service: getIt<LocationService>()),
+    );
+
+    // السلة singleton عشان تفضل عايشة بعد ما تخرج من شاشة تفاصيل المغسلة
+    // فتاب السلة في البوتوم ناف يقرا من نفس الحاجات اللي اتضافت
+    getIt.registerLazySingleton<SelectedServicesController>(
+      () => SelectedServicesController(),
     );
 
     // getIt.registerLazySingleton<PusherConsumer>(() => PusherConsumerImpl(appKey: "69d83bf354bcf8c0a712",cluster:"mt1" ));

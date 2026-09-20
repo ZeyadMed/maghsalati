@@ -17,7 +17,8 @@ import 'package:maghsalati/features/home/presentation/view/widget/working_hours_
 import 'package:maghsalati/features/home/presentation/view_model/location_controller.dart';
 
 /// مواعيد مبدئية لحد ما تيجي من الـ API
-const _defaultWorkingHours = [
+/// تاب البحث بيستخدم نفس اللستة عشان الكروت تبقى زي بعضها
+const defaultWorkingHours = [
   WorkingDay(dayKey: 'saturday', from: '9:00 AM', to: '10:00 PM'),
   WorkingDay(dayKey: 'sunday', from: '9:00 AM', to: '10:00 PM'),
   WorkingDay(dayKey: 'monday', from: '9:00 AM', to: '10:00 PM'),
@@ -127,7 +128,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             deliveryTime: 'غدا',
                             services: const ['Laundry', 'Dry Cleaning'],
                             deliveryPrice: 5.0,
-                            workingHours: _defaultWorkingHours,
+                            workingHours: defaultWorkingHours,
                           ),
                         );
                       },
