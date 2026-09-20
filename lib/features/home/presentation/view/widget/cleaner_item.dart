@@ -5,6 +5,7 @@ import 'package:maghsalati/core/style/app_colors.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
 import 'package:maghsalati/core/widget/flexiable_image.dart';
 import 'package:maghsalati/features/home/presentation/view/widget/timing_row.dart';
+import 'package:maghsalati/features/home/presentation/view/widget/working_hours_dialog.dart';
 
 class CleanerItem extends StatelessWidget {
   final String name;
@@ -19,6 +20,9 @@ class CleanerItem extends StatelessWidget {
   final num deliveryPrice;
   final VoidCallback? onTap;
 
+  /// مواعيد عمل المغسلة، بتتعرض في ديالوج لو المغسلة مقفولة والمستخدم دوس عليها
+  final List<WorkingDay> workingHours;
+
   const CleanerItem({
     super.key,
     required this.name,
@@ -31,17 +35,32 @@ class CleanerItem extends StatelessWidget {
     required this.deliveryTime,
     required this.services,
     required this.deliveryPrice,
+    this.workingHours = const [],
     this.onTap,
   });
 
+  /// المتاحة بتفتح تفاصيل المغسلة، والمقفولة بتعرض مواعيد العمل بدل ما متعملش حاجة
+  void _handleTap(BuildContext context) {
+    if (isAvailable) {
+      onTap?.call();
+      return;
+    }
+    WorkingHoursDialog.show(
+      context,
+      laundryName: name,
+      workingHours: workingHours,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return IgnorePointer(
-      ignoring: !isAvailable,
-      child: Opacity(
-        opacity: isAvailable ? 1 : 0.5,
+    return Opacity(
+      opacity: isAvailable ? 1 : 0.5,
+      child: Semantics(
+        button: true,
+        enabled: isAvailable,
         child: GestureDetector(
-          onTap: isAvailable ? onTap : null,
+          onTap: () => _handleTap(context),
           child: Container(
             decoration: BoxDecoration(
               color: AppColors.whiteColor,

@@ -163,5 +163,15 @@
   "all_rights_reserved": "All rights reserved © Maghsalati",
   "your_order": "Your Order",
   "cart_empty": "Your cart is empty",
-  "services_total": "Services Total"
+  "services_total": "Services Total",
+  "close": "Close",
+  "closed": "Closed",
+  "laundry_closed_note": "This laundry is currently closed. You can order during the working hours below.",
+  "saturday": "Saturday",
+  "sunday": "Sunday",
+  "monday": "Monday",
+  "tuesday": "Tuesday",
+  "wednesday": "Wednesday",
+  "thursday": "Thursday",
+  "friday": "Friday"
 }

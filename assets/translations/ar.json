@@ -163,5 +163,15 @@
   "all_rights_reserved": "جميع الحقوق محفوظة © مغسلتي",
   "your_order": "طلبك",
   "cart_empty": "السلة فارغة",
-  "services_total": "إجمالي الخدمات"
+  "services_total": "إجمالي الخدمات",
+  "close": "إغلاق",
+  "closed": "مغلق",
+  "laundry_closed_note": "المغسلة مغلقة حالياً، تقدر تطلب منها خلال مواعيد العمل التالية.",
+  "saturday": "السبت",
+  "sunday": "الأحد",
+  "monday": "الاثنين",
+  "tuesday": "الثلاثاء",
+  "wednesday": "الأربعاء",
+  "thursday": "الخميس",
+  "friday": "الجمعة"
 }

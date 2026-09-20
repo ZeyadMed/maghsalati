@@ -13,7 +13,19 @@ import 'package:maghsalati/core/theme/text_styles.dart';
 import 'package:maghsalati/core/widget/carousel_slider_widget.dart';
 import 'package:maghsalati/features/home/presentation/view/widget/cleaner_item.dart';
 import 'package:maghsalati/features/home/presentation/view/widget/home_header.dart';
+import 'package:maghsalati/features/home/presentation/view/widget/working_hours_dialog.dart';
 import 'package:maghsalati/features/home/presentation/view_model/location_controller.dart';
+
+/// مواعيد مبدئية لحد ما تيجي من الـ API
+const _defaultWorkingHours = [
+  WorkingDay(dayKey: 'saturday', from: '9:00 AM', to: '10:00 PM'),
+  WorkingDay(dayKey: 'sunday', from: '9:00 AM', to: '10:00 PM'),
+  WorkingDay(dayKey: 'monday', from: '9:00 AM', to: '10:00 PM'),
+  WorkingDay(dayKey: 'tuesday', from: '9:00 AM', to: '10:00 PM'),
+  WorkingDay(dayKey: 'wednesday', from: '9:00 AM', to: '10:00 PM'),
+  WorkingDay(dayKey: 'thursday', from: '9:00 AM', to: '6:00 PM'),
+  WorkingDay(dayKey: 'friday'),
+];
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -97,22 +109,28 @@ class _HomeScreenState extends State<HomeScreen> {
                       padding: EdgeInsets.zero,
                       itemCount: 10,
                       physics: const NeverScrollableScrollPhysics(),
-                      itemBuilder: (context, index) => Padding(
-                        padding: EdgeInsets.only(bottom: 16.h),
-                        child: CleanerItem(
-                          onTap: () => context.push(AppRouter.laundryDetails),
-                          image: Assets.assetsImagesCleaner,
-                          name: 'John Doe',
-                          distance: 2.5,
-                          isAvailable: true,
-                          rating: 4.5,
-                          ratingCount: 120,
-                          pickUpTime: 'اليوم',
-                          deliveryTime: 'غدا',
-                          services: ['Laundry', 'Dry Cleaning'],
-                          deliveryPrice: 5.0,
-                        ),
-                      ),
+                      itemBuilder: (context, index) {
+                        // لحد ما الداتا تيجي من الـ API، كل تالت مغسلة بتبقى مقفولة
+                        // عشان نشوف حالة "غير متاح" في الشاشة
+                        final isAvailable = index % 3 != 0;
+                        return Padding(
+                          padding: EdgeInsets.only(bottom: 16.h),
+                          child: CleanerItem(
+                            onTap: () => context.push(AppRouter.laundryDetails),
+                            image: Assets.assetsImagesCleaner,
+                            name: 'John Doe',
+                            distance: 2.5,
+                            isAvailable: isAvailable,
+                            rating: 4.5,
+                            ratingCount: 120,
+                            pickUpTime: 'اليوم',
+                            deliveryTime: 'غدا',
+                            services: const ['Laundry', 'Dry Cleaning'],
+                            deliveryPrice: 5.0,
+                            workingHours: _defaultWorkingHours,
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
