@@ -6,7 +6,8 @@ class SplashCubit extends Cubit<String> {
   SplashCubit() : super('');
 
   Future<void> startSplashScreen() async {
-    await Future.delayed(const Duration(seconds: 3));
+    // ننتظر لحد ما فيديو السبلاش يخلص (9.4 ثانية).
+    await Future.delayed(const Duration(milliseconds: 3000));
 
     final prefs = await SharedPreferences.getInstance();
     final hasSeenOnboarding = prefs.getBool('hasSeenOnboarding') ?? false;

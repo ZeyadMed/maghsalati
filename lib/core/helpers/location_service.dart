@@ -46,6 +46,8 @@ class LocationResult {
 /// مفصول عن الـ UI عشان أي شاشة تقدر تستخدمه، ومش بيرمي exceptions
 /// بيرجع الحالة في LocationResult والـ UI هو اللي بيقرر يعرض إيه
 class LocationService {
+  final Geocoding _geocoding = Geocoding();
+
   /// بيتأكد إن الـ GPS شغال والصلاحية متاخدة، وبيطلبها لو لسه
   /// أي حاجة فيهم ممكن تعلق لو الplugin مش متسطب صح، فكلها بتايم أوت
   Future<LocationStatus> _ensurePermission() async {
@@ -130,7 +132,7 @@ class LocationService {
   /// عشان اليوزر يشوف حاجة بدل ما الهيدر يفضل فاضي
   Future<String> _addressOf(Position position) async {
     try {
-      final placemarks = await placemarkFromCoordinates(
+      final placemarks = await _geocoding.placemarkFromCoordinates(
         position.latitude,
         position.longitude,
       ).timeout(const Duration(seconds: 10));

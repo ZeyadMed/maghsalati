@@ -22,6 +22,14 @@ class Assets {
   /// assets/fonts/IBMPlexSansArabic-Thin.ttf
   static const String assetsFontsIBMPlexSansArabicThin = "assets/fonts/IBMPlexSansArabic-Thin.ttf";
 
+  /// Assets for assetsIconIcon
+  /// assets/icon/icon.png
+  static const String assetsIconIcon = "assets/icon/icon.png";
+
+  /// Assets for assetsIconIconForeground
+  /// assets/icon/icon_foreground.png
+  static const String assetsIconIconForeground = "assets/icon/icon_foreground.png";
+
   /// Assets for assetsIconsApple
   /// assets/icons/apple.svg
   static const String assetsIconsApple = "assets/icons/apple.svg";
@@ -77,6 +85,10 @@ class Assets {
   /// Assets for assetsImagesOnboarding3
   /// assets/images/onboarding3.jpg
   static const String assetsImagesOnboarding3 = "assets/images/onboarding3.jpg";
+
+  /// Assets for assetsImagesVideoSplash
+  /// assets/images/video_splash.mov
+  static const String assetsImagesVideoSplash = "assets/images/video_splash.mov";
 
   /// Assets for assetsTranslationsAr
   /// assets/translations/ar.json

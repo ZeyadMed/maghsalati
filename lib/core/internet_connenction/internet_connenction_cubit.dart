@@ -7,7 +7,7 @@ import 'package:maghsalati/core/internet_connenction/internet_connection_state.d
 
 class InternetCubit extends Cubit<InternetState> {
   final Connectivity connectivity = Connectivity();
-  StreamSubscription<ConnectivityResult>? streamSubscription;
+  StreamSubscription<List<ConnectivityResult>>? streamSubscription;
 
   InternetCubit() : super(const InternetInitialState()) {
     _checkConnectivity();
@@ -25,9 +25,11 @@ class InternetCubit extends Cubit<InternetState> {
     });
   }
 
-  void _emitConnectionState(ConnectivityResult result) {
-    if (result == ConnectivityResult.mobile ||
-        result == ConnectivityResult.wifi) {
+  void _emitConnectionState(List<ConnectivityResult> results) {
+    if (results.contains(ConnectivityResult.mobile) ||
+        results.contains(ConnectivityResult.wifi) ||
+        results.contains(ConnectivityResult.ethernet) ||
+        results.contains(ConnectivityResult.vpn)) {
       log('Internet connection is available');
       emit(const InternetOnState());
     } else {

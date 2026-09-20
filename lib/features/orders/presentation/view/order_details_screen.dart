@@ -53,18 +53,16 @@ class OrderDetailsScreen extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              OrderStatusBadge(status: order.status),
-              Gap(12.w),
               Expanded(
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       order.laundryName,
                       style: TextStyles.darkBold16.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
-                      textAlign: TextAlign.end,
+                      textAlign: TextAlign.start,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -77,7 +75,7 @@ class OrderDetailsScreen extends StatelessWidget {
                       style: TextStyles.darkRegular12.copyWith(
                         color: AppColors.greyColor3,
                       ),
-                      textAlign: TextAlign.end,
+                      textAlign: TextAlign.start,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -87,13 +85,15 @@ class OrderDetailsScreen extends StatelessWidget {
                       style: TextStyles.darkRegular12.copyWith(
                         color: AppColors.greyColor3,
                       ),
-                      textAlign: TextAlign.end,
+                      textAlign: TextAlign.start,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
+              Gap(12.w),
+              OrderStatusBadge(status: order.status),
             ],
           ),
           if (order.isCurrent) ...[

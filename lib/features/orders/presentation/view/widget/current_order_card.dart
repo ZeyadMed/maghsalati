@@ -57,19 +57,19 @@ class CurrentOrderCard extends StatelessWidget {
   Widget _buildHeader(BuildContext context) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        OrderStatusBadge(status: order.status),
-        Gap(12.w),
         Expanded(
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 order.laundryName,
                 style: TextStyles.darkBold16.copyWith(
                   fontWeight: FontWeight.w700,
                 ),
-                textAlign: TextAlign.end,
+                textAlign: TextAlign.start,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -79,13 +79,15 @@ class CurrentOrderCard extends StatelessWidget {
                 style: TextStyles.darkRegular12.copyWith(
                   color: AppColors.greyColor3,
                 ),
-                textAlign: TextAlign.end,
+                textAlign: TextAlign.start,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
         ),
+        Gap(12.w),
+        OrderStatusBadge(status: order.status),
       ],
     );
   }

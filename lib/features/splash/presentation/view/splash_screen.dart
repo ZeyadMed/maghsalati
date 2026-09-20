@@ -1,17 +1,9 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
-import 'package:maghsalati/core/common_widget/label.dart';
-import 'package:maghsalati/core/extensions/context_extension.dart';
 import 'package:maghsalati/core/router/app_router.dart';
-import 'package:maghsalati/core/style/app_colors.dart';
-import 'package:maghsalati/core/style/assets.dart';
-import 'package:maghsalati/core/theme/text_styles.dart';
 import 'package:maghsalati/features/splash/presentation/view_model/cubit/splash_cubit.dart';
+import 'package:video_player/video_player.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -20,40 +12,28 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<Offset> _slideAnimation;
-  late Animation<double> _fadeAnimation;
+class _SplashScreenState extends State<SplashScreen> {
+  late final VideoPlayerController _videoController;
+  bool _isVideoReady = false;
 
   @override
   void initState() {
     super.initState();
 
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 1200),
-      vsync: this,
+    _videoController = VideoPlayerController.asset(
+      'assets/images/video_splash.mp4',
     );
-
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(-1.5, 0.0),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
-
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeIn));
-
-    _controller.forward();
-    Timer(const Duration(seconds: 3), () {
-      // Navigator.pushReplacementNamed(context, '/home');
+    _videoController.initialize().then((_) {
+      if (!mounted) return;
+      _videoController.setVolume(0);
+      _videoController.play();
+      setState(() => _isVideoReady = true);
     });
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _videoController.dispose();
     super.dispose();
   }
 
@@ -72,39 +52,19 @@ class _SplashScreenState extends State<SplashScreen>
           }
         },
         child: Scaffold(
-          body: Container(
-            width: double.infinity,
-            height: double.infinity,
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  AppColors.primaryColor, // Color(0xFFf7f2ea),
-                  AppColors.secondaryColor,
-                ],
-              ),
-            ),
-            child: SafeArea(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SlideTransition(
-                    position: _slideAnimation,
-                    child: FadeTransition(
-                      opacity: _fadeAnimation,
-                      child: Image.asset(
-                        Assets.assetsImagesLogo,
-                        width: 500,
-                        height: 500,
-                        color: AppColors.blackColor.withOpacity(0.8),
-                      ),
+          backgroundColor: Colors.black,
+          body: _isVideoReady
+              ? SizedBox.expand(
+                  child: FittedBox(
+                    fit: BoxFit.cover,
+                    child: SizedBox(
+                      width: _videoController.value.size.width,
+                      height: _videoController.value.size.height,
+                      child: VideoPlayer(_videoController),
                     ),
                   ),
-                ],
-              ),
-            ),
-          ),
+                )
+              : const SizedBox.shrink(),
         ),
       ),
     );
