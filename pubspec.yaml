@@ -82,18 +82,19 @@ flutter:
   uses-material-design: true
 
   fonts:
-  - family: IBM Plex Sans Arabic
+  - family: SF Arabic
     fonts:
-      - asset: assets/fonts/IBMPlexSansArabic-Thin.ttf
-        weight: 100
-      - asset: assets/fonts/IBMPlexSansArabic-Light.ttf
-        weight: 300
-      - asset: assets/fonts/IBMPlexSansArabic-Regular.ttf
+      - asset: assets/fonts/SFArabic-Regular.ttf
         weight: 400
-      - asset: assets/fonts/IBMPlexSansArabic-Medium.ttf
-        weight: 500
-      - asset: assets/fonts/IBMPlexSansArabic-SemiBold.ttf
-        weight: 600
+      # الملف مسمّى SemiBold لكن ميتاداتا الخط Bold / usWeightClass 711
+      - asset: assets/fonts/SF-Arabic-SemiBold.ttf
+        weight: 700
+      - asset: assets/fonts/sf-arabic-black.ttf
+        weight: 900
+  - family: SF Arabic Rounded
+    fonts:
+      - asset: assets/fonts/SFArabicRounded-Regular.ttf
+        weight: 400
 
         
 

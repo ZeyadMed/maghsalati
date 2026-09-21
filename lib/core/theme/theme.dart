@@ -34,7 +34,7 @@ mixin AppThemeData on ThemeData {
       selectionColor: Colors.teal,
       selectionHandleColor: Colors.teal,
     ),
-    fontFamily: 'IBM Plex Sans Arabic',
+    fontFamily: 'SF Arabic',
     textTheme:
         TextTheme(
           bodyLarge: AppTextTheme.bodyLarge,
@@ -56,7 +56,7 @@ mixin AppThemeData on ThemeData {
           bodyColor: Colors.black,
           displayColor: Colors.black,
           fontFamilyFallback: ['Arial', 'sans-serif'],
-          fontFamily: 'IBM Plex Sans Arabic',
+          fontFamily: 'SF Arabic',
         ),
     inputDecorationTheme: InputDecorationTheme(
       errorStyle: AppTextTheme.bodyMedium.copyWith(

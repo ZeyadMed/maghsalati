@@ -2,25 +2,21 @@
 class Assets {
   Assets._();
   
-  /// Assets for assetsFontsIBMPlexSansArabicLight
-  /// assets/fonts/IBMPlexSansArabic-Light.ttf
-  static const String assetsFontsIBMPlexSansArabicLight = "assets/fonts/IBMPlexSansArabic-Light.ttf";
+  /// Assets for assetsFontsSfArabicBlack
+  /// assets/fonts/sf-arabic-black.ttf
+  static const String assetsFontsSfArabicBlack = "assets/fonts/sf-arabic-black.ttf";
 
-  /// Assets for assetsFontsIBMPlexSansArabicMedium
-  /// assets/fonts/IBMPlexSansArabic-Medium.ttf
-  static const String assetsFontsIBMPlexSansArabicMedium = "assets/fonts/IBMPlexSansArabic-Medium.ttf";
+  /// Assets for assetsFontsSFArabicRegular
+  /// assets/fonts/SFArabic-Regular.ttf
+  static const String assetsFontsSFArabicRegular = "assets/fonts/SFArabic-Regular.ttf";
 
-  /// Assets for assetsFontsIBMPlexSansArabicRegular
-  /// assets/fonts/IBMPlexSansArabic-Regular.ttf
-  static const String assetsFontsIBMPlexSansArabicRegular = "assets/fonts/IBMPlexSansArabic-Regular.ttf";
+  /// Assets for assetsFontsSFArabicSemiBold
+  /// assets/fonts/SF-Arabic-SemiBold.ttf
+  static const String assetsFontsSFArabicSemiBold = "assets/fonts/SF-Arabic-SemiBold.ttf";
 
-  /// Assets for assetsFontsIBMPlexSansArabicSemiBold
-  /// assets/fonts/IBMPlexSansArabic-SemiBold.ttf
-  static const String assetsFontsIBMPlexSansArabicSemiBold = "assets/fonts/IBMPlexSansArabic-SemiBold.ttf";
-
-  /// Assets for assetsFontsIBMPlexSansArabicThin
-  /// assets/fonts/IBMPlexSansArabic-Thin.ttf
-  static const String assetsFontsIBMPlexSansArabicThin = "assets/fonts/IBMPlexSansArabic-Thin.ttf";
+  /// Assets for assetsFontsSFArabicRoundedRegular
+  /// assets/fonts/SFArabicRounded-Regular.ttf
+  static const String assetsFontsSFArabicRoundedRegular = "assets/fonts/SFArabicRounded-Regular.ttf";
 
   /// Assets for assetsIconIcon
   /// assets/icon/icon.png
