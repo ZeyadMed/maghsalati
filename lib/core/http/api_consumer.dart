@@ -12,8 +12,6 @@ import 'package:maghsalati/main.dart';
 import 'either.dart';
 import 'failure.dart';
 
-import 'package:maghsalati/core/cache_manager/cache_manager.dart';
-
 abstract final class ApiConsumer {
   Future<Either<Failure, Map<String, dynamic>>> get(
     String url, {
@@ -446,13 +444,12 @@ final class BaseApiConsumer implements ApiConsumer {
               return ServerFailure(message: 'network failure ${error.message}');
             }
             if (error.response?.statusCode == 401) {
+              // لو وصلنا هنا يبقى الانترسبتور جرّب يجدد بالـ refresh token وفشل،
+              // يعني الجلسة انتهت فعلاً. التوكنز اتمسحت هناك.
               navigatorKey.currentContext!.showErrorMessage(
                 'عاود التسجيل من فضلك',
               );
               await DI.resetGetItAndInit();
-
-              // Clear stored token so cached credentials are removed
-              CacheManager.delAccessToken();
 
               navigatorKey.currentContext!.go(AppRouter.login);
               return UnauthorizedFailure(

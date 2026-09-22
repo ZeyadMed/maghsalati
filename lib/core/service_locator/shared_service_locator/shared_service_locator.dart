@@ -4,56 +4,71 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
 import 'package:pretty_dio_logger/pretty_dio_logger.dart';
-import 'package:maghsalati/core/cache_manager/cache_manager.dart';
 import 'package:maghsalati/core/helpers/location_service.dart';
 import 'package:maghsalati/core/http/api_consumer.dart';
+import 'package:maghsalati/core/http/auth_interceptor.dart';
 import 'package:maghsalati/core/http/endpoints.dart';
+import 'package:maghsalati/core/http/token_refresh_service.dart';
 import 'package:maghsalati/features/home/presentation/view_model/location_controller.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view_model/selected_services_controller.dart';
 
 class SharedServiceLocator {
   static Future<void> execute({required GetIt getIt}) async {
-    final token = await CacheManager.getAccessToken();
-    getIt.registerLazySingleton<Dio>(() {
-      return Dio(
-          BaseOptions(
-            baseUrl: Endpoints.baseUrl,
-            connectTimeout: const Duration(seconds: 60),
-            headers: {
-              'Accept': 'application/json',
-              'Content-Type': 'application/json',
-              // Disable gzip/deflate from server to avoid malformed compressed responses
-              'Accept-Encoding': 'identity',
-              'Cache-Control': 'no-cache',
-              'Pragma': 'no-cache',
-              'Accept-Language': 'ar',
-              //  AppRouter.router.configuration.navigatorKey
-              //             .currentContext?.isArabic ??
-              //         false
-              //     ? 'ar'
-              //     : 'en',
+    getIt.registerLazySingleton<TokenRefreshService>(
+      () => TokenRefreshService(),
+    );
 
-              'Authorization': 'Bearer $token',
+    getIt.registerLazySingleton<Dio>(() {
+      final dio = Dio(
+        BaseOptions(
+          baseUrl: Endpoints.baseUrl,
+          connectTimeout: const Duration(seconds: 60),
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            // Disable gzip/deflate from server to avoid malformed compressed responses
+            'Accept-Encoding': 'identity',
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache',
+            'Accept-Language': 'ar',
+            //  AppRouter.router.configuration.navigatorKey
+            //             .currentContext?.isArabic ??
+            //         false
+            //     ? 'ar'
+            //     : 'en',
+          },
+        ),
+      );
+
+      // الـ Authorization بقى بيتحط في الانترسبتور وقت كل ريكوست،
+      // مش هنا وقت التسجيل، عشان ياخد أحدث توكن بعد اللوجين أو التجديد.
+      dio.interceptors.add(
+        AuthInterceptor(
+          dio: dio,
+          refreshService: getIt<TokenRefreshService>(),
+        ),
+      );
+
+      if (kDebugMode) {
+        dio.interceptors.add(
+          PrettyDioLogger(
+            logPrint: (object) {
+              log(object.toString());
             },
+            requestHeader: true,
+            requestBody: true,
+            responseBody: true,
+            responseHeader: false,
+            error: true,
+            compact: true,
+            enabled: true,
+            request: true,
+            maxWidth: 90,
           ),
-        )
-        ..interceptors.addAll([
-          if (kDebugMode)
-            PrettyDioLogger(
-              logPrint: (object) {
-                log(object.toString());
-              },
-              requestHeader: true,
-              requestBody: true,
-              responseBody: true,
-              responseHeader: false,
-              error: true,
-              compact: true,
-              enabled: true,
-              request: true,
-              maxWidth: 90,
-            ),
-        ]);
+        );
+      }
+
+      return dio;
     });
     getIt.registerLazySingleton<ApiConsumer>(
       () => BaseApiConsumer(dio: getIt<Dio>()),

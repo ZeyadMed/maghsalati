@@ -11,15 +11,17 @@ class SplashCubit extends Cubit<String> {
 
     final prefs = await SharedPreferences.getInstance();
     final hasSeenOnboarding = prefs.getBool('hasSeenOnboarding') ?? false;
-    final String? token = await CacheManager.getAccessToken();
+    // بنعتمد على الـ refreshToken مش الـ accessToken: الأكسس بيقع بسرعة
+    // والريفريش هو اللي بيحدد إن الجلسة لسه عايشة، والانترسبتور هيجدد لوحده.
+    final String? refreshToken = await CacheManager.getRefreshToken();
     // If the user hasn't seen onboarding yet, show it first.
     if (!hasSeenOnboarding) {
       emit('onboarding');
       return;
     }
 
-    // If there is a valid token, go to home. Otherwise, go to login.
-    if (token != null && token.isNotEmpty) {
+    // If the session is still alive, go to home. Otherwise, go to login.
+    if (refreshToken != null && refreshToken.isNotEmpty) {
       emit('home');
     } else {
       emit('login');

@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:dio/dio.dart';
+import '../cache_manager/cache_manager.dart';
 import '../http/api_consumer.dart';
 import '../http/either.dart';
 import '../http/failure.dart';
@@ -11,6 +12,62 @@ class GenericDataSource {
   final ApiConsumer _apiConsumer;
 
   GenericDataSource(this._apiConsumer);
+
+  /// بتبعت طلب مصادقة (لوجين / تسجيل / تحقق OTP) وبتحفظ التوكنين
+  /// اللي راجعين في الريسبونس قبل ما ترجع الداتا.
+  ///
+  /// الريسبونس المتوقع:
+  /// { "accessToken": "...", "refreshToken": "...", "message": {...} }
+  Future<Either<Failure, T>> authenticate<T>({
+    required String endpoint,
+    Map<String, dynamic>? data,
+    Map<String, dynamic>? queryParameters,
+    Map<String, dynamic>? headers,
+    T Function(Map<String, dynamic>)? fromJson,
+  }) async {
+    final result = await _apiConsumer.post(
+      endpoint,
+      data: data,
+      queryParameters: queryParameters,
+      headers: headers,
+    );
+
+    // بنستخدم isError بدل fold عشان fold متزامنة والحفظ محتاج await
+    if (result.isError) {
+      return Left(result.throwError());
+    }
+
+    final right = result.getOrThrow();
+    final accessToken = right['accessToken'] as String?;
+    final refreshToken = right['refreshToken'] as String?;
+
+    if (accessToken == null || accessToken.isEmpty) {
+      loggerWarn('Auth response had no accessToken');
+      return Left(ParsingFailure(message: 'الاستجابة لا تحتوي على رمز الدخول'));
+    }
+
+    // الـ refreshToken هو اللي بيخلي الجلسة مستمرة، فلو مش موجود
+    // المستخدم هيتطرد أول ما الـ access يقع.
+    if (refreshToken == null || refreshToken.isEmpty) {
+      loggerWarn('Auth response had no refreshToken');
+    }
+
+    await CacheManager.saveTokens(
+      accessToken: accessToken,
+      refreshToken: refreshToken ?? '',
+    );
+
+    if (fromJson == null) {
+      return Right(null as T);
+    }
+    try {
+      return Right(fromJson(right));
+    } catch (e, stackTrace) {
+      loggerError(stackTrace);
+      loggerWarn(e.toString());
+      return Left(ParsingFailure(message: e.toString()));
+    }
+  }
 
   Future<Either<Failure, List<T>>> fetchData<T>({
     required String endpoint,

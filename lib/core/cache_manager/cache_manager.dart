@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class CacheManager {
   static const _accessTokenKey = 'token';
+  static const _refreshTokenKey = 'refreshToken';
   static const _fcmToken = 'fcmToken';
   static const _userIdKey = 'userId';
   static const _isGuestModeKey = 'isGuestMode';
@@ -99,6 +100,43 @@ class CacheManager {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_accessTokenKey);
     log('token deleted');
+  }
+
+  static Future<void> saveRefreshToken(String token) async {
+    await sharedPreferences.setString(_refreshTokenKey, token);
+    log('Refresh token saved');
+  }
+
+  static String? getRefreshTokenSync() {
+    return sharedPreferences.getString(_refreshTokenKey);
+  }
+
+  static Future<String?> getRefreshToken() async {
+    final token = sharedPreferences.getString(_refreshTokenKey);
+    log('Refresh token retrieved: ${token != null}');
+    return token;
+  }
+
+  static Future<void> delRefreshToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_refreshTokenKey);
+    log('refresh token deleted');
+  }
+
+  /// بنحفظ التوكنين مع بعض بعد اللوجين أو بعد التجديد.
+  /// الباك اند بيدوّر الـ refresh token كل مرة فلازم نحفظ الجديد.
+  static Future<void> saveTokens({
+    required String accessToken,
+    required String refreshToken,
+  }) async {
+    await saveAccessToken(accessToken);
+    await saveRefreshToken(refreshToken);
+  }
+
+  /// بنمسح التوكنين مع بعض عند الخروج أو لما التجديد يفشل
+  static Future<void> clearTokens() async {
+    await delAccessToken();
+    await delRefreshToken();
   }
 
   static Future<void> saveFcmTokenToken(String fcmToken) async {

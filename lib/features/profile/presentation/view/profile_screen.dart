@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
+import 'package:maghsalati/core/cache_manager/cache_manager.dart';
 import 'package:maghsalati/core/router/app_router.dart';
 import 'package:maghsalati/core/style/app_colors.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
@@ -171,7 +172,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
 
-    if (shouldLogout == true && mounted) {
+    if (shouldLogout == true) {
+      // لازم نمسح التوكنين مع بعض، وإلا الـ refreshToken هيفضل محفوظ
+      // والسبلاش هيرجّع المستخدم على الهوم تاني.
+      await CacheManager.clearTokens();
+      if (!mounted) return;
       context.go(AppRouter.login);
     }
   }
