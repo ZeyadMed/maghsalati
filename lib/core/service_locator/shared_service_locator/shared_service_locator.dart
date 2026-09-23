@@ -4,7 +4,12 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
 import 'package:pretty_dio_logger/pretty_dio_logger.dart';
+import 'package:maghsalati/core/helpers/generic_data_source.dart';
 import 'package:maghsalati/core/helpers/location_service.dart';
+import 'package:maghsalati/core/service_locator/auth_sevices_locator/login_services_locator.dart';
+import 'package:maghsalati/core/service_locator/auth_sevices_locator/logout_services_locator.dart';
+import 'package:maghsalati/core/service_locator/auth_sevices_locator/otp_services_locator.dart';
+import 'package:maghsalati/core/service_locator/auth_sevices_locator/register_services_locator.dart';
 import 'package:maghsalati/core/http/api_consumer.dart';
 import 'package:maghsalati/core/http/auth_interceptor.dart';
 import 'package:maghsalati/core/http/endpoints.dart';
@@ -74,10 +79,19 @@ class SharedServiceLocator {
       () => BaseApiConsumer(dio: getIt<Dio>()),
     );
 
+    // كل الداتا سورس بتاخده في الكونستراكتور فلازم يكون متسجل قبلهم
+    getIt.registerLazySingleton<GenericDataSource>(
+      () => GenericDataSource(getIt<ApiConsumer>()),
+    );
+
+    await RegisterServicesLocator.init(getIt: getIt);
+    await OtpServicesLocator.init(getIt: getIt);
+    await LoginServicesLocator.init(getIt: getIt);
+    await LogoutServicesLocator.init(getIt: getIt);
+
     getIt.registerLazySingleton<LocationService>(() => LocationService());
 
-    // singleton مش lazy عشان العنوان يفضل محفوظ ويتشارك بين الشاشات
-    // فأي شاشة تانية (زي تأكيد الطلب) تقرا نفس العنوان من غير ما تجيبه تاني
+    // فأي شاشة تانية (زي تأكيد الطلب) تقرا نفس العنوان منغير ما تجيبه تاني
     getIt.registerLazySingleton<LocationController>(
       () => LocationController(service: getIt<LocationService>()),
     );

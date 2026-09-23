@@ -1,11 +1,15 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
-import 'package:maghsalati/core/cache_manager/cache_manager.dart';
+import 'package:maghsalati/core/bloc/base_bloc.dart';
 import 'package:maghsalati/core/router/app_router.dart';
+import 'package:maghsalati/core/service_locator/service_locator.dart';
 import 'package:maghsalati/core/style/app_colors.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
+import 'package:maghsalati/features/auth/logout/presentation/logic/logout_bloc.dart';
+import 'package:maghsalati/features/auth/logout/presentation/logic/logout_event.dart';
 import 'package:maghsalati/features/profile/data/mock/mock_user_data.dart';
 import 'package:maghsalati/features/profile/data/model/user_model.dart';
 import 'package:maghsalati/features/profile/presentation/view/widget/profile_header.dart';
@@ -38,6 +42,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (context) => getIt<LogoutBloc>(),
+      child: BlocListener<LogoutBloc, BaseState<void>>(
+        listener: (context, state) {
+          if (state.isSuccess) context.go(AppRouter.login);
+        },
+        child: _buildBody(),
+      ),
+    );
+  }
+
+  Widget _buildBody() {
     return Scaffold(
       backgroundColor: AppColors.secondaryColor,
       body: Column(
@@ -100,39 +116,55 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   /// زرار تسجيل الخروج، لونه أحمر باهت عشان يبان إنه إجراء مختلف عن باقي القايمة
   Widget _buildLogoutButton() {
-    return Material(
-      color: AppColors.redColor2.withValues(alpha: 0.08),
-      borderRadius: BorderRadius.circular(14.r),
-      child: InkWell(
-        onTap: _confirmLogout,
-        borderRadius: BorderRadius.circular(14.r),
-        child: Padding(
-          padding: EdgeInsets.symmetric(vertical: 16.h),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.logout_rounded,
-                size: 19.r,
-                color: AppColors.redColor2,
-              ),
-              SizedBox(width: 8.w),
-              Text(
-                'logout'.tr(),
-                style: TextStyles.darkBold16.copyWith(
-                  color: AppColors.redColor2,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
+    return BlocBuilder<LogoutBloc, BaseState<void>>(
+      builder: (context, state) {
+        return Material(
+          color: AppColors.redColor2.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(14.r),
+          child: InkWell(
+            // بنقفل الزرار وقت الطلب عشان مايتبعتش مرتين
+            onTap: state.isLoading ? null : () => _confirmLogout(context),
+            borderRadius: BorderRadius.circular(14.r),
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 16.h),
+              child: state.isLoading
+                  ? Center(
+                      child: SizedBox(
+                        width: 22.r,
+                        height: 22.r,
+                        child: const CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          color: AppColors.redColor2,
+                        ),
+                      ),
+                    )
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.logout_rounded,
+                          size: 19.r,
+                          color: AppColors.redColor2,
+                        ),
+                        SizedBox(width: 8.w),
+                        Text(
+                          'logout'.tr(),
+                          style: TextStyles.darkBold16.copyWith(
+                            color: AppColors.redColor2,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
   /// بنأكد قبل الخروج عشان مايخرجش بالغلط
-  Future<void> _confirmLogout() async {
+  Future<void> _confirmLogout(BuildContext blocContext) async {
     final shouldLogout = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -172,12 +204,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
 
-    if (shouldLogout == true) {
-      // لازم نمسح التوكنين مع بعض، وإلا الـ refreshToken هيفضل محفوظ
-      // والسبلاش هيرجّع المستخدم على الهوم تاني.
-      await CacheManager.clearTokens();
-      if (!mounted) return;
-      context.go(AppRouter.login);
+    // الـ bloc بيبعت الـ refreshToken للباك ويمسح الكاش،
+    // والتوجيه للوجين بيحصل في الـ BlocListener
+    if (shouldLogout == true && blocContext.mounted) {
+      blocContext.read<LogoutBloc>().add(const LogoutEvent());
     }
   }
 }

@@ -91,5 +91,6 @@ class AuthInterceptor extends QueuedInterceptor {
   /// بيبعتوا المستخدم على اللوجين في نفس الوقت.
   Future<void> _expireSession() async {
     await CacheManager.clearTokens();
+    await CacheManager.clearUserData();
   }
 }

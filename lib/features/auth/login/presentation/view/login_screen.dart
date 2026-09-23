@@ -1,20 +1,25 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:flutter_svg/svg.dart';
 
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
+import 'package:maghsalati/core/bloc/base_bloc.dart';
 import 'package:maghsalati/core/common_widget/label.dart';
+import 'package:maghsalati/core/extensions/context_extension.dart';
 import 'package:maghsalati/core/helpers/validators.dart';
 import 'package:maghsalati/core/router/app_router.dart';
+import 'package:maghsalati/core/service_locator/service_locator.dart';
 import 'package:maghsalati/core/style/assets.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
 import 'package:maghsalati/core/widget/custom_button.dart';
 import 'package:maghsalati/core/widget/custom_phone_field.dart';
 import 'package:maghsalati/core/widget/custom_text_field.dart';
-import 'package:maghsalati/core/widget/divider_widget.dart';
 import 'package:maghsalati/core/widget/flexiable_image.dart';
+import 'package:maghsalati/features/auth/login/presentation/logic/login_bloc.dart';
+import 'package:maghsalati/features/auth/login/presentation/logic/login_event.dart';
+import 'package:maghsalati/features/auth/models/auth_model.dart';
 
 import '../../../../../core/style/app_colors.dart';
 
@@ -42,18 +47,46 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  void _onSubmit(BuildContext context) {
+    if (!_formKey.currentState!.validate()) return;
+
+    context.read<LoginBloc>().add(
+      LoginEvent(
+        phoneNumber: completePhone,
+        password: passwordController.text,
+        rememberMe: true,
+        deviceInfo: '',
+        deviceId: '',
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.secondaryColor,
-      body: Padding(
-        padding: const EdgeInsets.all(25.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+    return BlocProvider(
+      create: (context) => getIt<LoginBloc>(),
+      child: Scaffold(
+        backgroundColor: AppColors.secondaryColor,
+        body: BlocConsumer<LoginBloc, BaseState<AuthModel>>(
+          listener: (context, state) {
+            if (state.isSuccess) {
+              // التوكنز اتحفظت جوه authenticate فبنوديه الناف بار على طول
+              context.showSuccessMessage(state.data?.message ?? '');
+              context.go(AppRouter.initialRoot);
+            }
+            if (state.isFailure) {
+              context.showErrorMessage(state.errorMessage ?? '');
+            }
+          },
+          builder: (context, state) {
+            return Padding(
+              padding: const EdgeInsets.all(25.0),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
               FlexibleImage(
                 source: Assets.assetsImagesLogoLight,
                 width: double.infinity,
@@ -73,6 +106,9 @@ class _LoginScreenState extends State<LoginScreen> {
               CustomPhoneField(
                 controller: phoneController,
                 onChanged: (phone) => completePhone = phone.completeNumber,
+                validator: (phone) => (phone == null || phone.isEmpty)
+                    ? 'phoneNumberEmpty'.tr()
+                    : null,
               ),
               Gap(10.h),
 
@@ -118,15 +154,16 @@ class _LoginScreenState extends State<LoginScreen> {
               Gap(30.h),
 
               // Sign In Button
-              CustomButton(
-                onPressed: () {
-                  if (_formKey.currentState!.validate()) {
-                    // TODO: Handle login logic
-                  }
-                  context.go(AppRouter.initialRoot);
-                },
-                title: "sign_in".tr(),
-              ),
+              state.isLoading
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        color: AppColors.primaryColor,
+                      ),
+                    )
+                  : CustomButton(
+                      onPressed: () => _onSubmit(context),
+                      title: "sign_in".tr(),
+                    ),
               Gap(20.h),
               // DividerWidget(text: "or".tr()),
               // Gap(20.h),
@@ -199,8 +236,11 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ],
               ),
-            ],
-          ),
+                  ],
+                ),
+              ),
+            );
+          },
         ),
       ),
     );

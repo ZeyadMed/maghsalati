@@ -7,6 +7,9 @@ class CacheManager {
   static const _refreshTokenKey = 'refreshToken';
   static const _fcmToken = 'fcmToken';
   static const _userIdKey = 'userId';
+  static const _userNameKey = 'userName';
+  static const _userEmailKey = 'userEmail';
+  static const _userRoleKey = 'userRole';
   static const _isGuestModeKey = 'isGuestMode';
   static SharedPreferences? _sharedPreferences;
 
@@ -139,6 +142,42 @@ class CacheManager {
     await delRefreshToken();
   }
 
+  /// بنحفظ بيانات المستخدم بعد اللوجين أو تفعيل الرقم، عشان الشاشات
+  /// تعرض الاسم من غير ما تبعت ريكوست زيادة
+  static Future<void> saveUserData({
+    required String userId,
+    required String userName,
+    required String role,
+    String? email,
+  }) async {
+    if (userId.isNotEmpty) {
+      await sharedPreferences.setString(_userIdKey, userId);
+    }
+    await sharedPreferences.setString(_userNameKey, userName);
+    await sharedPreferences.setString(_userRoleKey, role);
+    if (email != null && email.isNotEmpty) {
+      await sharedPreferences.setString(_userEmailKey, email);
+    } else {
+      await sharedPreferences.remove(_userEmailKey);
+    }
+    log('User data saved: $userName ($role)');
+  }
+
+  static String? getUserName() => sharedPreferences.getString(_userNameKey);
+
+  static String? getUserEmail() => sharedPreferences.getString(_userEmailKey);
+
+  static String? getUserRole() => sharedPreferences.getString(_userRoleKey);
+
+  /// بنمسح بيانات المستخدم مع التوكنز عند تسجيل الخروج
+  static Future<void> clearUserData() async {
+    await sharedPreferences.remove(_userIdKey);
+    await sharedPreferences.remove(_userNameKey);
+    await sharedPreferences.remove(_userEmailKey);
+    await sharedPreferences.remove(_userRoleKey);
+    log('User data cleared');
+  }
+
   static Future<void> saveFcmTokenToken(String fcmToken) async {
     await sharedPreferences.setString(_fcmToken, fcmToken);
     log('FCM Token saved: $fcmToken');
@@ -165,13 +204,14 @@ class CacheManager {
     }
   }
 
-  static Future<void> saveUserId(int userId) async {
-    await sharedPreferences.setInt(_userIdKey, userId);
+  /// الباك بيرجع الـ id كـ string فبنحفظه string
+  static Future<void> saveUserId(String userId) async {
+    await sharedPreferences.setString(_userIdKey, userId);
     log('User ID saved: $userId');
   }
 
-  static Future<int?> getUserId() async {
-    final userId = sharedPreferences.getInt(_userIdKey);
+  static Future<String?> getUserId() async {
+    final userId = sharedPreferences.getString(_userIdKey);
     log('User ID retrieved: $userId');
     return userId;
   }

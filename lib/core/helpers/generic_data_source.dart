@@ -38,8 +38,17 @@ class GenericDataSource {
     }
 
     final right = result.getOrThrow();
-    final accessToken = right['accessToken'] as String?;
-    final refreshToken = right['refreshToken'] as String?;
+
+    // بعض الاند بوينتس بترجع التوكنز في الروت وبعضها جوه data
+    // فبندور في الاتنين بدل ما نفترض شكل واحد
+    final payload = right['data'] is Map<String, dynamic>
+        ? right['data'] as Map<String, dynamic>
+        : right;
+
+    final accessToken =
+        (payload['accessToken'] ?? right['accessToken']) as String?;
+    final refreshToken =
+        (payload['refreshToken'] ?? right['refreshToken']) as String?;
 
     if (accessToken == null || accessToken.isEmpty) {
       loggerWarn('Auth response had no accessToken');
@@ -56,6 +65,18 @@ class GenericDataSource {
       accessToken: accessToken,
       refreshToken: refreshToken ?? '',
     );
+
+    // بيانات المستخدم بترجع مع التوكنز في اللوجين وتفعيل الرقم،
+    // فبنحفظها هنا عشان الشاشات تقراها من غير ريكوست زيادة
+    final userName = payload['userName']?.toString();
+    if (userName != null) {
+      await CacheManager.saveUserData(
+        userId: payload['userId']?.toString() ?? '',
+        userName: userName,
+        role: payload['role']?.toString() ?? '',
+        email: payload['email']?.toString(),
+      );
+    }
 
     if (fromJson == null) {
       return Right(null as T);
@@ -184,6 +205,7 @@ class GenericDataSource {
     Map<String, dynamic>? data,
     Map<String, dynamic>? queryParameters,
     Map<String, dynamic>? headers,
+    T Function(Map<String, dynamic>)? fromJson,
   }) async {
     final result = await _apiConsumer.post(
       endpoint,
@@ -196,6 +218,11 @@ class GenericDataSource {
       (right) {
         logger('GenericDataSource.postData raw right: $right');
         try {
+          // بنبعت الريسبونس كامل عشان الموديل يوصل للرسالة اللي في الروت
+          // وللداتا اللي جوه data، وهو اللي بيفك الشكل حسب الاند بوينت
+          if (fromJson != null) {
+            return Right(fromJson(right));
+          }
           if (T == Null) {
             return Right(right as T);
           } else if (T == String) {

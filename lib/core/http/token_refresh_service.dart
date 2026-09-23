@@ -53,14 +53,21 @@ class TokenRefreshService {
     try {
       final response = await _dio.post(
         Endpoints.refreshToken,
-        data: {'refreshToken': refreshToken},
+        data: {
+          'refreshToken': refreshToken,
+          'deviceInfo': '',
+          'deviceId': '',
+        },
       );
 
-      final data = response.data;
-      if (data is! Map) {
+      final body = response.data;
+      if (body is! Map) {
         loggerError('Refresh failed: unexpected response shape');
         return null;
       }
+
+      // الباك بيرجع التوكنز جوه data مش في الروت
+      final data = body['data'] is Map ? body['data'] as Map : body;
 
       final newAccessToken = data['accessToken'] as String?;
       final newRefreshToken = data['refreshToken'] as String?;
@@ -78,6 +85,17 @@ class TokenRefreshService {
             ? newRefreshToken
             : refreshToken,
       );
+
+      // الريسبونس بيرجع بيانات المستخدم كمان، فبنحدثها مع التوكنز
+      final userName = data['userName']?.toString();
+      if (userName != null) {
+        await CacheManager.saveUserData(
+          userId: data['userId']?.toString() ?? '',
+          userName: userName,
+          role: data['role']?.toString() ?? '',
+          email: data['email']?.toString(),
+        );
+      }
 
       logger('Access token refreshed');
       return newAccessToken;

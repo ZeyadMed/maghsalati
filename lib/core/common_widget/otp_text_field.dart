@@ -8,7 +8,19 @@ import 'package:maghsalati/core/style/app_colors.dart';
 
 class OtpTextField extends StatefulWidget {
   final TextEditingController pinController;
-  const OtpTextField({super.key, required this.pinController});
+
+  /// عدد الخانات، تفعيل رقم الهاتف بياخد 6 والباقي لسه 5
+  final int length;
+
+  /// بتتنادى لما المستخدم يكمل الكود، عشان الشاشة تتحقق على طول
+  final void Function(String)? onCompleted;
+
+  const OtpTextField({
+    super.key,
+    required this.pinController,
+    this.length = 5,
+    this.onCompleted,
+  });
 
   @override
   State<OtpTextField> createState() => _OtpTextFieldState();
@@ -23,9 +35,12 @@ class _OtpTextFieldState extends State<OtpTextField> {
 
   @override
   Widget build(BuildContext context) {
+    // الخانة بتصغر لما العدد يزيد عشان الصف مايخرجش بره الشاشة
+    final boxSize = widget.length > 5 ? 48.0 : 56.0;
+
     final defaultPinTheme = PinTheme(
-      width: 56,
-      height: 56,
+      width: boxSize,
+      height: boxSize,
       textStyle: const TextStyle(fontSize: 22, color: AppColors.primaryColor),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(8.0),
@@ -41,12 +56,13 @@ class _OtpTextFieldState extends State<OtpTextField> {
           Directionality(
             textDirection: ui.TextDirection.ltr,
             child: Pinput(
-              length: 5,
+              length: widget.length,
               controller: widget.pinController,
               defaultPinTheme: defaultPinTheme,
               hapticFeedbackType: HapticFeedbackType.lightImpact,
               onCompleted: (pin) {
                 logger('onCompleted: $pin');
+                widget.onCompleted?.call(pin);
               },
               onChanged: (value) {
                 logger('onChanged: $value');

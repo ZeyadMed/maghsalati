@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:go_router/go_router.dart';
 import 'package:maghsalati/core/extensions/context_extension.dart';
 import 'package:maghsalati/core/helpers/logger.dart';
+import 'package:maghsalati/core/http/endpoints.dart';
 import 'package:maghsalati/core/router/app_router.dart';
 import 'package:maghsalati/core/service_locator/service_locator.dart';
 import 'package:maghsalati/main.dart';
@@ -416,6 +417,13 @@ final class BaseApiConsumer implements ApiConsumer {
     _dio.interceptors.add(interceptor);
   }
 
+  /// اند بوينتس الدخول اللي الـ 401 فيها معناه بيانات غلط مش جلسة منتهية
+  bool _isAuthEndpoint(String path) {
+    return path.contains(Endpoints.login) ||
+        path.contains(Endpoints.verifyPhone) ||
+        path.contains(Endpoints.register);
+  }
+
   Future<Failure> _handleDioError(DioException error) async {
     switch (error.type) {
       case DioExceptionType.cancel:
@@ -444,6 +452,18 @@ final class BaseApiConsumer implements ApiConsumer {
               return ServerFailure(message: 'network failure ${error.message}');
             }
             if (error.response?.statusCode == 401) {
+              // الـ 401 الجاي من اللوجين أو التحقق معناه إن البيانات نفسها
+              // غلط، مش إن الجلسة انتهت. فبنرجع رسالة الباك زي ما هي
+              // بدل ما نمسح التوكنز ونرمي المستخدم على اللوجين.
+              if (_isAuthEndpoint(error.requestOptions.path)) {
+                return UnauthorizedFailure(
+                  message: decoded['details']?.toString() ??
+                      decoded['message']?.toString() ??
+                      'غير مصرح لك',
+                  statusCode: error.response?.statusCode,
+                );
+              }
+
               // لو وصلنا هنا يبقى الانترسبتور جرّب يجدد بالـ refresh token وفشل،
               // يعني الجلسة انتهت فعلاً. التوكنز اتمسحت هناك.
               navigatorKey.currentContext!.showErrorMessage(
