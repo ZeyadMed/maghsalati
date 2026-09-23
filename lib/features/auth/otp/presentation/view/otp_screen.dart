@@ -17,14 +17,20 @@ import 'package:maghsalati/core/style/assets.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
 import 'package:maghsalati/core/widget/custom_button.dart';
 import 'package:maghsalati/features/auth/models/auth_model.dart';
+import 'package:maghsalati/features/auth/otp/models/otp_args.dart';
 import 'package:maghsalati/features/auth/otp/presentation/logic/verify_phone_bloc.dart';
 import 'package:maghsalati/features/auth/otp/presentation/logic/verify_phone_event.dart';
 
 class OtpScreen extends StatefulWidget {
-  
-  final String phoneNumber;
 
-  const OtpScreen({super.key, this.phoneNumber = ''});
+  final String phoneNumber;
+  final OtpPurpose purpose;
+
+  const OtpScreen({
+    super.key,
+    this.phoneNumber = '',
+    this.purpose = OtpPurpose.register,
+  });
 
   @override
   State<OtpScreen> createState() => _OtpScreenState();
@@ -81,7 +87,16 @@ class _OtpScreenState extends State<OtpScreen> {
       return;
     }
 
-    
+    // في نسيت كلمة المرور الكود بيتبعت مع كلمة المرور الجديدة في reset-password
+    // فمش بنفعل الرقم هنا، بس بنوديه شاشة التغيير ومعاه الرقم والكود
+    if (widget.purpose == OtpPurpose.forgetPassword) {
+      context.pushReplacement(
+        AppRouter.changePassword,
+        extra: ResetPasswordArgs(phoneNumber: widget.phoneNumber, code: code),
+      );
+      return;
+    }
+
     if (context.read<VerifyPhoneBloc>().state.isLoading) return;
 
     context.read<VerifyPhoneBloc>().add(

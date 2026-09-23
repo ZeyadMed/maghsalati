@@ -12,9 +12,13 @@ import 'package:maghsalati/core/style/assets.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
 import 'package:maghsalati/core/widget/custom_button.dart';
 import 'package:maghsalati/core/widget/custom_text_field.dart';
+import 'package:maghsalati/features/auth/otp/models/otp_args.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
-  const ChangePasswordScreen({super.key});
+  /// الرقم والكود جايين من شاشة الـ OTP وبيتبعتوا مع كلمة المرور الجديدة
+  final ResetPasswordArgs? args;
+
+  const ChangePasswordScreen({super.key, this.args});
 
   @override
   State<ChangePasswordScreen> createState() => _ChangePasswordScreenState();

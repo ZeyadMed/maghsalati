@@ -3,6 +3,7 @@ import 'package:maghsalati/core/router/bottom_nav_app.dart';
 import 'package:maghsalati/features/auth/change_password/presentation/view/change_password_screen.dart';
 import 'package:maghsalati/features/auth/forget_password/presentation/view/forget_password_screen.dart';
 import 'package:maghsalati/features/auth/login/presentation/view/login_screen.dart';
+import 'package:maghsalati/features/auth/otp/models/otp_args.dart';
 import 'package:maghsalati/features/auth/otp/presentation/view/otp_screen.dart';
 import 'package:maghsalati/features/auth/register/presentation/view/register_screen.dart';
 import 'package:maghsalati/features/home/presentation/view/home_screen.dart';
@@ -95,15 +96,23 @@ abstract class AppRouter {
         path: forgetPassword,
         builder: (context, state) => const ForgetPasswordScreen(),
       ),
-      // الرقم بيتبعت في state.extra جاي من شاشة التسجيل عشان يتبعت مع الكود
+      // OtpArgs بيتبعت في state.extra جاي من التسجيل أو نسيت كلمة المرور،
+      // فيه الرقم اللي بيتبعت مع الكود والـ purpose اللي بيحدد نروح فين بعد التحقق
       GoRoute(
         path: verifyOtp,
-        builder: (context, state) =>
-            OtpScreen(phoneNumber: state.extra as String? ?? ''),
+        builder: (context, state) {
+          final args = state.extra as OtpArgs?;
+          return OtpScreen(
+            phoneNumber: args?.phoneNumber ?? '',
+            purpose: args?.purpose ?? OtpPurpose.register,
+          );
+        },
       ),
+      // ResetPasswordArgs بيتبعت في state.extra جاي من شاشة الـ OTP
       GoRoute(
         path: changePassword,
-        builder: (context, state) => const ChangePasswordScreen(),
+        builder: (context, state) =>
+            ChangePasswordScreen(args: state.extra as ResetPasswordArgs?),
       ),
       GoRoute(
         path: homeScreen,

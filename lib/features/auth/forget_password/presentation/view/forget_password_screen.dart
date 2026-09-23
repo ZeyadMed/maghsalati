@@ -11,6 +11,7 @@ import 'package:maghsalati/core/style/assets.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
 import 'package:maghsalati/core/widget/custom_button.dart';
 import 'package:maghsalati/core/widget/custom_phone_field.dart';
+import 'package:maghsalati/features/auth/otp/models/otp_args.dart';
 
 class ForgetPasswordScreen extends StatefulWidget {
   const ForgetPasswordScreen({super.key});
@@ -84,7 +85,13 @@ class _ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
               CustomButton(
                 onPressed: () {
                   if (_formKey.currentState!.validate()) {
-                    context.push(AppRouter.verifyOtp);
+                    context.push(
+                      AppRouter.verifyOtp,
+                      extra: OtpArgs(
+                        phoneNumber: completePhone,
+                        purpose: OtpPurpose.forgetPassword,
+                      ),
+                    );
                   }
                 },
                 title: "reset_password".tr(),

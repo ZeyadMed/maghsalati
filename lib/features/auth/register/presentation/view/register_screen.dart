@@ -19,6 +19,7 @@ import 'package:maghsalati/core/widget/custom_phone_field.dart';
 import 'package:maghsalati/core/widget/custom_text_field.dart';
 import 'package:maghsalati/core/widget/divider_widget.dart';
 import 'package:maghsalati/core/widget/flexiable_image.dart';
+import 'package:maghsalati/features/auth/otp/models/otp_args.dart';
 import 'package:maghsalati/features/auth/register/models/city_model.dart';
 import 'package:maghsalati/features/auth/register/models/register_model.dart';
 import 'package:maghsalati/features/auth/register/presentation/logic/city_cubit.dart';
@@ -102,7 +103,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
           listener: (context, state) {
             if (state.isSuccess) {
               context.showSuccessMessage(state.data?.message ?? '');
-              context.push(AppRouter.verifyOtp, extra: completePhone);
+              context.push(
+                AppRouter.verifyOtp,
+                extra: OtpArgs(
+                  phoneNumber: completePhone,
+                  purpose: OtpPurpose.register,
+                ),
+              );
             }
             if (state.isFailure) {
               context.showErrorMessage(state.errorMessage ?? '');
