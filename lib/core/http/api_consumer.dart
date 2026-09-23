@@ -7,7 +7,7 @@ import 'package:maghsalati/core/extensions/context_extension.dart';
 import 'package:maghsalati/core/helpers/logger.dart';
 import 'package:maghsalati/core/http/endpoints.dart';
 import 'package:maghsalati/core/router/app_router.dart';
-import 'package:maghsalati/core/service_locator/service_locator.dart';
+import 'package:maghsalati/core/http/session.dart';
 import 'package:maghsalati/main.dart';
 
 import 'either.dart';
@@ -266,7 +266,7 @@ final class BaseApiConsumer implements ApiConsumer {
     } on DioException catch (e) {
       log('left $e');
       loggerError(e.toString());
-      final failure = await await _handleDioError(e);
+      final failure = await _handleDioError(e);
       return Left(failure);
     } catch (e) {
       return Left(
@@ -417,11 +417,48 @@ final class BaseApiConsumer implements ApiConsumer {
     _dio.interceptors.add(interceptor);
   }
 
-  /// اند بوينتس الدخول اللي الـ 401 فيها معناه بيانات غلط مش جلسة منتهية
-  bool _isAuthEndpoint(String path) {
-    return path.contains(Endpoints.login) ||
-        path.contains(Endpoints.verifyPhone) ||
-        path.contains(Endpoints.register);
+  /// الـ 401 بيتفحص قبل ما نفك الـ body، لأن الـ JwtBearer بتاع الباك
+  /// بيرجع 401 بـ body فاضي، وقبل كده كان بيعدي من غير ما يحوّل للوجين
+  Failure _handleUnauthorized(DioException error) {
+    final statusCode = error.response?.statusCode;
+
+    // الـ 401 الجاي من اللوجين أو التحقق معناه إن البيانات نفسها
+    // غلط، مش إن الجلسة انتهت. فبنرجع رسالة الباك زي ما هي
+    // بدل ما نمسح التوكنز ونرمي المستخدم على اللوجين.
+    if (Endpoints.isPublicAuth(error.requestOptions.path)) {
+      return UnauthorizedFailure(
+        message: _backendMessage(error.response?.data) ?? 'غير مصرح لك',
+        statusCode: statusCode,
+      );
+    }
+
+    // لو وصلنا هنا يبقى الانترسبتور جرّب يجدد بالـ refresh token وفشل،
+    // يعني الجلسة انتهت فعلاً والتوكنز اتمسحت هناك. لو كذا ريكوست وقعوا
+    // مع بعض، أول واحد بس هو اللي بيحوّل.
+    if (Session.claimExpiryRedirect()) {
+      final context = navigatorKey.currentContext;
+      if (context != null) {
+        context.showErrorMessage('عاود التسجيل من فضلك');
+        context.go(AppRouter.login);
+      }
+    }
+    return UnauthorizedFailure(
+      message: error.message ?? 'غير مصرح لك',
+      statusCode: statusCode,
+    );
+  }
+
+  /// بيطلع رسالة الباك من الـ body لو موجودة، ومابيرميش لو الـ body فاضي
+  String? _backendMessage(dynamic data) {
+    try {
+      final decoded = data is String
+          ? (data.isEmpty ? null : json.decode(data))
+          : data;
+      if (decoded is! Map) return null;
+      return decoded['details']?.toString() ?? decoded['message']?.toString();
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<Failure> _handleDioError(DioException error) async {
@@ -442,6 +479,9 @@ final class BaseApiConsumer implements ApiConsumer {
         navigatorKey.currentContext!.showErrorMessage('انتهت مهلة الاتصال ');
         return ServerFailure(message: 'انتهت مهلة الإرسال في الاتصال ');
       case DioExceptionType.badResponse:
+        if (error.response?.statusCode == 401) {
+          return _handleUnauthorized(error);
+        }
         if (error.response?.data != null) {
           try {
             final data = error.response!.data;
@@ -450,32 +490,6 @@ final class BaseApiConsumer implements ApiConsumer {
                 : data;
             if (error.response?.statusCode == 503) {
               return ServerFailure(message: 'network failure ${error.message}');
-            }
-            if (error.response?.statusCode == 401) {
-              // الـ 401 الجاي من اللوجين أو التحقق معناه إن البيانات نفسها
-              // غلط، مش إن الجلسة انتهت. فبنرجع رسالة الباك زي ما هي
-              // بدل ما نمسح التوكنز ونرمي المستخدم على اللوجين.
-              if (_isAuthEndpoint(error.requestOptions.path)) {
-                return UnauthorizedFailure(
-                  message: decoded['details']?.toString() ??
-                      decoded['message']?.toString() ??
-                      'غير مصرح لك',
-                  statusCode: error.response?.statusCode,
-                );
-              }
-
-              // لو وصلنا هنا يبقى الانترسبتور جرّب يجدد بالـ refresh token وفشل،
-              // يعني الجلسة انتهت فعلاً. التوكنز اتمسحت هناك.
-              navigatorKey.currentContext!.showErrorMessage(
-                'عاود التسجيل من فضلك',
-              );
-              await DI.resetGetItAndInit();
-
-              navigatorKey.currentContext!.go(AppRouter.login);
-              return UnauthorizedFailure(
-                message: error.message ?? 'غير مصرح لك',
-                statusCode: error.response?.statusCode,
-              );
             }
             if (error.response?.statusCode == 413) {
               navigatorKey.currentContext!.showErrorMessage(

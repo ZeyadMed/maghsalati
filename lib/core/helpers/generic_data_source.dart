@@ -6,6 +6,7 @@ import '../http/api_consumer.dart';
 import '../http/either.dart';
 import '../http/failure.dart';
 import '../http/params.dart';
+import '../http/session.dart';
 import 'logger.dart';
 
 class GenericDataSource {
@@ -61,10 +62,27 @@ class GenericDataSource {
       loggerWarn('Auth response had no refreshToken');
     }
 
+    // بنفك الريسبونس الأول، ولو فشل مانحفظش حاجة. قبل كده التوكنز كانت
+    // بتتحفظ والمستخدم يشوف خطأ مع إنه فعلياً بقى داخل
+    T? parsed;
+    if (fromJson != null) {
+      try {
+        parsed = fromJson(right);
+      } catch (e, stackTrace) {
+        loggerError(stackTrace);
+        loggerWarn(e.toString());
+        return Left(ParsingFailure(message: e.toString()));
+      }
+    }
+
     await CacheManager.saveTokens(
       accessToken: accessToken,
       refreshToken: refreshToken ?? '',
     );
+
+    // بنمسح بيانات أي حساب قديم الأول، عشان لو الريسبونس ناقص حاجة
+    // (زي userId) مايفضلش مكانها قيمة الحساب اللي قبله
+    await CacheManager.clearUserData();
 
     // بيانات المستخدم بترجع مع التوكنز في اللوجين وتفعيل الرقم،
     // فبنحفظها هنا عشان الشاشات تقراها من غير ريكوست زيادة
@@ -78,16 +96,11 @@ class GenericDataSource {
       );
     }
 
-    if (fromJson == null) {
-      return Right(null as T);
-    }
-    try {
-      return Right(fromJson(right));
-    } catch (e, stackTrace) {
-      loggerError(stackTrace);
-      loggerWarn(e.toString());
-      return Left(ParsingFailure(message: e.toString()));
-    }
+    // دخل بحساب حقيقي فمبقاش ضيف
+    await CacheManager.setGuestMode(false);
+    Session.started();
+
+    return Right(parsed as T);
   }
 
   Future<Either<Failure, List<T>>> fetchData<T>({

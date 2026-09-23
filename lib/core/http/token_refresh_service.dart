@@ -3,6 +3,28 @@ import 'package:maghsalati/core/cache_manager/cache_manager.dart';
 import 'package:maghsalati/core/helpers/logger.dart';
 import 'package:maghsalati/core/http/endpoints.dart';
 
+/// نتيجة محاولة التجديد. بنفرق بين إن الجلسة انتهت فعلاً وبين إن النت
+/// وقع أو السيرفر عطلان، عشان مانطردش المستخدم على مشكلة مؤقتة.
+sealed class RefreshResult {
+  const RefreshResult();
+}
+
+class RefreshSuccess extends RefreshResult {
+  final String accessToken;
+  const RefreshSuccess(this.accessToken);
+}
+
+/// الباك رفض الـ refresh token (أو مفيش واحد أصلاً)، لازم يسجل دخول تاني
+class RefreshSessionExpired extends RefreshResult {
+  const RefreshSessionExpired();
+}
+
+/// فشل مؤقت (نت، timeout، 5xx)، التوكنز لسه صالحة ومش هنمسحها
+class RefreshTransientFailure extends RefreshResult {
+  final DioException cause;
+  const RefreshTransientFailure(this.cause);
+}
+
 /// بيتولى تجديد الـ accessToken باستخدام الـ refreshToken.
 ///
 /// بيستخدم Dio مستقل (من غير الانترسبتور) عشان لو التجديد نفسه رجع 401
@@ -14,7 +36,9 @@ class TokenRefreshService {
           Dio(
             BaseOptions(
               baseUrl: Endpoints.baseUrl,
-              connectTimeout: const Duration(seconds: 60),
+              connectTimeout: const Duration(seconds: 30),
+              receiveTimeout: const Duration(seconds: 30),
+              sendTimeout: const Duration(seconds: 30),
               headers: {
                 'Accept': 'application/json',
                 'Content-Type': 'application/json',
@@ -26,28 +50,30 @@ class TokenRefreshService {
 
   final Dio _dio;
 
+  /// الأكواد اللي معناها إن الـ refresh token نفسه مرفوض
+  static const _rejectedStatusCodes = {400, 401, 403};
+
   /// لو فيه تجديد شغال بالفعل، أي ريكوست تاني بيستنى نفس النتيجة
   /// بدل ما نبعت كذا طلب تجديد في نفس الوقت ونحرق الـ refresh token.
-  Future<String?>? _ongoingRefresh;
+  Future<RefreshResult>? _ongoingRefresh;
 
   bool get hasRefreshToken {
     final token = CacheManager.getRefreshTokenSync();
     return token != null && token.isNotEmpty;
   }
 
-  /// بترجع accessToken جديد، أو null لو التجديد فشل.
   /// المكالمات المتوازية بتشارك نفس العملية.
-  Future<String?> refresh() {
+  Future<RefreshResult> refresh() {
     return _ongoingRefresh ??= _performRefresh().whenComplete(() {
       _ongoingRefresh = null;
     });
   }
 
-  Future<String?> _performRefresh() async {
+  Future<RefreshResult> _performRefresh() async {
     final refreshToken = CacheManager.getRefreshTokenSync();
     if (refreshToken == null || refreshToken.isEmpty) {
       loggerWarn('Refresh skipped: no refresh token stored');
-      return null;
+      return const RefreshSessionExpired();
     }
 
     try {
@@ -63,18 +89,18 @@ class TokenRefreshService {
       final body = response.data;
       if (body is! Map) {
         loggerError('Refresh failed: unexpected response shape');
-        return null;
+        return const RefreshSessionExpired();
       }
 
       // الباك بيرجع التوكنز جوه data مش في الروت
       final data = body['data'] is Map ? body['data'] as Map : body;
 
-      final newAccessToken = data['accessToken'] as String?;
-      final newRefreshToken = data['refreshToken'] as String?;
+      final newAccessToken = data['accessToken']?.toString();
+      final newRefreshToken = data['refreshToken']?.toString();
 
       if (newAccessToken == null || newAccessToken.isEmpty) {
         loggerError('Refresh failed: response had no accessToken');
-        return null;
+        return const RefreshSessionExpired();
       }
 
       // الباك اند بيدوّر الـ refresh token، فلو رجع واحد جديد لازم نحفظه
@@ -98,13 +124,17 @@ class TokenRefreshService {
       }
 
       logger('Access token refreshed');
-      return newAccessToken;
+      return RefreshSuccess(newAccessToken);
     } on DioException catch (e) {
-      loggerError('Refresh request failed: ${e.response?.statusCode} $e');
-      return null;
+      final statusCode = e.response?.statusCode;
+      loggerError('Refresh request failed: $statusCode $e');
+      if (_rejectedStatusCodes.contains(statusCode)) {
+        return const RefreshSessionExpired();
+      }
+      return RefreshTransientFailure(e);
     } catch (e) {
       loggerError('Refresh request failed: $e');
-      return null;
+      return const RefreshSessionExpired();
     }
   }
 }

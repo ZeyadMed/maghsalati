@@ -24,54 +24,22 @@ class SharedServiceLocator {
     );
 
     getIt.registerLazySingleton<Dio>(() {
-      final dio = Dio(
-        BaseOptions(
-          baseUrl: Endpoints.baseUrl,
-          connectTimeout: const Duration(seconds: 60),
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            // Disable gzip/deflate from server to avoid malformed compressed responses
-            'Accept-Encoding': 'identity',
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache',
-            'Accept-Language': 'ar',
-            //  AppRouter.router.configuration.navigatorKey
-            //             .currentContext?.isArabic ??
-            //         false
-            //     ? 'ar'
-            //     : 'en',
-          },
-        ),
-      );
+      final dio = Dio(_baseOptions());
+
+      // Dio تاني بنفس الإعدادات من غير الانترسبتور، الانترسبتور بيعيد بيه
+      // الطلب بعد التجديد عشان مايحصلش deadlock في الطابور بتاعه
+      final retryDio = Dio(_baseOptions());
+      _addLogger(retryDio);
 
       // الـ Authorization بقى بيتحط في الانترسبتور وقت كل ريكوست،
       // مش هنا وقت التسجيل، عشان ياخد أحدث توكن بعد اللوجين أو التجديد.
       dio.interceptors.add(
         AuthInterceptor(
-          dio: dio,
+          retryDio: retryDio,
           refreshService: getIt<TokenRefreshService>(),
         ),
       );
-
-      if (kDebugMode) {
-        dio.interceptors.add(
-          PrettyDioLogger(
-            logPrint: (object) {
-              log(object.toString());
-            },
-            requestHeader: true,
-            requestBody: true,
-            responseBody: true,
-            responseHeader: false,
-            error: true,
-            compact: true,
-            enabled: true,
-            request: true,
-            maxWidth: 90,
-          ),
-        );
-      }
+      _addLogger(dio);
 
       return dio;
     });
@@ -106,5 +74,46 @@ class SharedServiceLocator {
     // getIt.registerLazySingleton<LocalNotificationConsumer>(() => LocalNotificationServiceImpl()..initialize());
     // getIt.registerLazySingleton<FirebaseService>(() => FirebaseService(getIt()));
     // getIt<FirebaseService>().initializeFirebaseMessaging();
+  }
+
+  static BaseOptions _baseOptions() {
+    return BaseOptions(
+      baseUrl: Endpoints.baseUrl,
+      connectTimeout: const Duration(seconds: 60),
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        // Disable gzip/deflate from server to avoid malformed compressed responses
+        'Accept-Encoding': 'identity',
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache',
+        'Accept-Language': 'ar',
+        //  AppRouter.router.configuration.navigatorKey
+        //             .currentContext?.isArabic ??
+        //         false
+        //     ? 'ar'
+        //     : 'en',
+      },
+    );
+  }
+
+  static void _addLogger(Dio dio) {
+    if (!kDebugMode) return;
+    dio.interceptors.add(
+      PrettyDioLogger(
+        logPrint: (object) {
+          log(object.toString());
+        },
+        requestHeader: true,
+        requestBody: true,
+        responseBody: true,
+        responseHeader: false,
+        error: true,
+        compact: true,
+        enabled: true,
+        request: true,
+        maxWidth: 90,
+      ),
+    );
   }
 }

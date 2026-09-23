@@ -82,7 +82,7 @@ class CacheManager {
       String? fcmToken = await FirebaseMessaging.instance.getToken();
       if (fcmToken != null) {
         await saveFcmTokenToken(fcmToken);
-        log('FCM Token fetched and saved: $fcmToken');
+        log('FCM token fetched and saved');
         return fcmToken;
       } else {
         log('Failed to fetch FCM Token: Token is null');
@@ -96,7 +96,7 @@ class CacheManager {
 
   static Future<void> saveAccessToken(String token) async {
     await sharedPreferences.setString(_accessTokenKey, token);
-    log('Token saved: $token');
+    log('Access token saved');
   }
 
   static Future<void> delAccessToken() async {
@@ -180,19 +180,17 @@ class CacheManager {
 
   static Future<void> saveFcmTokenToken(String fcmToken) async {
     await sharedPreferences.setString(_fcmToken, fcmToken);
-    log('FCM Token saved: $fcmToken');
+    log('FCM token saved');
   }
 
   static Future<String?> getAccessToken() async {
     String? token = sharedPreferences.getString(_accessTokenKey);
-    log('Token retrieved: $token');
-    return token;
+        return token;
   }
 
   static Future<String?> getFcmToken() async {
     String? fcmToken = sharedPreferences.getString(_fcmToken);
-    log('FCM Token retrieved: $fcmToken');
-    return fcmToken;
+        return fcmToken;
   }
 
   static Future<bool> clear() async {

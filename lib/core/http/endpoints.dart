@@ -27,4 +27,13 @@ abstract interface class Endpoints {
 
   /// بتاخد { refreshToken } وبتلغي الجلسة من عند الباك
   static const String logout = 'api/auth/logout';
+
+  /// اند بوينتس مفتوحة بتتنادى قبل ما يبقى فيه جلسة، فمابنحطش عليها توكن
+  /// والـ 401 منها معناه بيانات غلط مش جلسة منتهية
+  static bool isPublicAuth(String path) {
+    return path.contains(login) ||
+        path.contains(verifyPhone) ||
+        path.contains(register) ||
+        path.contains(cities);
+  }
 }
