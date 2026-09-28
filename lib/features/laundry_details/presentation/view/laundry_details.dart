@@ -12,6 +12,8 @@ import 'package:maghsalati/core/style/app_colors.dart';
 import 'package:maghsalati/core/style/assets.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
 import 'package:maghsalati/core/widget/loading_shimmer.dart';
+import 'package:maghsalati/features/cart/presentation/view/widget/confirm_cart_bottom_sheet.dart';
+import 'package:maghsalati/features/cart/presentation/view_model/cart_cubit.dart';
 import 'package:maghsalati/features/home/presentation/view/widget/timing_row.dart';
 import 'package:maghsalati/features/laundry_details/data/model/service_category_model.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view/category_items_screen.dart';
@@ -165,9 +167,14 @@ class _LaundryDetailsState extends State<LaundryDetails> {
           initialIndex: index,
           // إتمام الطلب من شيت السلة بيقفل شاشة القطع الأول عشان لما يرجع
           // من شاشة الانتظار يلاقي نفسه في شاشة التفاصيل
-          onConfirmOrder: () {
+          // والطلب بيتبني من سلة السيرفر اللي في الشيت، بعد ما بيانات
+          // الاستلام تتبعت والسيرفر يأكده
+          onConfirmOrder: (cart) async {
+            final confirmed = await ConfirmCartBottomSheet.show(context);
+            if (!confirmed || !mounted) return;
+            getIt<CartCubit>().getCart();
             Navigator.of(context).maybePop();
-            _onConfirmOrder();
+            context.push(AppRouter.orderPending, extra: cart.toPendingOrder());
           },
         ),
       ),
@@ -175,7 +182,6 @@ class _LaundryDetailsState extends State<LaundryDetails> {
   }
 
   /// بيبني الطلب من الكميات المختارة ويودّي على شاشة انتظار موافقة المغسلة
-  /// TODO: ابعت الطلب على ال endpoint هنا الأول لما يجهز
   void _onConfirmOrder() {
     final selected = _servicesController.selectedServices(_categories);
     if (selected.isEmpty) return;

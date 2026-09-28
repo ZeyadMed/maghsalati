@@ -1,9 +1,15 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
+import 'package:maghsalati/core/bloc/base_bloc.dart';
+import 'package:maghsalati/core/extensions/context_extension.dart';
+import 'package:maghsalati/core/service_locator/service_locator.dart';
 import 'package:maghsalati/core/style/app_colors.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
+import 'package:maghsalati/features/cart/data/model/cart_model.dart';
+import 'package:maghsalati/features/cart/presentation/view_model/cart_cubit.dart';
 import 'package:maghsalati/features/laundry_details/data/model/service_category_model.dart';
 import 'package:maghsalati/features/laundry_details/data/model/service_item_model.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view/widget/cart_bottom_sheet.dart';
@@ -11,6 +17,7 @@ import 'package:maghsalati/features/laundry_details/presentation/view/widget/car
 import 'package:maghsalati/features/laundry_details/presentation/view/widget/service_item_card.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view/widget/services_promo_banner.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view/widget/sub_category_filter_chips.dart';
+import 'package:maghsalati/features/laundry_details/presentation/view_model/add_to_cart_cubit.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view_model/selected_services_controller.dart';
 
 /// شاشة القطع: تابات لكل الأقسام الرئيسية فوق، وتحتها شيبس الأقسام الفرعية
@@ -26,7 +33,7 @@ class CategoryItemsScreen extends StatefulWidget {
   final String title;
 
   /// بيتنفذ لما يدوس على إتمام الطلب من جوا شيت السلة
-  final VoidCallback? onConfirmOrder;
+  final ValueChanged<CartModel>? onConfirmOrder;
 
   const CategoryItemsScreen({
     super.key,
@@ -49,6 +56,9 @@ class _CategoryItemsScreenState extends State<CategoryItemsScreen>
   /// محفوظ لكل قسم لوحده عشان لما ترجع للتاب تلاقي فلترك زي ما سيبته
   final Map<int, int?> _selectedSubCategories = {};
 
+  /// بيبعت القطعة لسلة العميل لما يدوس "أضف للسلة" في الكارت
+  final AddToCartCubit _addToCartCubit = getIt<AddToCartCubit>();
+
   @override
   void initState() {
     super.initState();
@@ -70,6 +80,7 @@ class _CategoryItemsScreenState extends State<CategoryItemsScreen>
   void dispose() {
     _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
+    _addToCartCubit.close();
     super.dispose();
   }
 
@@ -79,12 +90,7 @@ class _CategoryItemsScreenState extends State<CategoryItemsScreen>
   /// بيفتح شيت السلة، وإتمام الطلب من جواه بيرجع لشاشة التفاصيل عشان
   /// هي اللي بتبني الطلب وتبعته
   void _openCart() {
-    CartBottomSheet.show(
-      context: context,
-      controller: widget.controller,
-      categories: widget.categories,
-      onConfirm: widget.onConfirmOrder,
-    );
+    CartBottomSheet.show(context: context, onConfirm: widget.onConfirmOrder);
   }
 
   @override
@@ -154,7 +160,8 @@ class _CategoryItemsScreenState extends State<CategoryItemsScreen>
     );
   }
 
-  /// الجريد بيسمع على الكنترولر عشان الكاونتر يتحدث مع كل زيادة أو نقصان
+  /// الجريد بيسمع على الـ cubit عشان اللودينج بتاع زرار السلة
+  /// وجواه بيسمع على الكنترولر عشان الكاونتر يتحدث مع كل زيادة أو نقصان
   Widget _buildItemsGrid(List<ServiceItemModel> items) {
     if (items.isEmpty) {
       return Center(
@@ -162,6 +169,44 @@ class _CategoryItemsScreenState extends State<CategoryItemsScreen>
       );
     }
 
+    return BlocConsumer<AddToCartCubit, BaseState<int>>(
+      bloc: _addToCartCubit,
+      listenWhen: (previous, current) => previous.status != current.status,
+      listener: _onAddToCartChanged,
+      builder: (context, _) => _buildGrid(items),
+    );
+  }
+
+  /// بيبعت القطعة بالكمية اللي اتحددت في الكاونتر مرة واحدة
+  void _addToCart(ServiceItemModel item) {
+    _addToCartCubit.addItem(
+      itemId: item.id,
+      quantity: widget.controller.quantityOf(item.id),
+    );
+  }
+
+  void _onAddToCartChanged(BuildContext context, BaseState<int> state) {
+    if (state.isSuccess) {
+      // السلة اتغيرت على السيرفر فبنحدثها عشان الشيت وتاب السلة يشوفوا الجديد
+      getIt<CartCubit>().getCart();
+      final name = _itemName(state.data);
+      context.showSuccessMessage('added_to_cart'.tr(args: [name]));
+    }
+    if (state.isFailure) {
+      context.showErrorMessage(state.errorMessage ?? 'try_again'.tr());
+    }
+  }
+
+  String _itemName(int? itemId) {
+    for (final category in widget.categories) {
+      for (final ServiceItemModel item in category.items) {
+        if (item.id == itemId) return item.name;
+      }
+    }
+    return '';
+  }
+
+  Widget _buildGrid(List<ServiceItemModel> items) {
     return AnimatedBuilder(
       animation: widget.controller,
       builder: (context, _) {
@@ -183,6 +228,8 @@ class _CategoryItemsScreenState extends State<CategoryItemsScreen>
               onSelect: () => widget.controller.select(item.id),
               onIncrement: () => widget.controller.increment(item.id),
               onDecrement: () => widget.controller.decrement(item.id),
+              onAddToCart: () => _addToCart(item),
+              isAddingToCart: _addToCartCubit.isAdding(item.id),
             );
           },
         );

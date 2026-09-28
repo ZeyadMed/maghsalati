@@ -11,6 +11,11 @@ abstract interface class LaundryServicesDataSource {
   );
 
   Future<Either<Failure, WorkingHoursModel>> getWorkingHours(int laundryId);
+
+  Future<Either<Failure, void>> addToCart({
+    required int laundryServiceItemId,
+    required int quantity,
+  });
 }
 
 class LaundryServicesDataSourceImpl implements LaundryServicesDataSource {
@@ -37,5 +42,20 @@ class LaundryServicesDataSourceImpl implements LaundryServicesDataSource {
       fromJson: (json) => WorkingHoursModel.fromJson(json),
     );
     return result;
+  }
+
+  @override
+  Future<Either<Failure, void>> addToCart({
+    required int laundryServiceItemId,
+    required int quantity,
+  }) async {
+    final result = await _genericDataSource.postData<Map<String, dynamic>>(
+      endpoint: Endpoints.cart,
+      data: {
+        'laundryServiceItemId': laundryServiceItemId,
+        'quantity': quantity,
+      },
+    );
+    return result.fold((failure) => Left(failure), (_) => const Right(null));
   }
 }

@@ -41,6 +41,17 @@ abstract interface class Endpoints {
   static String laundryWorkingHours(int laundryId) =>
       'api/customer/laundries/$laundryId/working-hours';
 
+  /// POST: بتاخد { laundryServiceItemId, quantity } وبتضيف القطعة لسلة العميل
+  /// GET: بترجع السلة { laundryName, items, itemsTotal, pickupFee, dropoffFee, totalPrice }
+  static const String cart = 'api/customer/cart';
+
+  /// PUT: بتاخد { quantity } وبتعدل كمية القطعة دي في السلة
+  static String cartItem(int cartItemId) => 'api/customer/cart/$cartItemId';
+
+  /// POST: بتاخد { deliveryAddress, latitude, longitude, pickupContactName,
+  /// pickupContactPhoneNumber } وبتحول السلة لطلب
+  static const String confirmCart = 'api/customer/cart/confirm';
+
   /// اند بوينتس مفتوحة بتتنادى قبل ما يبقى فيه جلسة، فمابنحطش عليها توكن
   /// والـ 401 منها معناه بيانات غلط مش جلسة منتهية
   static bool isPublicAuth(String path) {

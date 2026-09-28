@@ -7,6 +7,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:maghsalati/features/cart/presentation/view/cart_screen.dart';
+import 'package:maghsalati/features/cart/presentation/view_model/cart_cubit.dart';
 import 'package:maghsalati/features/home/presentation/view/home_screen.dart';
 import 'package:maghsalati/features/home/presentation/view/search_screen.dart';
 import 'package:maghsalati/features/orders/presentation/view/orders_screen.dart';
@@ -99,6 +100,11 @@ class _BottomNavAppState extends State<BottomNavApp> {
   }
 
   void _onItemTapped(int index) {
+    // تاب السلة متكاش فبنحدث السلة كل ما يرجعله، وأول مرة بتتجاب من initState بتاعه
+    if (index == 2 && _cachedPages.containsKey(2)) {
+      getIt<CartCubit>().getCart();
+    }
+
     setState(() {
       _selectedIndex = index;
       _getPage(index);

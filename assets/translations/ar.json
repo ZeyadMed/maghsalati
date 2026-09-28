@@ -176,6 +176,10 @@
   "your_order": "طلبك",
   "cart_empty": "السلة فارغة",
   "cart_empty_hint": "تصفح المغاسل القريبة منك وأضف ما تحتاجه إلى السلة",
+  "add_to_cart": "أضف للسلة",
+  "added_to_cart": "تمت إضافة {} للسلة",
+  "pickup_fee": "رسوم الاستلام",
+  "dropoff_fee": "رسوم التسليم",
   "cart": "السلة",
   "search": "البحث",
   "search_results": "نتائج البحث",
@@ -196,5 +200,9 @@
   "thursday": "الخميس",
   "friday": "الجمعة",
   "show_working_hours": "عرض مواعيد العمل",
-  "no_working_hours": "لا توجد مواعيد عمل متاحة"
+  "no_working_hours": "لا توجد مواعيد عمل متاحة",
+  "pickup_details": "بيانات الاستلام",
+  "pickup_contact_name": "اسم المستلم",
+  "pickup_contact_name_hint": "اكتب اسم الشخص اللي هيسلم الهدوم",
+  "pickup_location_required": "حدد موقعك الحالي عشان المندوب يوصلك"
 }

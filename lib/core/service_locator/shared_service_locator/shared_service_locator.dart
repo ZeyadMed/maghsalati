@@ -10,6 +10,7 @@ import 'package:maghsalati/core/service_locator/auth_sevices_locator/login_servi
 import 'package:maghsalati/core/service_locator/auth_sevices_locator/logout_services_locator.dart';
 import 'package:maghsalati/core/service_locator/auth_sevices_locator/otp_services_locator.dart';
 import 'package:maghsalati/core/service_locator/auth_sevices_locator/register_services_locator.dart';
+import 'package:maghsalati/core/service_locator/cart_services_locator/cart_services_locator.dart';
 import 'package:maghsalati/core/service_locator/home_services_locator/home_services_locator.dart';
 import 'package:maghsalati/core/service_locator/laundry_details_services_locator/laundry_details_services_locator.dart';
 import 'package:maghsalati/core/http/api_consumer.dart';
@@ -60,6 +61,7 @@ class SharedServiceLocator {
     await LogoutServicesLocator.init(getIt: getIt);
     await HomeServicesLocator.init(getIt: getIt);
     await LaundryDetailsServicesLocator.init(getIt: getIt);
+    await CartServicesLocator.init(getIt: getIt);
 
     getIt.registerLazySingleton<LocationService>(() => LocationService());
 

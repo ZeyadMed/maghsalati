@@ -176,6 +176,10 @@
   "your_order": "Your Order",
   "cart_empty": "Your cart is empty",
   "cart_empty_hint": "Browse nearby laundries and add what you need to your cart",
+  "add_to_cart": "Add to cart",
+  "added_to_cart": "{} added to cart",
+  "pickup_fee": "Pickup fee",
+  "dropoff_fee": "Drop-off fee",
   "cart": "Cart",
   "search": "Search",
   "search_results": "Search Results",
@@ -196,5 +200,9 @@
   "thursday": "Thursday",
   "friday": "Friday",
   "show_working_hours": "View working hours",
-  "no_working_hours": "No working hours available"
+  "no_working_hours": "No working hours available",
+  "pickup_details": "Pickup details",
+  "pickup_contact_name": "Contact name",
+  "pickup_contact_name_hint": "Name of the person handing over the clothes",
+  "pickup_location_required": "Please pick your current location so the driver can reach you"
 }
