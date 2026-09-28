@@ -7,8 +7,6 @@ class OtpServicesLocator {
     getIt.registerLazySingleton<VerifyPhoneDataSource>(
       () => VerifyPhoneDataSourceImpl(getIt()),
     );
-    getIt.registerFactory<VerifyPhoneBloc>(
-      () => VerifyPhoneBloc(getIt()),
-    );
+    getIt.registerFactory<VerifyPhoneBloc>(() => VerifyPhoneBloc(getIt()));
   }
 }

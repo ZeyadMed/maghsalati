@@ -97,6 +97,7 @@
   "know_more": "اعرف المزيد",
   "promo_banner_title": "غسيل احترافي بعناية فائقة",
   "no_items": "لا توجد قطع في هذا القسم",
+  "no_services": "لا توجد خدمات متاحة لهذه المغسلة حالياً",
   "confirm_order": "تأكيد الطلب",
   "order_pending_title": "في انتظار موافقة المغسلة",
   "order_sent_to": "تم إرسال طلبك إلى",
@@ -179,6 +180,7 @@
   "search": "البحث",
   "search_results": "نتائج البحث",
   "no_search_results": "لا توجد نتائج مطابقة",
+  "no_nearby_laundries": "لا توجد مغاسل قريبة منك حالياً",
   "replace_cart_title": "استبدال السلة؟",
   "replace_cart_message": "سلتك الحالية تحتوي على طلبات من {}. هل تريد مسحها والطلب من هذه المغسلة؟",
   "replace_cart_confirm": "مسح والمتابعة",
@@ -192,5 +194,7 @@
   "tuesday": "الثلاثاء",
   "wednesday": "الأربعاء",
   "thursday": "الخميس",
-  "friday": "الجمعة"
+  "friday": "الجمعة",
+  "show_working_hours": "عرض مواعيد العمل",
+  "no_working_hours": "لا توجد مواعيد عمل متاحة"
 }

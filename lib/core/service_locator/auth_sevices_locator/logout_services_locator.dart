@@ -7,8 +7,6 @@ class LogoutServicesLocator {
     getIt.registerLazySingleton<LogoutDataSource>(
       () => LogoutDataSourceImpl(getIt()),
     );
-    getIt.registerFactory<LogoutBloc>(
-      () => LogoutBloc(getIt()),
-    );
+    getIt.registerFactory<LogoutBloc>(() => LogoutBloc(getIt()));
   }
 }

@@ -45,17 +45,17 @@ class TimingRow extends StatelessWidget {
             value: deliveryTime,
           ),
         ),
-        if (showDeliveryPrice) ...[
-          SizedBox(width: 10.w),
-          Expanded(
-            child: TimingBox(
-              icon: Icons.payments_outlined,
-              iconColor: AppColors.greenColor,
-              title: 'delivery_price'.tr(),
-              value: '$deliveryPrice ${'currency'.tr()}',
-            ),
-          ),
-        ],
+        // if (showDeliveryPrice) ...[
+        //   SizedBox(width: 10.w),
+        //   Expanded(
+        //     child: TimingBox(
+        //       icon: Icons.payments_outlined,
+        //       iconColor: AppColors.greenColor,
+        //       title: 'delivery_price'.tr(),
+        //       value: '$deliveryPrice ${'currency'.tr()}',
+        //     ),
+        //   ),
+        // ],
       ],
     );
   }

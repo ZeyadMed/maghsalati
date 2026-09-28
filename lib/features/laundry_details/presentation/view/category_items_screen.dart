@@ -102,7 +102,7 @@ class _CategoryItemsScreenState extends State<CategoryItemsScreen>
       ),
       body: Column(
         children: [
-          ServicesPromoBanner(title: 'promo_banner_title'.tr()),
+          // ServicesPromoBanner(title: 'promo_banner_title'.tr()),
           Gap(12.h),
           SubCategoryFilterChips(
             subCategories: category.subCategories,

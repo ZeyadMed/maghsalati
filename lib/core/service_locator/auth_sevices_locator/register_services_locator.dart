@@ -5,19 +5,15 @@ import 'package:maghsalati/features/auth/register/presentation/logic/city_cubit.
 import 'package:maghsalati/features/auth/register/presentation/logic/register_bloc.dart';
 
 class RegisterServicesLocator {
-  static  Future<void > init({required GetIt getIt}) async {
+  static Future<void> init({required GetIt getIt}) async {
     getIt.registerLazySingleton<RegisterDataSource>(
       () => RegiterDataSourceImpl(getIt()),
     );
-    getIt.registerFactory<RegisterBloc>(
-      () => RegisterBloc(getIt()),
-    );
+    getIt.registerFactory<RegisterBloc>(() => RegisterBloc(getIt()));
 
     getIt.registerLazySingleton<CityDataSource>(
       () => CityDataSourceImpl(getIt()),
     );
-    getIt.registerFactory<CityCubit>(
-      () => CityCubit(getIt()),
-    );
+    getIt.registerFactory<CityCubit>(() => CityCubit(getIt()));
   }
-  }
+}

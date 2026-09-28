@@ -123,7 +123,6 @@ class MyApp extends StatelessWidget {
                         ),
                       );
                     }
-
                     return MediaQuery(data: media, child: child!);
                   },
                 );

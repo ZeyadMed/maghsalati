@@ -1,32 +1,18 @@
-import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
-import 'package:go_router/go_router.dart';
 import 'package:maghsalati/core/common_widget/label.dart';
 import 'package:maghsalati/core/extensions/context_extension.dart';
-import 'package:maghsalati/core/router/app_router.dart';
 import 'package:maghsalati/core/service_locator/service_locator.dart';
 import 'package:maghsalati/core/style/app_colors.dart';
 import 'package:maghsalati/core/style/assets.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
 import 'package:maghsalati/core/widget/carousel_slider_widget.dart';
-import 'package:maghsalati/features/home/presentation/view/widget/cleaner_item.dart';
 import 'package:maghsalati/features/home/presentation/view/widget/home_header.dart';
-import 'package:maghsalati/features/home/presentation/view/widget/working_hours_dialog.dart';
+import 'package:maghsalati/features/home/presentation/view/widget/nearby_laundries_list.dart';
 import 'package:maghsalati/features/home/presentation/view_model/location_controller.dart';
-
-/// مواعيد مبدئية لحد ما تيجي من الـ API
-/// تاب البحث بيستخدم نفس اللستة عشان الكروت تبقى زي بعضها
-const defaultWorkingHours = [
-  WorkingDay(dayKey: 'saturday', from: '9:00 AM', to: '10:00 PM'),
-  WorkingDay(dayKey: 'sunday', from: '9:00 AM', to: '10:00 PM'),
-  WorkingDay(dayKey: 'monday', from: '9:00 AM', to: '10:00 PM'),
-  WorkingDay(dayKey: 'tuesday', from: '9:00 AM', to: '10:00 PM'),
-  WorkingDay(dayKey: 'wednesday', from: '9:00 AM', to: '10:00 PM'),
-  WorkingDay(dayKey: 'thursday', from: '9:00 AM', to: '6:00 PM'),
-  WorkingDay(dayKey: 'friday'),
-];
+import 'package:maghsalati/features/home/presentation/view_model/nearby_laundries_cubit.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -41,17 +27,23 @@ class _HomeScreenState extends State<HomeScreen> {
   /// جاي من get_it فالعنوان متشارك مع باقي الشاشات ومابيتجابش كل مرة
   final LocationController _locationController = getIt<LocationController>();
 
+  /// بيجيب المغاسل القريبة، والبحث اللي في الهيدر بيبعت عليه نفس الطلب بـ search
+  late final NearbyLaundriesCubit _laundriesCubit =
+      getIt<NearbyLaundriesCubit>()..start();
+
   @override
   void initState() {
     super.initState();
     // بيطلب الصلاحية ويجيب العنوان أول ما الشاشة تفتح
     // و load بتشتغل مرة واحدة بس حتى لو الشاشة اتبنت تاني
+    // والـ cubit بيستنى الموقع ده ويجيب بيه المغاسل القريبة
     _locationController.load();
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _laundriesCubit.close();
     // الكنترولر مش بيتعمله dispose هنا لأنه singleton في get_it
     // وشاشات تانية لسه محتاجاه
     super.dispose();
@@ -59,6 +51,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    return BlocProvider.value(
+      value: _laundriesCubit,
+      child: _buildBody(context),
+    );
+  }
+
+  Widget _buildBody(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.semiWhiteColor3,
       body: Column(
@@ -67,6 +66,10 @@ class _HomeScreenState extends State<HomeScreen> {
           HomeHeader(
             searchController: _searchController,
             locationController: _locationController,
+            onSearchChanged: (value) {
+              _laundriesCubit.search(value ?? '');
+              return null;
+            },
           ),
           Expanded(
             child: Padding(
@@ -105,34 +108,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     Gap(12.h),
-                    ListView.builder(
-                      shrinkWrap: true,
-                      padding: EdgeInsets.zero,
-                      itemCount: 10,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemBuilder: (context, index) {
-                        // لحد ما الداتا تيجي من الـ API، كل تالت مغسلة بتبقى مقفولة
-                        // عشان نشوف حالة "غير متاح" في الشاشة
-                        final isAvailable = index % 3 != 0;
-                        return Padding(
-                          padding: EdgeInsets.only(bottom: 16.h),
-                          child: CleanerItem(
-                            onTap: () => context.push(AppRouter.laundryDetails),
-                            image: Assets.assetsImagesCleaner,
-                            name: 'John Doe',
-                            distance: 2.5,
-                            isAvailable: isAvailable,
-                            rating: 4.5,
-                            ratingCount: 120,
-                            pickUpTime: 'اليوم',
-                            deliveryTime: 'غدا',
-                            services: const ['Laundry', 'Dry Cleaning'],
-                            deliveryPrice: 5.0,
-                            workingHours: defaultWorkingHours,
-                          ),
-                        );
-                      },
-                    ),
+                    const NearbyLaundriesList(),
                   ],
                 ),
               ),

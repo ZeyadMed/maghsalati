@@ -2,65 +2,29 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:maghsalati/core/style/app_colors.dart';
+import 'package:maghsalati/core/style/assets.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
 import 'package:maghsalati/core/widget/flexiable_image.dart';
-import 'package:maghsalati/features/home/presentation/view/widget/timing_row.dart';
-import 'package:maghsalati/features/home/presentation/view/widget/working_hours_dialog.dart';
+import 'package:maghsalati/features/home/data/model/nearby_laundry_model.dart';
 
 class CleanerItem extends StatelessWidget {
-  final String name;
-  final dynamic image;
-  final double distance;
-  final bool isAvailable;
-  final double rating;
-  final int ratingCount;
-  final String pickUpTime;
-  final String deliveryTime;
-  final List<String> services;
-  final num deliveryPrice;
+  final NearbyLaundryModel laundry;
+
+  /// بيتنادى في الحالتين، واللي بيبعته هو اللي بيقرر يفتح التفاصيل
+  /// ولا مواعيد العمل حسب [NearbyLaundryModel.isAvailableNow]
   final VoidCallback? onTap;
 
-  /// مواعيد عمل المغسلة، بتتعرض في ديالوج لو المغسلة مقفولة والمستخدم دوس عليها
-  final List<WorkingDay> workingHours;
-
-  const CleanerItem({
-    super.key,
-    required this.name,
-    required this.image,
-    required this.distance,
-    required this.isAvailable,
-    required this.rating,
-    required this.ratingCount,
-    required this.pickUpTime,
-    required this.deliveryTime,
-    required this.services,
-    required this.deliveryPrice,
-    this.workingHours = const [],
-    this.onTap,
-  });
-
-  /// المتاحة بتفتح تفاصيل المغسلة، والمقفولة بتعرض مواعيد العمل بدل ما متعملش حاجة
-  void _handleTap(BuildContext context) {
-    if (isAvailable) {
-      onTap?.call();
-      return;
-    }
-    WorkingHoursDialog.show(
-      context,
-      laundryName: name,
-      workingHours: workingHours,
-    );
-  }
+  const CleanerItem({super.key, required this.laundry, this.onTap});
 
   @override
   Widget build(BuildContext context) {
+    final isAvailable = laundry.isAvailableNow;
     return Opacity(
       opacity: isAvailable ? 1 : 0.5,
       child: Semantics(
         button: true,
-        enabled: isAvailable,
         child: GestureDetector(
-          onTap: () => _handleTap(context),
+          onTap: onTap,
           child: Container(
             decoration: BoxDecoration(
               color: AppColors.whiteColor,
@@ -84,13 +48,10 @@ class CleanerItem extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       _buildRatingRow(),
-                      SizedBox(height: 12.h),
-                      TimingRow(
-                        pickUpTime: pickUpTime,
-                        deliveryTime: deliveryTime,
-                      ),
-                      SizedBox(height: 12.h),
-                      _buildServicesRow(),
+                      if (laundry.fullAddress.isNotEmpty) ...[
+                        SizedBox(height: 8.h),
+                        _buildAddressRow(),
+                      ],
                     ],
                   ),
                 ),
@@ -109,7 +70,14 @@ class CleanerItem extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          FlexibleImage(source: image, borderRadius: 0, fit: BoxFit.cover),
+          FlexibleImage(
+            // لو المغسلة مالهاش صورة بنعرض الصورة الافتراضية
+            source: laundry.imageUrl.isEmpty
+                ? Assets.assetsImagesCleaner
+                : laundry.imageUrl,
+            borderRadius: 0,
+            fit: BoxFit.cover,
+          ),
           // تدرج داكن تحت عشان الاسم يبان على الصورة
           DecoratedBox(
             decoration: BoxDecoration(
@@ -127,8 +95,9 @@ class CleanerItem extends StatelessWidget {
           PositionedDirectional(
             bottom: 10.h,
             start: 12.w,
+            end: 12.w,
             child: Text(
-              name,
+              laundry.name,
               style: TextStyles.whiteBold15,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -140,14 +109,17 @@ class CleanerItem extends StatelessWidget {
             child: Row(
               children: [
                 _buildBadge(
-                  label: isAvailable ? 'available'.tr() : 'not_available'.tr(),
-                  color: isAvailable
+                  label: laundry.isAvailableNow
+                      ? 'available'.tr()
+                      : 'not_available'.tr(),
+                  color: laundry.isAvailableNow
                       ? AppColors.greenColor
                       : AppColors.redColor2,
                 ),
                 SizedBox(width: 6.w),
                 _buildBadge(
-                  label: '${distance.toStringAsFixed(1)} ${'km'.tr()}',
+                  label:
+                      '${laundry.distanceKm.toStringAsFixed(1)} ${'km'.tr()}',
                   color: AppColors.primaryColor,
                 ),
               ],
@@ -176,59 +148,37 @@ class CleanerItem extends StatelessWidget {
         Icon(Icons.star, size: 16.r, color: AppColors.lightOrangeColor),
         SizedBox(width: 4.w),
         Text(
-          rating.toStringAsFixed(1),
+          laundry.averageRating.toStringAsFixed(1),
           style: TextStyles.boldStyle(14, color: AppColors.lightOrangeColor),
         ),
         const Spacer(),
         Text(
-          '$ratingCount ${'review'.tr()}',
+          '${laundry.reviewsCount} ${'review'.tr()}',
           style: TextStyles.greyLight10.copyWith(fontSize: 12.sp),
         ),
       ],
     );
   }
 
-  /// سعر التوصيل + ليست الخدمات
-  Widget _buildServicesRow() {
+  /// المدينة والعنوان
+  Widget _buildAddressRow() {
     return Row(
       children: [
+        Icon(
+          Icons.location_on_outlined,
+          size: 16.r,
+          color: AppColors.primaryColor,
+        ),
+        SizedBox(width: 4.w),
         Expanded(
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                for (final service in services) ...[
-                  if (service != services.first) SizedBox(width: 6.w),
-                  _buildServiceChip(service),
-                ],
-              ],
-            ),
+          child: Text(
+            laundry.fullAddress,
+            style: TextStyles.greyLight10.copyWith(fontSize: 12.sp),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ),
-        SizedBox(width: 8.w),
-        Text(
-          '${'delivery_price'.tr()} $deliveryPrice ${'currency'.tr()}',
-          style: TextStyles.boldStyle(13, color: AppColors.primaryColor),
-        ),
       ],
-    );
-  }
-
-  Widget _buildServiceChip(String service) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
-      decoration: BoxDecoration(
-        color: AppColors.secondaryColor,
-        borderRadius: BorderRadius.circular(20.r),
-      ),
-      child: Text(
-        service,
-        style: TextStyles.boldStyle(
-          11,
-          color: AppColors.primaryColor,
-          weight: FontWeight.w500,
-        ),
-      ),
     );
   }
 }

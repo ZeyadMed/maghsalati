@@ -7,8 +7,6 @@ class LoginServicesLocator {
     getIt.registerLazySingleton<LoginDataSource>(
       () => LoginDataSourceImpl(getIt()),
     );
-    getIt.registerFactory<LoginBloc>(
-      () => LoginBloc(getIt()),
-    );
+    getIt.registerFactory<LoginBloc>(() => LoginBloc(getIt()));
   }
 }

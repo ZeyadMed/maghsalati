@@ -1,25 +1,31 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
+import 'package:maghsalati/core/bloc/base_bloc.dart';
 import 'package:maghsalati/core/common_widget/label.dart';
 import 'package:maghsalati/core/router/app_router.dart';
 import 'package:maghsalati/core/service_locator/service_locator.dart';
 import 'package:maghsalati/core/style/app_colors.dart';
 import 'package:maghsalati/core/style/assets.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
+import 'package:maghsalati/core/widget/loading_shimmer.dart';
 import 'package:maghsalati/features/home/presentation/view/widget/timing_row.dart';
-import 'package:maghsalati/features/laundry_details/data/mock/mock_services_data.dart';
 import 'package:maghsalati/features/laundry_details/data/model/service_category_model.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view/category_items_screen.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view/widget/laundry_details_header.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view/widget/order_summary_bar.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view/widget/services_section.dart';
+import 'package:maghsalati/features/laundry_details/presentation/view/widget/working_hours_button.dart';
+import 'package:maghsalati/features/laundry_details/presentation/view_model/laundry_services_cubit.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view_model/selected_services_controller.dart';
 import 'package:maghsalati/features/order_pending/data/model/pending_order_model.dart';
 
 class LaundryDetails extends StatefulWidget {
+  /// الأقسام والقطع بتتجاب بيه من api/customer/laundries/{laundryId}/services
+  final int laundryId;
   final dynamic image;
   final String name;
   final double rating;
@@ -28,18 +34,14 @@ class LaundryDetails extends StatefulWidget {
   /// سعر التوصيل، بيتعرض في بوكس التوصيل وبينضاف على الإجمالي تحت
   final num deliveryPrice;
 
-  /// الأقسام بتيجي من ال endpoint وتتبعت هنا، مفيش حاجة ثابتة في الشاشة
-  /// ولو مااتبعتش بتتعرض داتا تجريبية لحد ما ال endpoint يجهز
-  final List<ServiceCategoryModel>? categories;
-
   const LaundryDetails({
     super.key,
+    required this.laundryId,
     this.image = Assets.assetsImagesCleaner,
     this.name = 'مغسلة النخبة',
     this.rating = 4.8,
     this.ratingCount = 312,
     this.deliveryPrice = 8.0,
-    this.categories,
   });
 
   @override
@@ -52,14 +54,19 @@ class _LaundryDetailsState extends State<LaundryDetails> {
   final SelectedServicesController _servicesController =
       getIt<SelectedServicesController>();
 
-  /// بنبنيها مرة واحدة عشان ماتتعادش في كل build
-  late final List<ServiceCategoryModel> _categories;
+  final LaundryServicesCubit _servicesCubit = getIt<LaundryServicesCubit>();
+
+  /// الأقسام اللي رجعت من ال endpoint، فاضية لحد ما الطلب يخلص
+  List<ServiceCategoryModel> _categories = const [];
+
+  /// السلة بقت بتاعة المغسلة دي (يا فاضية يا اليوزر وافق يمسح القديم)
+  /// ومن غيرها مانحملش الأسعار عشان مانبوظش سلة مغسلة تانية
+  bool _cartReady = false;
 
   @override
   void initState() {
     super.initState();
-    // TODO: امسح الـ MockServicesData لما ال endpoint يجهز
-    _categories = widget.categories ?? MockServicesData.categories;
+    _servicesCubit.getServices(widget.laundryId);
     // السلة لمغسلة واحدة بس، فلو فيها حاجة من مغسلة تانية بنسأل الأول
     if (_servicesController.belongsToOtherLaundry(widget.name)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -70,12 +77,30 @@ class _LaundryDetailsState extends State<LaundryDetails> {
     }
   }
 
+  @override
+  void dispose() {
+    _servicesCubit.close();
+    super.dispose();
+  }
+
   /// بتجهز السلة للمغسلة دي: الأسعار والأقسام واسم المغسلة وسعر التوصيل
   void _prepareCart() {
-    // الأسعار بتتحمل مرة واحدة عشان البار تحت يحسب الإجمالي لوحده
-    _servicesController.loadPrices(_categories);
+    _cartReady = true;
     _servicesController.setLaundryName(widget.name);
     _servicesController.setDeliveryPrice(widget.deliveryPrice);
+    _loadPrices();
+  }
+
+  /// الأسعار محتاجة الأقسام توصل من ال endpoint والسلة تكون جاهزة،
+  /// فبتتنادى من المكانين وبتشتغل لما الاتنين يحصلوا
+  void _loadPrices() {
+    if (!_cartReady || _categories.isEmpty) return;
+    _servicesController.loadPrices(_categories);
+  }
+
+  void _onServicesLoaded(List<ServiceCategoryModel> categories) {
+    _categories = categories;
+    _loadPrices();
   }
 
   /// لما يفتح مغسلة تانية والسلة لسه فيها حاجات من مغسلة قبلها
@@ -173,6 +198,87 @@ class _LaundryDetailsState extends State<LaundryDetails> {
     context.push(AppRouter.orderPending, extra: order);
   }
 
+  /// جريد الأقسام بيستنى ال endpoint، والـ listener بيحفظ الأقسام ويحمل الأسعار
+  /// مرة واحدة لما توصل بدل ما يحصل ده جوا الـ build
+  Widget _buildServices() {
+    return BlocConsumer<LaundryServicesCubit, BaseState<ServiceCategoryModel>>(
+      bloc: _servicesCubit,
+      listenWhen: (previous, current) => current.isSuccess,
+      listener: (context, state) => _onServicesLoaded(state.items),
+      builder: (context, state) {
+        if (state.isInitial || state.isLoading) return _buildServicesLoading();
+        if (state.isFailure) {
+          return _buildServicesMessage(
+            icon: Icons.error_outline,
+            text: state.errorMessage ?? 'try_again',
+            onRetry: () => _servicesCubit.getServices(widget.laundryId),
+          );
+        }
+        if (state.items.isEmpty) {
+          return _buildServicesMessage(
+            icon: Icons.local_laundry_service_outlined,
+            text: 'no_services',
+          );
+        }
+
+        return ServicesSection(
+          categories: state.items,
+          controller: _servicesController,
+          onCategoryTap: _openCategory,
+        );
+      },
+    );
+  }
+
+  Widget _buildServicesLoading() {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      padding: EdgeInsets.zero,
+      itemCount: 8,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 4,
+        crossAxisSpacing: 10.w,
+        mainAxisSpacing: 10.h,
+        childAspectRatio: 0.82,
+      ),
+      itemBuilder: (context, index) => ShimmerBox(
+        height: double.infinity,
+        borderRadius: BorderRadius.circular(16.r),
+      ),
+    );
+  }
+
+  Widget _buildServicesMessage({
+    required IconData icon,
+    required String text,
+    VoidCallback? onRetry,
+  }) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 24.h),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 56.r, color: AppColors.greyColor5),
+          Gap(12.h),
+          LocalizedLabel(
+            text: text,
+            style: TextStyles.darkBold16,
+            textAlign: TextAlign.center,
+          ),
+          if (onRetry != null)
+            TextButton(
+              onPressed: onRetry,
+              child: LocalizedLabel(
+                text: 'try_again',
+                style: TextStyles.boldStyle(14, color: AppColors.primaryColor),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -206,6 +312,11 @@ class _LaundryDetailsState extends State<LaundryDetails> {
                     showDeliveryPrice: true,
                     deliveryPrice: widget.deliveryPrice,
                   ),
+                  Gap(10.h),
+                  WorkingHoursButton(
+                    laundryId: widget.laundryId,
+                    laundryName: widget.name,
+                  ),
                   Gap(16.h),
                   LocalizedLabel(
                     text: 'choose_services',
@@ -216,11 +327,7 @@ class _LaundryDetailsState extends State<LaundryDetails> {
                     ),
                   ),
                   Gap(12.h),
-                  ServicesSection(
-                    categories: _categories,
-                    controller: _servicesController,
-                    onCategoryTap: _openCategory,
-                  ),
+                  _buildServices(),
                   Gap(16.h),
                 ],
               ),

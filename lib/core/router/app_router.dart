@@ -1,11 +1,13 @@
 import 'package:go_router/go_router.dart';
 import 'package:maghsalati/core/router/bottom_nav_app.dart';
+import 'package:maghsalati/core/style/assets.dart';
 import 'package:maghsalati/features/auth/change_password/presentation/view/change_password_screen.dart';
 import 'package:maghsalati/features/auth/forget_password/presentation/view/forget_password_screen.dart';
 import 'package:maghsalati/features/auth/login/presentation/view/login_screen.dart';
 import 'package:maghsalati/features/auth/otp/models/otp_args.dart';
 import 'package:maghsalati/features/auth/otp/presentation/view/otp_screen.dart';
 import 'package:maghsalati/features/auth/register/presentation/view/register_screen.dart';
+import 'package:maghsalati/features/home/data/model/nearby_laundry_model.dart';
 import 'package:maghsalati/features/home/presentation/view/home_screen.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view/laundry_details.dart';
 import 'package:maghsalati/features/on_boarding/presentation/views/on_boarding_screen.dart';
@@ -119,9 +121,24 @@ abstract class AppRouter {
         builder: (context, state) => const HomeScreen(),
       ),
 
+      // المغسلة اللي اتداس عليها بتيجي في state.extra من لستة المغاسل القريبة
+      // ومن غيرها مفيش laundryId نجيب بيه الخدمات فبيرجع للهوم
       GoRoute(
         path: laundryDetails,
-        builder: (context, state) => const LaundryDetails(),
+        redirect: (context, state) =>
+            state.extra is NearbyLaundryModel ? null : homeScreen,
+        builder: (context, state) {
+          final laundry = state.extra as NearbyLaundryModel;
+          return LaundryDetails(
+            laundryId: laundry.id,
+            image: laundry.imageUrl.isEmpty
+                ? Assets.assetsImagesCleaner
+                : laundry.imageUrl,
+            name: laundry.name,
+            rating: laundry.averageRating,
+            ratingCount: laundry.reviewsCount,
+          );
+        },
       ),
 
       // الطلب بيتبعت في state.extra جاي من شاشة تفاصيل المغسلة

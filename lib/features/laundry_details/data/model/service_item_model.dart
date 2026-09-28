@@ -1,11 +1,12 @@
 /// قطعة فرعية جوا القسم (قميص - بنطلون - تيشيرت ...)
 /// جايه من ال endpoint فمفيش حاجة ثابتة هنا
 class ServiceItemModel {
+  /// ده الـ laundryServiceItemId، وهو اللي السلة بتتحسب بيه وبيتبعت مع الطلب
   final int id;
   final String name;
   final num price;
 
-  /// وحدة التسعير زي "قطعة" - بتيجي من السيرفر عشان تتغير حسب الخدمة
+  /// وحدة التسعير زي "قطعة"، الـ endpoint لسه مابيرجعهاش فبتفضل فاضية
   final String unit;
 
   /// صورة القطعة، ممكن تكون لينك من السيرفر أو إيموجي، والـ UI بيتعامل مع الاتنين
@@ -26,12 +27,12 @@ class ServiceItemModel {
 
   factory ServiceItemModel.fromJson(Map<String, dynamic> json) {
     return ServiceItemModel(
-      id: json['id'] as int,
-      name: json['name'] as String? ?? '',
+      id: (json['laundryServiceItemId'] as num?)?.toInt() ?? 0,
+      name: json['name']?.toString() ?? '',
       price: json['price'] as num? ?? 0,
-      unit: json['unit'] as String? ?? '',
-      image: json['image'] as String? ?? '',
-      subCategoryId: json['sub_category_id'] as int?,
+      unit: json['unit']?.toString() ?? '',
+      image: json['imageUrl']?.toString() ?? '',
+      subCategoryId: (json['subCategoryId'] as num?)?.toInt(),
     );
   }
 }

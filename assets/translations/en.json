@@ -97,6 +97,7 @@
   "know_more": "Know more",
   "promo_banner_title": "Professional care for your laundry",
   "no_items": "No items in this category",
+  "no_services": "No services available for this laundry yet",
   "confirm_order": "Confirm Order",
   "order_pending_title": "Waiting for laundry approval",
   "order_sent_to": "Your order has been sent to",
@@ -179,6 +180,7 @@
   "search": "Search",
   "search_results": "Search Results",
   "no_search_results": "No matching results",
+  "no_nearby_laundries": "No laundries near you right now",
   "replace_cart_title": "Replace cart?",
   "replace_cart_message": "Your cart has items from {}. Clear it and order from this laundry instead?",
   "replace_cart_confirm": "Clear and continue",
@@ -192,5 +194,7 @@
   "tuesday": "Tuesday",
   "wednesday": "Wednesday",
   "thursday": "Thursday",
-  "friday": "Friday"
+  "friday": "Friday",
+  "show_working_hours": "View working hours",
+  "no_working_hours": "No working hours available"
 }

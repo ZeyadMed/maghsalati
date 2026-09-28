@@ -28,6 +28,19 @@ abstract interface class Endpoints {
   /// بتاخد { refreshToken } وبتلغي الجلسة من عند الباك
   static const String logout = 'api/auth/logout';
 
+  // ****************************** Customer ********************************
+  /// بتاخد { lat, lng, radiusKm, cityId, search } كلهم اختياري
+  /// وبترجع list بالمغاسل القريبة جوه data
+  static const String nearbyLaundries = 'api/customer/laundries/nearby';
+
+  /// بترجع أقسام خدمات المغسلة (غسيل الملابس - بدل ...) وجوا كل قسم القطع بأسعارها
+  static String laundryServices(int laundryId) =>
+      'api/customer/laundries/$laundryId/services';
+
+  /// بترجع { isAvailableNow, workingHours } وكل يوم فيه openTime و closeTime و isClosed
+  static String laundryWorkingHours(int laundryId) =>
+      'api/customer/laundries/$laundryId/working-hours';
+
   /// اند بوينتس مفتوحة بتتنادى قبل ما يبقى فيه جلسة، فمابنحطش عليها توكن
   /// والـ 401 منها معناه بيانات غلط مش جلسة منتهية
   static bool isPublicAuth(String path) {

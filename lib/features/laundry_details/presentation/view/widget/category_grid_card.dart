@@ -72,7 +72,7 @@ class CategoryGridCard extends StatelessWidget {
                     color: AppColors.secondaryColor,
                     alignment: Alignment.center,
                     child: Text(
-                      category.image,
+                      category.image.isEmpty ? '🧺' : category.image,
                       style: TextStyle(fontSize: 32.sp),
                     ),
                   )
