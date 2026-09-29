@@ -1,86 +1,133 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
+import 'package:maghsalati/core/bloc/base_bloc.dart';
+import 'package:maghsalati/core/service_locator/service_locator.dart';
 import 'package:maghsalati/core/style/app_colors.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
-import 'package:maghsalati/features/orders/data/mock/mock_orders_data.dart';
 import 'package:maghsalati/features/orders/data/model/order_model.dart';
 import 'package:maghsalati/features/orders/presentation/view/order_details_screen.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/current_order_card.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/orders_header.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/orders_tabs_bar.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/previous_order_card.dart';
+import 'package:maghsalati/features/orders/presentation/view_model/orders_cubit.dart';
 
 /// شاشة الطلبات بتابين: الحالية والسابقة
-/// الطلبات بتيجي من ال endpoint وتتبعت هنا، ولو مااتبعتش بتتعرض داتا تجريبية
+/// الطلبات بتيجي من api/customer/orders صفحة صفحة، والتابين بيتفلتروا
+/// من نفس الطلبات اللي اتحملت
 class OrdersScreen extends StatefulWidget {
-  final List<OrderModel>? orders;
-
-  const OrdersScreen({super.key, this.orders});
+  const OrdersScreen({super.key});
 
   @override
   State<OrdersScreen> createState() => _OrdersScreenState();
 }
 
 class _OrdersScreenState extends State<OrdersScreen> {
+  final OrdersCubit _cubit = getIt<OrdersCubit>();
   int _selectedTab = 0;
-
-  /// بنفلترها مرة واحدة عشان ماتتفلترش في كل build
-  late final List<OrderModel> _currentOrders;
-  late final List<OrderModel> _previousOrders;
 
   @override
   void initState() {
     super.initState();
-    // TODO: امسح الـ MockOrdersData لما ال endpoint يجهز
-    final orders = widget.orders ?? MockOrdersData.orders;
-    _currentOrders = orders.where((order) => order.isCurrent).toList();
-    _previousOrders = orders.where((order) => !order.isCurrent).toList();
+    _cubit.getOrders();
   }
 
-  /// الطلبات المعروضة حسب التاب المختار
-  List<OrderModel> get _visibleOrders =>
-      _selectedTab == 0 ? _currentOrders : _previousOrders;
+  @override
+  void dispose() {
+    _cubit.close();
+    super.dispose();
+  }
 
   void _openDetails(OrderModel order) {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => OrderDetailsScreen(order: order)),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => OrderDetailsScreen(order: order)));
+  }
+
+  /// بتتنادى بعد الفريم عشان الـ emit مايحصلش وسط الـ build
+  void _loadMoreAfterFrame() {
+    WidgetsBinding.instance.addPostFrameCallback((_) => _cubit.loadMore());
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.secondaryColor,
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const OrdersHeader(),
-          Padding(
-            padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 8.h),
-            child: OrdersTabsBar(
-              selectedIndex: _selectedTab,
-              currentCount: _currentOrders.length,
-              previousCount: _previousOrders.length,
-              onTabSelected: (index) => setState(() => _selectedTab = index),
-            ),
-          ),
-          Expanded(child: _buildOrdersList()),
-        ],
+      body: BlocBuilder<OrdersCubit, BaseState<OrderModel>>(
+        bloc: _cubit,
+        builder: (context, state) {
+          final currentOrders = state.items
+              .where((order) => order.isCurrent)
+              .toList();
+          final previousOrders = state.items
+              .where((order) => !order.isCurrent)
+              .toList();
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const OrdersHeader(),
+              Padding(
+                padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 8.h),
+                child: OrdersTabsBar(
+                  selectedIndex: _selectedTab,
+                  currentCount: currentOrders.length,
+                  previousCount: previousOrders.length,
+                  onTabSelected: (index) =>
+                      setState(() => _selectedTab = index),
+                ),
+              ),
+              Expanded(
+                child: RefreshIndicator(
+                  color: AppColors.primaryColor,
+                  onRefresh: _cubit.getOrders,
+                  child: _buildBody(
+                    state,
+                    _selectedTab == 0 ? currentOrders : previousOrders,
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 
-  Widget _buildOrdersList() {
-    final orders = _visibleOrders;
-    if (orders.isEmpty) return _buildEmptyState();
+  Widget _buildBody(BaseState<OrderModel> state, List<OrderModel> orders) {
+    // أول تحميل أو فشل ومفيش طلبات قديمة نعرضها
+    if (state.items.isEmpty) {
+      if (state.isFailure) return _buildScrollableCenter(_buildError(state));
+      if (!state.isSuccess) return _buildScrollableCenter(_buildLoading());
+    }
+
+    if (orders.isEmpty) {
+      // التاب ده فاضي في الصفحات اللي اتحملت، بس ممكن يكون فيه طلبات
+      // في الصفحات الجاية فبنكمل تحميل لحد ما الصفحات تخلص
+      if (!state.hasReachedMax) {
+        if (!state.isLoadingMoreFauilare) _loadMoreAfterFrame();
+        return _buildScrollableCenter(_buildLoading());
+      }
+      return _buildScrollableCenter(_buildEmptyState());
+    }
+
+    final showLoader = !state.hasReachedMax;
 
     return ListView.separated(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 24.h),
-      itemCount: orders.length,
+      itemCount: orders.length + (showLoader ? 1 : 0),
       separatorBuilder: (_, _) => Gap(14.h),
       itemBuilder: (context, index) {
+        if (index == orders.length) {
+          // اللودر آخر الليستة، أول ما يترسم بنجيب الصفحة اللي بعدها
+          _loadMoreAfterFrame();
+          return _buildLoading();
+        }
+
         final order = orders[index];
         // كل تاب ليها شكل كارت مختلف، الحالية بشريط خطوات والسابقة من غيره
         return _selectedTab == 0
@@ -96,28 +143,71 @@ class _OrdersScreenState extends State<OrdersScreen> {
     );
   }
 
-  Widget _buildEmptyState() {
-    return Center(
+  /// الحالات اللي في النص لازم تبقى جوه scrollable عشان السحب للتحديث يشتغل
+  Widget _buildScrollableCenter(Widget child) {
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: constraints.maxHeight),
+          child: Center(child: child),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoading() {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 16.h),
+      child: const Center(
+        child: CircularProgressIndicator(color: AppColors.primaryColor),
+      ),
+    );
+  }
+
+  Widget _buildError(BaseState<OrderModel> state) {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 32.w),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            Icons.receipt_long_outlined,
-            size: 56.r,
-            color: AppColors.greyColor4,
-          ),
+          Icon(Icons.error_outline, size: 56.r, color: AppColors.greyColor5),
           Gap(12.h),
           Text(
-            _selectedTab == 0
-                ? 'no_current_orders'.tr()
-                : 'no_previous_orders'.tr(),
-            style: TextStyles.darkRegular14.copyWith(
-              color: AppColors.greyColor3,
-            ),
+            state.errorMessage ?? 'try_again'.tr(),
+            style: TextStyles.darkBold16,
             textAlign: TextAlign.center,
+          ),
+          TextButton(
+            onPressed: _cubit.getOrders,
+            child: Text(
+              'try_again'.tr(),
+              style: TextStyles.boldStyle(14, color: AppColors.primaryColor),
+            ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          Icons.receipt_long_outlined,
+          size: 56.r,
+          color: AppColors.greyColor4,
+        ),
+        Gap(12.h),
+        Text(
+          _selectedTab == 0
+              ? 'no_current_orders'.tr()
+              : 'no_previous_orders'.tr(),
+          style: TextStyles.darkRegular14.copyWith(color: AppColors.greyColor3),
+          textAlign: TextAlign.center,
+        ),
+      ],
     );
   }
 }

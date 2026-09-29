@@ -1,24 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:maghsalati/core/bloc/base_bloc.dart';
 import 'package:maghsalati/core/style/app_colors.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
-import 'package:maghsalati/features/laundry_details/presentation/view_model/selected_services_controller.dart';
+import 'package:maghsalati/features/cart/data/model/cart_model.dart';
+import 'package:maghsalati/features/cart/presentation/view_model/cart_cubit.dart';
 
-/// زرار السلة العايم، وعليه بادج بعدد القطع المختارة
-/// بيسمع للكنترولر فالرقم بيتغير مع كل قطعة تتزود أو تتشال
+/// زرار السلة العايم، وعليه بادج بعدد القطع اللي في سلة السيرفر
+/// بيسمع على [CartCubit] مش على الكاونتر، فالرقم مابيتغيرش مع + و -
+/// وبيتحدث بس لما "أضف للسلة" ينجح والسلة تتجاب تاني
 /// ومابيبانش خالص لو السلة فاضية
 class CartFloatingButton extends StatelessWidget {
-  final SelectedServicesController controller;
+  final CartCubit cartCubit;
   final VoidCallback? onTap;
 
-  const CartFloatingButton({super.key, required this.controller, this.onTap});
+  const CartFloatingButton({super.key, required this.cartCubit, this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: controller,
-      builder: (context, _) {
-        final pieces = controller.totalPieces;
+    return BlocBuilder<CartCubit, BaseState<CartModel>>(
+      bloc: cartCubit,
+      // السلة القديمة بتفضل في الستيت وقت التحديث، فالرقم مابيرمشش
+      buildWhen: (previous, current) =>
+          previous.data?.totalPieces != current.data?.totalPieces,
+      builder: (context, state) {
+        final pieces = state.data?.totalPieces ?? 0;
         if (pieces == 0) return const SizedBox.shrink();
 
         return FloatingActionButton(

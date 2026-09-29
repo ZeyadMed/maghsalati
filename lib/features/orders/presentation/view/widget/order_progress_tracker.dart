@@ -7,22 +7,21 @@ import 'package:maghsalati/core/theme/text_styles.dart';
 import 'package:maghsalati/features/orders/data/model/order_model.dart';
 
 /// شريط خطوات الطلب: الخطوات الخالصة بعلامة صح زرقا واللي لسه برقمها ورمادي
-/// الترتيب من تم الإرسال لحد تم التسليم، والاتجاه بيتظبط لوحده حسب اللغة
+/// الترتيب من جديدة لحد قيد التوصيل، والاتجاه بيتظبط لوحده حسب اللغة
 class OrderProgressTracker extends StatelessWidget {
   final OrderStatus status;
 
   /// نفس ترتيب الحالات في الـ enum، دي الخطوات اللي بتتعرض في الشريط
   static const List<OrderStatus> _steps = [
-    OrderStatus.sent,
-    OrderStatus.washing,
+    OrderStatus.newOrder,
+    OrderStatus.inProgress,
     OrderStatus.ready,
-    OrderStatus.onTheWay,
-    OrderStatus.delivered,
+    OrderStatus.outForDelivery,
   ];
 
   const OrderProgressTracker({super.key, required this.status});
 
-  /// رقم الخطوة الحالية، و -1 لو الحالة مش من خطوات الشريط (زي الملغي)
+  /// رقم الخطوة الحالية، و -1 لو الحالة مش من خطوات الشريط (زي المرفوضة)
   int get _currentIndex => _steps.indexOf(status);
 
   @override

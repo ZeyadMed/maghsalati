@@ -12,6 +12,7 @@ import 'package:maghsalati/core/style/app_colors.dart';
 import 'package:maghsalati/core/style/assets.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
 import 'package:maghsalati/core/widget/loading_shimmer.dart';
+import 'package:maghsalati/features/cart/data/model/cart_model.dart';
 import 'package:maghsalati/features/cart/presentation/view/widget/confirm_cart_bottom_sheet.dart';
 import 'package:maghsalati/features/cart/presentation/view_model/cart_cubit.dart';
 import 'package:maghsalati/features/home/presentation/view/widget/timing_row.dart';
@@ -19,11 +20,11 @@ import 'package:maghsalati/features/laundry_details/data/model/service_category_
 import 'package:maghsalati/features/laundry_details/presentation/view/category_items_screen.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view/widget/laundry_details_header.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view/widget/order_summary_bar.dart';
+import 'package:maghsalati/features/laundry_details/presentation/view/widget/reviews_button.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view/widget/services_section.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view/widget/working_hours_button.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view_model/laundry_services_cubit.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view_model/selected_services_controller.dart';
-import 'package:maghsalati/features/order_pending/data/model/pending_order_model.dart';
 
 class LaundryDetails extends StatefulWidget {
   /// الأقسام والقطع بتتجاب بيه من api/customer/laundries/{laundryId}/services
@@ -58,6 +59,10 @@ class _LaundryDetailsState extends State<LaundryDetails> {
 
   final LaundryServicesCubit _servicesCubit = getIt<LaundryServicesCubit>();
 
+  /// سلة السيرفر، منها بادج الأقسام والإجمالي اللي في البار تحت
+  /// singleton ومشترك مع تاب السلة، فمش بيتعمله close هنا
+  final CartCubit _cartCubit = getIt<CartCubit>();
+
   /// الأقسام اللي رجعت من ال endpoint، فاضية لحد ما الطلب يخلص
   List<ServiceCategoryModel> _categories = const [];
 
@@ -69,6 +74,7 @@ class _LaundryDetailsState extends State<LaundryDetails> {
   void initState() {
     super.initState();
     _servicesCubit.getServices(widget.laundryId);
+    if (_cartCubit.state.data == null) _cartCubit.getCart();
     // السلة لمغسلة واحدة بس، فلو فيها حاجة من مغسلة تانية بنسأل الأول
     if (_servicesController.belongsToOtherLaundry(widget.name)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -126,10 +132,7 @@ class _LaundryDetailsState extends State<LaundryDetails> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(
-              'cancel'.tr(),
-              style: TextStyles.greyColor2Regular14,
-            ),
+            child: Text('cancel'.tr(), style: TextStyles.greyColor2Regular14),
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
@@ -172,7 +175,7 @@ class _LaundryDetailsState extends State<LaundryDetails> {
           onConfirmOrder: (cart) async {
             final confirmed = await ConfirmCartBottomSheet.show(context);
             if (!confirmed || !mounted) return;
-            getIt<CartCubit>().getCart();
+            _cartCubit.getCart();
             Navigator.of(context).maybePop();
             context.push(AppRouter.orderPending, extra: cart.toPendingOrder());
           },
@@ -181,27 +184,13 @@ class _LaundryDetailsState extends State<LaundryDetails> {
     );
   }
 
-  /// بيبني الطلب من الكميات المختارة ويودّي على شاشة انتظار موافقة المغسلة
-  void _onConfirmOrder() {
-    final selected = _servicesController.selectedServices(_categories);
-    if (selected.isEmpty) return;
-
-    final order = PendingOrderModel(
-      laundryName: widget.name,
-      deliveryPrice: widget.deliveryPrice,
-      lines: selected
-          .map(
-            (service) => PendingOrderLine(
-              itemId: service.item.id,
-              name: service.item.name,
-              quantity: service.quantity,
-              price: service.item.price,
-            ),
-          )
-          .toList(),
-    );
-
-    context.push(AppRouter.orderPending, extra: order);
+  /// بيفتح شيت بيانات الاستلام، ولما السيرفر يأكد الطلب بيحدث السلة
+  /// (لأنها بتفضى بعد التأكيد) ويودّي على شاشة انتظار موافقة المغسلة
+  Future<void> _confirmCart(CartModel cart) async {
+    final confirmed = await ConfirmCartBottomSheet.show(context);
+    if (!confirmed || !mounted) return;
+    _cartCubit.getCart();
+    context.push(AppRouter.orderPending, extra: cart.toPendingOrder());
   }
 
   /// جريد الأقسام بيستنى ال endpoint، والـ listener بيحفظ الأقسام ويحمل الأسعار
@@ -229,7 +218,7 @@ class _LaundryDetailsState extends State<LaundryDetails> {
 
         return ServicesSection(
           categories: state.items,
-          controller: _servicesController,
+          cartCubit: _cartCubit,
           onCategoryTap: _openCategory,
         );
       },
@@ -293,8 +282,9 @@ class _LaundryDetailsState extends State<LaundryDetails> {
       extendBodyBehindAppBar: true,
       // ثابت تحت الصفحة، والإجمالي جواه بيتغير مع كل قطعة تتختار
       bottomNavigationBar: OrderSummaryBar(
-        controller: _servicesController,
-        onConfirm: _onConfirmOrder,
+        cartCubit: _cartCubit,
+        laundryId: widget.laundryId,
+        onConfirm: _confirmCart,
       ),
       body: SingleChildScrollView(
         child: Column(
@@ -322,6 +312,13 @@ class _LaundryDetailsState extends State<LaundryDetails> {
                   WorkingHoursButton(
                     laundryId: widget.laundryId,
                     laundryName: widget.name,
+                  ),
+                  Gap(10.h),
+                  ReviewsButton(
+                    laundryId: widget.laundryId,
+                    laundryName: widget.name,
+                    rating: widget.rating,
+                    ratingCount: widget.ratingCount,
                   ),
                   Gap(16.h),
                   LocalizedLabel(

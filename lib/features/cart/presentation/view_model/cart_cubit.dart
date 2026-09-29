@@ -52,8 +52,8 @@ class CartCubit extends Cubit<BaseState<CartModel>> {
     emit(state.copyWith(metadata: {_updatingKey: item.id}));
 
     final result = await _dataSource.updateQuantity(
-      // الـ cartItemId اللي في اللينك بيتبعت فيه الـ laundryServiceItemId
-      cartItemId: item.laundryServiceItemId,
+      // الـ cartItemId هو الـ id بتاع السطر في السلة، مش laundryServiceItemId
+      cartItemId: item.id,
       quantity: quantity,
     );
 

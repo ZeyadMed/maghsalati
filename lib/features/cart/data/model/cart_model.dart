@@ -44,6 +44,17 @@ class CartModel {
   /// إجمالي عدد القطع (مش عدد السطور)
   int get totalPieces => items.fold(0, (sum, item) => sum + item.quantity);
 
+  /// عدد القطع اللي في السلة من القطع دي بس، زي قطع قسم معين
+  int piecesOf(Iterable<int> laundryServiceItemIds) {
+    final ids = laundryServiceItemIds.toSet();
+    return items
+        .where((item) => ids.contains(item.laundryServiceItemId))
+        .fold(0, (sum, item) => sum + item.quantity);
+  }
+
+  /// رسوم الاستلام + رسوم التسليم
+  num get deliveryFees => pickupFee + dropoffFee;
+
   /// بيحول السلة لطلب شاشة الانتظار، والتوصيل = رسوم الاستلام + التسليم
   PendingOrderModel toPendingOrder() {
     return PendingOrderModel(

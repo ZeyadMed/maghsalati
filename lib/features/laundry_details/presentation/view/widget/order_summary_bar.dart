@@ -2,25 +2,40 @@ import 'dart:ui' as ui;
 
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:maghsalati/core/bloc/base_bloc.dart';
 import 'package:maghsalati/core/style/app_colors.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
-import 'package:maghsalati/features/laundry_details/presentation/view_model/selected_services_controller.dart';
+import 'package:maghsalati/features/cart/data/model/cart_model.dart';
+import 'package:maghsalati/features/cart/presentation/view_model/cart_cubit.dart';
 
 /// البار الثابت تحت الصفحة: الإجمالي على جنب وزرار تأكيد الطلب على التاني
-/// بيسمع للـ controller فالسعر بيتغير مع كل قطعة تتزود أو تتشال
+/// بيقرا من سلة السيرفر مش من الكاونتر، فالسعر مابيتغيرش مع + و -
+/// وبيتحدث بس لما "أضف للسلة" ينجح والسلة تتجاب تاني
 class OrderSummaryBar extends StatelessWidget {
-  final SelectedServicesController controller;
-  final VoidCallback? onConfirm;
+  final CartCubit cartCubit;
 
-  const OrderSummaryBar({super.key, required this.controller, this.onConfirm});
+  /// المغسلة اللي الشاشة فاتحاها، ولو السلة بتاعة مغسلة تانية البار بيبان فاضي
+  final int laundryId;
+  final ValueChanged<CartModel>? onConfirm;
+
+  const OrderSummaryBar({
+    super.key,
+    required this.cartCubit,
+    required this.laundryId,
+    this.onConfirm,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: controller,
-      builder: (context, _) {
-        final enabled = controller.hasSelection;
+    return BlocBuilder<CartCubit, BaseState<CartModel>>(
+      bloc: cartCubit,
+      buildWhen: (previous, current) => previous.data != current.data,
+      builder: (context, state) {
+        final data = state.data;
+        final cart = data != null && data.laundryId == laundryId ? data : null;
+        final enabled = cart != null && !cart.isEmpty;
         return Container(
           padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 12.h),
           decoration: BoxDecoration(
@@ -41,9 +56,9 @@ class OrderSummaryBar extends StatelessWidget {
               // فبنعكس اتجاه الصف عن اتجاه اللغة
               // textDirection: ui.TextDirection.ltr,
               children: [
-                Expanded(child: _buildTotals()),
+                Expanded(child: _buildTotals(enabled ? cart : null)),
                 SizedBox(width: 12.w),
-                _buildConfirmButton(enabled),
+                _buildConfirmButton(enabled ? cart : null),
               ],
             ),
           ),
@@ -53,13 +68,13 @@ class OrderSummaryBar extends StatelessWidget {
   }
 
   /// سطر القطع والتوصيل وتحته الإجمالي
-  Widget _buildTotals() {
+  Widget _buildTotals(CartModel? cart) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
-          _breakdownLabel(),
+          _breakdownLabel(cart),
           style: TextStyles.greyColor2Regular14.copyWith(fontSize: 11.sp),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
@@ -67,7 +82,7 @@ class OrderSummaryBar extends StatelessWidget {
         ),
         SizedBox(height: 2.h),
         Text(
-          '${_formatPrice(controller.grandTotal)} ${'currency'.tr()}',
+          '${_formatPrice(cart?.totalPrice ?? 0)} ${'currency'.tr()}',
           style: TextStyles.darkBold18.copyWith(fontWeight: FontWeight.w700),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
@@ -76,9 +91,13 @@ class OrderSummaryBar extends StatelessWidget {
     );
   }
 
-  Widget _buildConfirmButton(bool enabled) {
+  /// من غير سلة للمغسلة دي الزرار بيتقفل
+  Widget _buildConfirmButton(CartModel? cart) {
+    final onConfirm = this.onConfirm;
     return ElevatedButton(
-      onPressed: enabled ? onConfirm : null,
+      onPressed: cart == null || onConfirm == null
+          ? null
+          : () => onConfirm(cart),
       style: ElevatedButton.styleFrom(
         backgroundColor: AppColors.primaryColor,
         disabledBackgroundColor: AppColors.greyColor5,
@@ -108,11 +127,13 @@ class OrderSummaryBar extends StatelessWidget {
   }
 
   /// "4 قطعة • توصيل 8 د.ل"
-  String _breakdownLabel() {
-    final pieces = '${controller.totalPieces} ${'piece'.tr()}';
-    if (controller.deliveryPrice <= 0) return pieces;
+  /// التوصيل = رسوم الاستلام + التسليم جايين من السيرفر
+  String _breakdownLabel(CartModel? cart) {
+    final pieces = '${cart?.totalPieces ?? 0} ${'piece'.tr()}';
+    final deliveryFees = cart?.deliveryFees ?? 0;
+    if (deliveryFees <= 0) return pieces;
     final delivery =
-        '${'delivery_price'.tr()} ${_formatPrice(controller.deliveryPrice)} '
+        '${'delivery_price'.tr()} ${_formatPrice(deliveryFees)} '
         '${'currency'.tr()}';
     return '$pieces • $delivery';
   }

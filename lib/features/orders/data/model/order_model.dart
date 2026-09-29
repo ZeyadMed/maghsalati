@@ -1,65 +1,76 @@
-/// حالة الطلب، الترتيب هنا هو نفس ترتيب خطوات الشريط في الكارت
+/// حالة الطلب زي الـ enum اللي في الباك (OrderStatus)
+/// الترتيب هنا هو نفس ترتيب خطوات الشريط في الكارت
 /// القيم اللي بتيجي من السيرفر بتتحول للـ enum ده بـ [OrderStatusX.fromJson]
 enum OrderStatus {
-  /// تم الإرسال
-  sent,
+  /// مستني الدفع - مش في الـ enum بتاع الباك بس بيرجع في الريسبونس،
+  /// ومش من خطوات الشريط فالشريط بيبان كله رمادي
+  pendingPayment,
 
-  /// قيد الغسيل
-  washing,
+  /// جديدة (0) - مستنية المغسلة تقبل أو ترفض
+  newOrder,
 
-  /// جاهز
+  /// قيد التنفيذ (1)
+  inProgress,
+
+  /// جاهزة (2)
   ready,
 
-  /// في الطريق
-  onTheWay,
+  /// قيد التوصيل (3)
+  outForDelivery,
 
-  /// تم التسليم
-  delivered,
-
-  /// مكتمل - بتبان في تاب السابقة بس
-  completed,
-
-  /// ملغي - بتبان في تاب السابقة بس
-  cancelled,
+  /// مرفوضة (4) - نهائية، والطلب بيروح على تاب السابقة
+  rejected,
 }
 
 extension OrderStatusX on OrderStatus {
   /// مفتاح الترجمة اللي بيتعرض في الشارة فوق الكارت
   String get labelKey => switch (this) {
-    OrderStatus.sent => 'status_sent',
-    OrderStatus.washing => 'status_washing',
+    OrderStatus.pendingPayment => 'status_pending_payment',
+    OrderStatus.newOrder => 'status_new',
+    OrderStatus.inProgress => 'status_in_progress',
     OrderStatus.ready => 'status_ready',
-    OrderStatus.onTheWay => 'status_on_the_way',
-    OrderStatus.delivered => 'status_delivered',
-    OrderStatus.completed => 'status_completed',
-    OrderStatus.cancelled => 'status_cancelled',
+    OrderStatus.outForDelivery => 'status_out_for_delivery',
+    OrderStatus.rejected => 'status_rejected',
   };
 
-  /// الطلب الملغي أو المكتمل خلص خلاص، فبيروح على تاب السابقة
-  bool get isFinished =>
-      this == OrderStatus.completed || this == OrderStatus.cancelled;
+  /// المرفوضة بس هي اللي خلصت، فبتروح على تاب السابقة
+  bool get isFinished => this == OrderStatus.rejected;
 
-  static OrderStatus fromJson(String? value) => switch (value) {
-    'sent' => OrderStatus.sent,
-    'washing' => OrderStatus.washing,
-    'ready' => OrderStatus.ready,
-    'on_the_way' => OrderStatus.onTheWay,
-    'delivered' => OrderStatus.delivered,
-    'completed' => OrderStatus.completed,
-    'cancelled' => OrderStatus.cancelled,
-    _ => OrderStatus.sent,
-  };
+  /// السيرفر ممكن يبعت الحالة كاسم (New / InProgress) أو كرقم (0 / 1)
+  /// فبنقرا الاتنين، والمقارنة من غير حروف كبيرة
+  static OrderStatus fromJson(Object? value) {
+    if (value is num) {
+      return switch (value.toInt()) {
+        1 => OrderStatus.inProgress,
+        2 => OrderStatus.ready,
+        3 => OrderStatus.outForDelivery,
+        4 => OrderStatus.rejected,
+        _ => OrderStatus.newOrder,
+      };
+    }
+    return switch ((value?.toString() ?? '').toLowerCase()) {
+      'pendingpayment' => OrderStatus.pendingPayment,
+      'inprogress' || '1' => OrderStatus.inProgress,
+      'ready' || '2' => OrderStatus.ready,
+      'outfordelivery' || '3' => OrderStatus.outForDelivery,
+      'rejected' || '4' => OrderStatus.rejected,
+      _ => OrderStatus.newOrder,
+    };
+  }
 }
 
-/// سطر واحد جوا الطلب (قطعة + كميتها + سعرها + صورتها)
-/// الإجمالي بيتحسب من السطور دي فمفيش رقم ثابت متكتوب في الشاشة
+/// سطر واحد جوا الطلب (قطعة + كميتها + سعرها)
 class OrderItemModel {
   final int id;
   final String name;
   final int quantity;
   final num price;
 
+  /// سعر السطر كله جاي من السيرفر (سعر القطعة × الكمية)
+  final num total;
+
   /// ممكن تكون لينك من السيرفر أو إيموجي، والـ UI بيتعامل مع الاتنين
+  /// الـ API لسه مش بيبعتها فبتفضل فاضية والـ UI بيعرض أيقونة بديلة
   final String image;
 
   const OrderItemModel({
@@ -67,58 +78,65 @@ class OrderItemModel {
     required this.name,
     required this.quantity,
     required this.price,
+    required this.total,
     this.image = '',
   });
 
-  /// سعر السطر كله (سعر القطعة × الكمية)
-  num get total => price * quantity;
-
   factory OrderItemModel.fromJson(Map<String, dynamic> json) {
+    final price = (json['price'] as num?) ?? 0;
+    final quantity = (json['quantity'] as num?)?.toInt() ?? 0;
     return OrderItemModel(
-      id: json['id'] as int,
-      name: json['name'] as String? ?? '',
-      quantity: json['quantity'] as int? ?? 0,
-      price: json['price'] as num? ?? 0,
-      image: json['image'] as String? ?? '',
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      name: json['serviceItemName']?.toString() ?? '',
+      quantity: quantity,
+      price: price,
+      total: (json['lineTotal'] as num?) ?? price * quantity,
     );
   }
 }
 
-/// الطلب زي ما بيتعرض في شاشة الطلبات وفي شاشة التفاصيل
+/// الطلب اللي راجع من api/customer/orders
+/// زي ما بيتعرض في شاشة الطلبات وفي شاشة التفاصيل
 class OrderModel {
   final int id;
-
-  /// رقم الطلب اللي بيتعرض للمستخدم زي ORD-2041
-  final String reference;
   final String laundryName;
   final OrderStatus status;
 
   /// تاريخ إنشاء الطلب، بيتعرض تحت اسم المغسلة
   final DateTime date;
+  final String deliveryAddress;
 
-  /// موعد التسليم المتوقع، بيبان في كروت التاب الحالية بس
-  final String? deliveryEta;
+  /// رسوم توصيل الاستلام (المندوب بياخد الهدوم من العميل)
+  final num pickupFee;
 
-  /// سعر التوصيل بينضاف على الإجمالي في آخر شاشة التفاصيل
-  final num deliveryPrice;
+  /// رسوم توصيل التسليم (المندوب بيرجع الهدوم للعميل)
+  final num dropoffFee;
+
+  /// مجموع أسعار القطع من غير التوصيل
+  final num itemsTotal;
+
+  /// لينك الدفع لو الطلب لسه مستني الدفع
+  final String? paymentUrl;
   final List<OrderItemModel> items;
 
   const OrderModel({
     required this.id,
-    required this.reference,
     required this.laundryName,
     required this.status,
     required this.date,
+    required this.deliveryAddress,
+    required this.pickupFee,
+    required this.dropoffFee,
+    required this.itemsTotal,
     required this.items,
-    this.deliveryEta,
-    this.deliveryPrice = 0,
+    this.paymentUrl,
   });
 
-  /// مجموع أسعار القطع من غير التوصيل
-  num get itemsTotal => items.fold<num>(0, (sum, item) => sum + item.total);
+  /// رقم الطلب اللي بيتعرض للمستخدم
+  String get reference => '#$id';
 
-  /// الإجمالي النهائي بعد ما التوصيل ينضاف
-  num get grandTotal => items.isEmpty ? 0 : itemsTotal + deliveryPrice;
+  /// الإجمالي النهائي: القطع + رسوم الاستلام + رسوم التسليم
+  num get grandTotal => itemsTotal + pickupFee + dropoffFee;
 
   /// عدد القطع كلها، بيتعرض في كروت التاب السابقة
   int get totalPieces => items.fold(0, (sum, item) => sum + item.quantity);
@@ -128,16 +146,45 @@ class OrderModel {
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
     return OrderModel(
-      id: json['id'] as int,
-      reference: json['reference'] as String? ?? '',
-      laundryName: json['laundry_name'] as String? ?? '',
-      status: OrderStatusX.fromJson(json['status'] as String?),
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      laundryName: json['laundryName']?.toString() ?? '',
+      status: OrderStatusX.fromJson(json['status']),
       date:
-          DateTime.tryParse(json['date'] as String? ?? '') ?? DateTime.now(),
-      deliveryEta: json['delivery_eta'] as String?,
-      deliveryPrice: json['delivery_price'] as num? ?? 0,
+          DateTime.tryParse(json['createdAt']?.toString() ?? '') ??
+          DateTime.now(),
+      deliveryAddress: json['deliveryAddress']?.toString() ?? '',
+      pickupFee: (json['pickupFee'] as num?) ?? 0,
+      dropoffFee: (json['dropoffFee'] as num?) ?? 0,
+      itemsTotal: (json['itemsTotal'] as num?) ?? 0,
+      paymentUrl: json['paymentUrl']?.toString(),
       items: ((json['items'] as List?) ?? [])
           .map((e) => OrderItemModel.fromJson(e as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+}
+
+/// صفحة من الطلبات، الـ API بيرجعها جوه data ومعاها بيانات الصفحات
+class OrdersPageModel {
+  final int pageIndex;
+  final int totalPages;
+  final List<OrderModel> orders;
+
+  const OrdersPageModel({
+    required this.pageIndex,
+    required this.totalPages,
+    required this.orders,
+  });
+
+  /// مفيش صفحات تانية بعد دي
+  bool get isLastPage => pageIndex >= totalPages;
+
+  factory OrdersPageModel.fromJson(Map<String, dynamic> json) {
+    return OrdersPageModel(
+      pageIndex: (json['pageIndex'] as num?)?.toInt() ?? 1,
+      totalPages: (json['totalPages'] as num?)?.toInt() ?? 1,
+      orders: ((json['data'] as List?) ?? [])
+          .map((e) => OrderModel.fromJson(e as Map<String, dynamic>))
           .toList(),
     );
   }

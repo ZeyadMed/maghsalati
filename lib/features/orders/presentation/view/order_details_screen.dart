@@ -148,7 +148,8 @@ class OrderDetailsScreen extends StatelessWidget {
     );
   }
 
-  /// كارت الحساب: مجموع القطع + التوصيل وتحتهم الإجمالي النهائي
+  /// كارت الحساب: مجموع القطع + رسوم الاستلام + رسوم التسليم
+  /// وتحتهم الإجمالي النهائي مجموعهم
   Widget _buildTotalsCard() {
     return _buildCard(
       child: Column(
@@ -157,7 +158,9 @@ class OrderDetailsScreen extends StatelessWidget {
         children: [
           _buildAmountRow('items_total'.tr(), order.itemsTotal),
           Gap(10.h),
-          _buildAmountRow('delivery_price'.tr(), order.deliveryPrice),
+          _buildAmountRow('pickup_fee'.tr(), order.pickupFee),
+          Gap(10.h),
+          _buildAmountRow('dropoff_fee'.tr(), order.dropoffFee),
           Gap(12.h),
           Divider(height: 1.h, color: AppColors.lightGreyColor),
           Gap(12.h),
@@ -192,7 +195,7 @@ class OrderDetailsScreen extends StatelessWidget {
     );
   }
 
-  /// الإجمالي النهائي بعد ما التوصيل ينضاف
+  /// الإجمالي النهائي بعد ما رسوم الاستلام والتسليم ينضافوا
   Widget _buildGrandTotalRow() {
     return Row(
       children: [

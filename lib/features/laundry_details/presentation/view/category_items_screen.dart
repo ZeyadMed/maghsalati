@@ -59,6 +59,9 @@ class _CategoryItemsScreenState extends State<CategoryItemsScreen>
   /// بيبعت القطعة لسلة العميل لما يدوس "أضف للسلة" في الكارت
   final AddToCartCubit _addToCartCubit = getIt<AddToCartCubit>();
 
+  /// singleton ومشترك مع تاب السلة، فمش بيتعمله close هنا
+  final CartCubit _cartCubit = getIt<CartCubit>();
+
   @override
   void initState() {
     super.initState();
@@ -69,6 +72,8 @@ class _CategoryItemsScreenState extends State<CategoryItemsScreen>
     );
     // الشيبس بتتغير مع التاب فمحتاجين rebuild مع كل تنقل
     _tabController.addListener(_onTabChanged);
+    // عدد القطع في الزرار العايم جاي من سلة السيرفر، فلو لسه ماتجابتش بنجيبها
+    if (_cartCubit.state.data == null) _cartCubit.getCart();
   }
 
   void _onTabChanged() {
@@ -103,7 +108,7 @@ class _CategoryItemsScreenState extends State<CategoryItemsScreen>
       backgroundColor: AppColors.secondaryColor,
       appBar: _buildAppBar(),
       floatingActionButton: CartFloatingButton(
-        controller: widget.controller,
+        cartCubit: _cartCubit,
         onTap: _openCart,
       ),
       body: Column(
@@ -188,7 +193,7 @@ class _CategoryItemsScreenState extends State<CategoryItemsScreen>
   void _onAddToCartChanged(BuildContext context, BaseState<int> state) {
     if (state.isSuccess) {
       // السلة اتغيرت على السيرفر فبنحدثها عشان الشيت وتاب السلة يشوفوا الجديد
-      getIt<CartCubit>().getCart();
+      _cartCubit.getCart();
       final name = _itemName(state.data);
       context.showSuccessMessage('added_to_cart'.tr(args: [name]));
     }
