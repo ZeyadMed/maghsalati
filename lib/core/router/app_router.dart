@@ -10,6 +10,7 @@ import 'package:maghsalati/features/auth/register/presentation/view/register_scr
 import 'package:maghsalati/features/home/data/model/nearby_laundry_model.dart';
 import 'package:maghsalati/features/home/presentation/view/home_screen.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view/laundry_details.dart';
+import 'package:maghsalati/features/notifications/presentation/view/notifications_screen.dart';
 import 'package:maghsalati/features/on_boarding/presentation/views/on_boarding_screen.dart';
 import 'package:maghsalati/features/order_pending/data/model/pending_order_model.dart';
 import 'package:maghsalati/features/order_pending/presentation/view/confirm_order.dart';
@@ -194,6 +195,10 @@ abstract class AppRouter {
         builder: (context, state) => const ContactUsScreen(),
       ),
       GoRoute(path: aboutUs, builder: (context, state) => const AboutUsScreen()),
+      GoRoute(
+        path: notificationScreen,
+        builder: (context, state) => const NotificationsScreen(),
+      ),
     ],
   );
 }

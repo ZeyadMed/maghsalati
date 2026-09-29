@@ -87,6 +87,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         onTap: _openUpdateProfile,
       ),
       ProfileMenuTile(
+        icon: Icons.notifications_none_rounded,
+        iconColor: AppColors.orangeColor,
+        titleKey: 'notifications',
+        onTap: () => context.push(AppRouter.notificationScreen),
+      ),
+      ProfileMenuTile(
         icon: Icons.lock_outline_rounded,
         iconColor: AppColors.greenColor,
         titleKey: 'privacy_policy',

@@ -212,5 +212,11 @@
   "pickup_details": "بيانات الاستلام",
   "pickup_contact_name": "اسم المستلم",
   "pickup_contact_name_hint": "اكتب اسم الشخص اللي هيسلم الهدوم",
-  "pickup_location_required": "حدد موقعك الحالي عشان المندوب يوصلك"
+  "pickup_location_required": "حدد موقعك الحالي عشان المندوب يوصلك",
+  "notifications": "الإشعارات",
+  "no_notifications": "لا توجد إشعارات حالياً",
+  "mark_all_as_read": "تعليم الكل كمقروء",
+  "delete_all": "مسح الكل",
+  "delete_all_notifications": "مسح كل الإشعارات؟",
+  "delete_all_notifications_message": "هل تريد مسح كل الإشعارات؟ لا يمكن التراجع عن هذا الإجراء."
 }

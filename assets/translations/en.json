@@ -212,5 +212,11 @@
   "pickup_details": "Pickup details",
   "pickup_contact_name": "Contact name",
   "pickup_contact_name_hint": "Name of the person handing over the clothes",
-  "pickup_location_required": "Please pick your current location so the driver can reach you"
+  "pickup_location_required": "Please pick your current location so the driver can reach you",
+  "notifications": "Notifications",
+  "no_notifications": "No notifications yet",
+  "mark_all_as_read": "Mark all as read",
+  "delete_all": "Delete all",
+  "delete_all_notifications": "Delete all notifications?",
+  "delete_all_notifications_message": "Do you want to delete all notifications? This can't be undone."
 }

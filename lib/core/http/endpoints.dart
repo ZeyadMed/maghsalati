@@ -63,6 +63,24 @@ abstract interface class Endpoints {
   /// جوه data.data ومعاها pageIndex و totalPages
   static const String orders = 'api/customer/orders';
 
+  // ****************************** Notifications ********************************
+  /// GET: بتاخد PageIndex و PageSize في الـ query وبترجع الإشعارات
+  /// جوه data.data ومعاها pageIndex و totalPages
+  /// DELETE: بتمسح كل الإشعارات
+  static const String notifications = 'api/customer/notifications';
+
+  /// DELETE: بتمسح الإشعار ده بس
+  static String notification(int notificationId) =>
+      'api/customer/notifications/$notificationId';
+
+  /// PUT: بتعلم الإشعار ده كمقروء
+  static String readNotification(int notificationId) =>
+      'api/customer/notifications/$notificationId/read';
+
+  /// PUT: بتعلم كل الإشعارات كمقروءة
+  static const String readAllNotifications =
+      'api/customer/notifications/read-all';
+
   /// اند بوينتس مفتوحة بتتنادى قبل ما يبقى فيه جلسة، فمابنحطش عليها توكن
   /// والـ 401 منها معناه بيانات غلط مش جلسة منتهية
   static bool isPublicAuth(String path) {
