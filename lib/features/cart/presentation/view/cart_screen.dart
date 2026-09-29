@@ -45,6 +45,39 @@ class _CartScreenState extends State<CartScreen> {
     context.push(AppRouter.orderPending, extra: cart.toPendingOrder());
   }
 
+  /// بنأكد قبل مسح السلة كلها عشان مايمسحهاش بالغلط
+  Future<void> _confirmClearCart() async {
+    final clear = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppColors.whiteColor,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16.r),
+        ),
+        title: Text('clear_cart'.tr(), style: TextStyles.darkBold16),
+        content: Text(
+          'clear_cart_message'.tr(),
+          style: TextStyles.greyColor2Regular14,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => dialogContext.pop(false),
+            child: Text('cancel'.tr(), style: TextStyles.greyColor2Regular14),
+          ),
+          TextButton(
+            onPressed: () => dialogContext.pop(true),
+            child: Text(
+              'clear_cart'.tr(),
+              style: TextStyles.darkBold14.copyWith(color: AppColors.redColor2),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (clear ?? false) _cartCubit.clearCart();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -67,13 +100,14 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
-  /// الأبار فيه عدد القطع، وبيتحدث مع السلة
+  /// الأبار فيه عدد القطع وزرار مسح السلة، وبيتحدث مع السلة
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
       backgroundColor: AppColors.whiteColor,
       elevation: 0,
       centerTitle: true,
       automaticallyImplyLeading: false,
+      actions: [_buildClearCartAction()],
       title: BlocBuilder<CartCubit, BaseState<CartModel>>(
         bloc: _cartCubit,
         builder: (context, state) {
@@ -87,6 +121,40 @@ class _CartScreenState extends State<CartScreen> {
           );
         },
       ),
+    );
+  }
+
+  /// بيظهر بس لو السلة فيها حاجة، وبيتبدل بلودينج وقت المسح
+  Widget _buildClearCartAction() {
+    return BlocBuilder<CartCubit, BaseState<CartModel>>(
+      bloc: _cartCubit,
+      builder: (context, state) {
+        if (state.data?.isEmpty ?? true) return const SizedBox.shrink();
+
+        if (_cartCubit.isClearing) {
+          return Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16.w),
+            child: SizedBox(
+              width: 18.r,
+              height: 18.r,
+              child: const CircularProgressIndicator(
+                strokeWidth: 2,
+                color: AppColors.redColor2,
+              ),
+            ),
+          );
+        }
+
+        return IconButton(
+          onPressed: _confirmClearCart,
+          tooltip: 'clear_cart'.tr(),
+          icon: Icon(
+            Icons.delete_sweep_outlined,
+            size: 22.r,
+            color: AppColors.redColor2,
+          ),
+        );
+      },
     );
   }
 
@@ -138,6 +206,7 @@ class _CartScreenState extends State<CartScreen> {
           isUpdating: _cartCubit.isUpdating(item),
           onQuantityChanged: (quantity) =>
               _cartCubit.updateQuantity(item, quantity),
+          onRemove: () => _cartCubit.removeItem(item),
         );
       },
     );

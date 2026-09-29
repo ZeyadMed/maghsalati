@@ -11,9 +11,11 @@ import 'package:maghsalati/features/orders/data/model/order_model.dart';
 class OrderProgressTracker extends StatelessWidget {
   final OrderStatus status;
 
-  /// نفس ترتيب الحالات في الـ enum، دي الخطوات اللي بتتعرض في الشريط
+  /// الخطوات اللي بتتعرض في الشريط، مش كل الحالات عشان الشريط مايزحمش
+  /// والحالات اللي مش هنا بتتحسب على خطوة منهم في [_currentIndex]
   static const List<OrderStatus> _steps = [
     OrderStatus.newOrder,
+    OrderStatus.awaitingPickup,
     OrderStatus.inProgress,
     OrderStatus.ready,
     OrderStatus.outForDelivery,
@@ -21,8 +23,18 @@ class OrderProgressTracker extends StatelessWidget {
 
   const OrderProgressTracker({super.key, required this.status});
 
-  /// رقم الخطوة الحالية، و -1 لو الحالة مش من خطوات الشريط (زي المرفوضة)
-  int get _currentIndex => _steps.indexOf(status);
+  /// رقم الخطوة الحالية، و -1 للمرفوضة فالشريط بيبان كله رمادي
+  int get _currentIndex => switch (status) {
+    // المطابقة وموافقة التعديل بيحصلوا في المغسلة قبل الغسيل،
+    // فالاستلام خلص وخطوة قيد التنفيذ هي اللي شغالة
+    OrderStatus.atLaundryPendingMatch ||
+    OrderStatus.adjustmentPendingApproval => _steps.indexOf(
+      OrderStatus.inProgress,
+    ),
+    // اتسلم يبقى كل الخطوات خلصت
+    OrderStatus.delivered => _steps.length - 1,
+    _ => _steps.indexOf(status),
+  };
 
   @override
   Widget build(BuildContext context) {

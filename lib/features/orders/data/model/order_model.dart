@@ -1,59 +1,80 @@
-/// حالة الطلب زي الـ enum اللي في الباك (OrderStatus)
-/// الترتيب هنا هو نفس ترتيب خطوات الشريط في الكارت
+/// حالة الطلب زي الـ enum اللي في الباك (OrderStatus)، بنفس الترتيب
 /// القيم اللي بتيجي من السيرفر بتتحول للـ enum ده بـ [OrderStatusX.fromJson]
 enum OrderStatus {
-  /// مستني الدفع - مش في الـ enum بتاع الباك بس بيرجع في الريسبونس،
-  /// ومش من خطوات الشريط فالشريط بيبان كله رمادي
-  pendingPayment,
-
-  /// جديدة (0) - مستنية المغسلة تقبل أو ترفض
+  /// جديدة (1) - مستنية المغسلة تقبل أو ترفض
   newOrder,
 
-  /// قيد التنفيذ (1)
+  /// بانتظار الاستلام (2) - المغسلة قبلت ورحلة الاستلام مفتوحة
+  awaitingPickup,
+
+  /// بانتظار المطابقة (3) - الهدوم اتسلمت والمغسلة بتراجع القطع
+  atLaundryPendingMatch,
+
+  /// بانتظار موافقة العميل على تعديل (4) - المغسلة لقت اختلاف في القطع
+  adjustmentPendingApproval,
+
+  /// قيد التنفيذ (5) - الغسيل شغال، والدفع بيتطلب هنا
   inProgress,
 
-  /// جاهزة (2)
+  /// جاهزة (6)
   ready,
 
-  /// قيد التوصيل (3)
+  /// قيد التوصيل (7)
   outForDelivery,
 
-  /// مرفوضة (4) - نهائية، والطلب بيروح على تاب السابقة
+  /// تم التسليم (8) - نهائية، والطلب بيروح على تاب السابقة
+  delivered,
+
+  /// مرفوضة (9) - نهائية، والطلب بيروح على تاب السابقة
   rejected,
 }
 
 extension OrderStatusX on OrderStatus {
   /// مفتاح الترجمة اللي بيتعرض في الشارة فوق الكارت
   String get labelKey => switch (this) {
-    OrderStatus.pendingPayment => 'status_pending_payment',
     OrderStatus.newOrder => 'status_new',
+    OrderStatus.awaitingPickup => 'status_awaiting_pickup',
+    OrderStatus.atLaundryPendingMatch => 'status_at_laundry_pending_match',
+    OrderStatus.adjustmentPendingApproval =>
+      'status_adjustment_pending_approval',
     OrderStatus.inProgress => 'status_in_progress',
     OrderStatus.ready => 'status_ready',
     OrderStatus.outForDelivery => 'status_out_for_delivery',
+    OrderStatus.delivered => 'status_delivered',
     OrderStatus.rejected => 'status_rejected',
   };
 
-  /// المرفوضة بس هي اللي خلصت، فبتروح على تاب السابقة
-  bool get isFinished => this == OrderStatus.rejected;
+  /// المسلّمة والمرفوضة خلصوا خلاص، فبيروحوا على تاب السابقة
+  bool get isFinished =>
+      this == OrderStatus.delivered || this == OrderStatus.rejected;
 
-  /// السيرفر ممكن يبعت الحالة كاسم (New / InProgress) أو كرقم (0 / 1)
+  /// السيرفر ممكن يبعت الحالة كاسم (New / InProgress) أو كرقم (1 / 5)
   /// فبنقرا الاتنين، والمقارنة من غير حروف كبيرة
+  /// أي قيمة مش معروفة بتتعرض كجديدة
   static OrderStatus fromJson(Object? value) {
-    if (value is num) {
-      return switch (value.toInt()) {
-        1 => OrderStatus.inProgress,
-        2 => OrderStatus.ready,
-        3 => OrderStatus.outForDelivery,
-        4 => OrderStatus.rejected,
+    final number = value is num ? value.toInt() : int.tryParse('$value');
+    if (number != null) {
+      return switch (number) {
+        2 => OrderStatus.awaitingPickup,
+        3 => OrderStatus.atLaundryPendingMatch,
+        4 => OrderStatus.adjustmentPendingApproval,
+        5 => OrderStatus.inProgress,
+        6 => OrderStatus.ready,
+        7 => OrderStatus.outForDelivery,
+        8 => OrderStatus.delivered,
+        9 => OrderStatus.rejected,
         _ => OrderStatus.newOrder,
       };
     }
     return switch ((value?.toString() ?? '').toLowerCase()) {
-      'pendingpayment' => OrderStatus.pendingPayment,
-      'inprogress' || '1' => OrderStatus.inProgress,
-      'ready' || '2' => OrderStatus.ready,
-      'outfordelivery' || '3' => OrderStatus.outForDelivery,
-      'rejected' || '4' => OrderStatus.rejected,
+      'awaitingpickup' => OrderStatus.awaitingPickup,
+      'atlaundrypendingmatch' => OrderStatus.atLaundryPendingMatch,
+      'adjustmentpendingapproval' => OrderStatus.adjustmentPendingApproval,
+      'inprogress' => OrderStatus.inProgress,
+      'ready' => OrderStatus.ready,
+      'outfordelivery' => OrderStatus.outForDelivery,
+      'delivered' => OrderStatus.delivered,
+      'rejected' => OrderStatus.rejected,
       _ => OrderStatus.newOrder,
     };
   }

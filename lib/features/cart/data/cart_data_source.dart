@@ -13,6 +13,10 @@ abstract interface class CartDataSource {
     required int quantity,
   });
 
+  Future<Either<Failure, void>> removeItem(int cartItemId);
+
+  Future<Either<Failure, void>> clearCart();
+
   Future<Either<Failure, void>> confirmCart(ConfirmCartRequest request);
 }
 
@@ -37,6 +41,22 @@ class CartDataSourceImpl implements CartDataSource {
     final result = await _genericDataSource.updateData<Null>(
       endpoint: Endpoints.cartItem(cartItemId),
       data: {'quantity': quantity},
+    );
+    return result.fold((failure) => Left(failure), (_) => const Right(null));
+  }
+
+  @override
+  Future<Either<Failure, void>> removeItem(int cartItemId) async {
+    final result = await _genericDataSource.deleteData<Null>(
+      endpoint: Endpoints.cartItem(cartItemId),
+    );
+    return result.fold((failure) => Left(failure), (_) => const Right(null));
+  }
+
+  @override
+  Future<Either<Failure, void>> clearCart() async {
+    final result = await _genericDataSource.deleteData<Null>(
+      endpoint: Endpoints.cart,
     );
     return result.fold((failure) => Left(failure), (_) => const Right(null));
   }

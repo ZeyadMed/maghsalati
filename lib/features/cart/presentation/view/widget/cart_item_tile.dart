@@ -10,11 +10,13 @@ import 'package:maghsalati/features/laundry_details/presentation/view/widget/qua
 
 /// سطر القطعة في السلة: الصورة والاسم والحساب، وعلى الجنب كاونتر الكمية
 /// كل + أو - بيبعت الكمية الجديدة للسيرفر عن طريق [onQuantityChanged]
+/// وأيقونة المسح بتشيل السطر كله عن طريق [onRemove]
 /// وبيتستخدم في شيت السلة وتاب السلة، و [boxed] بيحطه جوا كارت
 class CartItemTile extends StatelessWidget {
   final CartItemModel item;
   final bool boxed;
   final ValueChanged<int> onQuantityChanged;
+  final VoidCallback onRemove;
 
   /// الكمية بتتعدل على السيرفر، فالكاونتر بيتبدل بلودينج لحد ما يخلص
   final bool isUpdating;
@@ -23,6 +25,7 @@ class CartItemTile extends StatelessWidget {
     super.key,
     required this.item,
     required this.onQuantityChanged,
+    required this.onRemove,
     this.isUpdating = false,
     this.boxed = false,
   });
@@ -58,6 +61,7 @@ class CartItemTile extends StatelessWidget {
         ),
         SizedBox(width: 10.w),
         _buildQuantity(),
+        _buildRemove(),
       ],
     );
 
@@ -101,6 +105,21 @@ class CartItemTile extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+
+  /// بتتقفل وقت التعديل عشان مايتبعتش مسح والكمية لسه بتتحدث
+  Widget _buildRemove() {
+    return IconButton(
+      onPressed: isUpdating ? null : onRemove,
+      visualDensity: VisualDensity.compact,
+      padding: EdgeInsets.zero,
+      constraints: BoxConstraints(minWidth: 32.r, minHeight: 32.r),
+      icon: Icon(
+        Icons.delete_outline,
+        size: 20.r,
+        color: isUpdating ? AppColors.greyColor5 : AppColors.redColor2,
+      ),
     );
   }
 

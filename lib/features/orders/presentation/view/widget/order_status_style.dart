@@ -8,7 +8,7 @@ abstract final class OrderStatusStyle {
   /// لون الكلام جوا الشارة
   static Color foregroundOf(OrderStatus status) => switch (status) {
     OrderStatus.rejected => AppColors.redColor2,
-    OrderStatus.ready => AppColors.greenColor,
+    OrderStatus.ready || OrderStatus.delivered => AppColors.greenColor,
     _ => AppColors.orangeColor,
   };
 

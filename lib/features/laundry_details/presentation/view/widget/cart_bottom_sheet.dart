@@ -153,6 +153,7 @@ class _CartBottomSheetState extends State<CartBottomSheet> {
           isUpdating: _cartCubit.isUpdating(item),
           onQuantityChanged: (quantity) =>
               _cartCubit.updateQuantity(item, quantity),
+          onRemove: () => _cartCubit.removeItem(item),
         );
       },
     );

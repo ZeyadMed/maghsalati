@@ -48,9 +48,11 @@ abstract interface class Endpoints {
 
   /// POST: بتاخد { laundryServiceItemId, quantity } وبتضيف القطعة لسلة العميل
   /// GET: بترجع السلة { laundryName, items, itemsTotal, pickupFee, dropoffFee, totalPrice }
+  /// DELETE: بتمسح السلة كلها
   static const String cart = 'api/customer/cart';
 
   /// PUT: بتاخد { quantity } وبتعدل كمية القطعة دي في السلة
+  /// DELETE: بتشيل القطعة دي من السلة
   static String cartItem(int cartItemId) => 'api/customer/cart/$cartItemId';
 
   /// POST: بتاخد { deliveryAddress, latitude, longitude, pickupContactName,
