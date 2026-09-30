@@ -10,13 +10,13 @@ import 'package:maghsalati/core/style/app_colors.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
 import 'package:maghsalati/features/auth/logout/presentation/logic/logout_bloc.dart';
 import 'package:maghsalati/features/auth/logout/presentation/logic/logout_event.dart';
-import 'package:maghsalati/features/profile/data/mock/mock_user_data.dart';
 import 'package:maghsalati/features/profile/data/model/user_model.dart';
 import 'package:maghsalati/features/profile/presentation/view/widget/profile_header.dart';
 import 'package:maghsalati/features/profile/presentation/view/widget/profile_menu_tile.dart';
+import 'package:maghsalati/features/profile/presentation/view_model/profile_cubit.dart';
 
 /// شاشة حسابي: هيدر أزرق فيه بيانات المستخدم وتحته قايمة الصفحات
-/// المستخدم لسه جاي من داتا تجريبية لحد ما ال endpoint يجهز
+/// بيانات المستخدم جاية من api/customer/profile
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -25,19 +25,33 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  late UserModel _user = MockUserData.user;
+  final ProfileCubit _profileCubit = getIt<ProfileCubit>();
+
+  @override
+  void initState() {
+    super.initState();
+    _profileCubit.getProfile();
+  }
+
+  @override
+  void dispose() {
+    _profileCubit.close();
+    super.dispose();
+  }
 
   /// بيفتح شاشة تعديل الملف وبيستنى البيانات الجديدة ترجع منها
   /// لو المستخدم حفظ، الهيدر بيتحدث على طول من غير ما نعيد تحميل الشاشة
+  /// ولو البيانات لسه ماوصلتش الدوسة مابتعملش حاجة
   Future<void> _openUpdateProfile() async {
+    final user = _profileCubit.state.data;
+    if (user == null) return;
+
     final updated = await context.push<UserModel>(
       AppRouter.updateProfileScreen,
-      extra: _user,
+      extra: user,
     );
 
-    if (updated != null && mounted) {
-      setState(() => _user = updated);
-    }
+    if (updated != null && mounted) _profileCubit.setUser(updated);
   }
 
   @override
@@ -58,7 +72,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
       backgroundColor: AppColors.secondaryColor,
       body: Column(
         children: [
-          ProfileHeader(user: _user),
+          BlocBuilder<ProfileCubit, BaseState<UserModel>>(
+            bloc: _profileCubit,
+            builder: (context, state) => ProfileHeader(
+              user: state.data,
+              hasError: state.isFailure,
+              onRetry: _profileCubit.getProfile,
+            ),
+          ),
           Expanded(
             child: SingleChildScrollView(
               padding: EdgeInsets.fromLTRB(16.w, 20.h, 16.w, 24.h),
@@ -104,12 +125,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         titleKey: 'contact_us',
         onTap: () => context.push(AppRouter.contactUsScreen),
       ),
-      ProfileMenuTile(
-        icon: Icons.info_outline_rounded,
-        iconColor: AppColors.orangeColor,
-        titleKey: 'about_app',
-        onTap: () => context.push(AppRouter.aboutUs),
-      ),
+      // ProfileMenuTile(
+      //   icon: Icons.info_outline_rounded,
+      //   iconColor: AppColors.orangeColor,
+      //   titleKey: 'about_app',
+      //   onTap: () => context.push(AppRouter.aboutUs),
+      // ),
     ];
 
     return [

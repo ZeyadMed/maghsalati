@@ -1,4 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:maghsalati/core/style/app_colors.dart';
@@ -7,10 +9,18 @@ import 'package:maghsalati/features/profile/data/model/user_model.dart';
 
 /// الجزء الأزرق اللي فوق في شاشة حسابي: العنوان وتحته بيانات المستخدم
 /// بياخد نفس شكل هيدر الرئيسية عشان الشاشتين يبقوا متسقين
+/// لو [user] لسه null بيعرض لودر، ولو التحميل فشل بيعرض زرار حاول مرة أخرى
 class ProfileHeader extends StatelessWidget {
-  final UserModel user;
+  final UserModel? user;
+  final bool hasError;
+  final VoidCallback? onRetry;
 
-  const ProfileHeader({super.key, required this.user});
+  const ProfileHeader({
+    super.key,
+    required this.user,
+    this.hasError = false,
+    this.onRetry,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -38,17 +48,40 @@ class ProfileHeader extends StatelessWidget {
             style: TextStyles.whiteText(20, weight: FontWeight.w700),
           ),
           SizedBox(height: 20.h),
-          _buildUserRow(),
+          ConstrainedBox(
+            constraints: BoxConstraints(minHeight: 64.r),
+            child: _buildState(),
+          ),
         ],
       ),
     );
   }
 
-  /// الأفاتار على جنب والاسم والتليفون والإيميل على الجنب التاني
-  Widget _buildUserRow() {
+  Widget _buildState() {
+    final user = this.user;
+    if (user != null) return _buildUserRow(user);
+    if (hasError) {
+      return Center(
+        child: TextButton.icon(
+          onPressed: onRetry,
+          icon: Icon(Icons.refresh_rounded, color: AppColors.whiteColor),
+          label: Text(
+            'try_again'.tr(),
+            style: TextStyles.whiteText(14, weight: FontWeight.w600),
+          ),
+        ),
+      );
+    }
+    return const Center(
+      child: CircularProgressIndicator(color: AppColors.whiteColor),
+    );
+  }
+
+  /// الأفاتار على جنب والاسم والتليفون والمدينة على الجنب التاني
+  Widget _buildUserRow(UserModel user) {
     return Row(
       children: [
-        _buildAvatar(),
+        _buildAvatar(user),
         SizedBox(width: 14.w),
         Expanded(
           child: Column(
@@ -62,9 +95,15 @@ class ProfileHeader extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
               SizedBox(height: 4.h),
-              _buildSubtitle(user.phone),
-              SizedBox(height: 2.h),
-              _buildSubtitle(user.email),
+              // الرقم دايماً بيتعرض من الشمال لليمين
+              Directionality(
+                textDirection: ui.TextDirection.ltr,
+                child: _buildSubtitle(user.phoneNumber),
+              ),
+              if (user.cityName.isNotEmpty) ...[
+                SizedBox(height: 2.h),
+                _buildSubtitle(user.cityName),
+              ],
             ],
           ),
         ),
@@ -72,7 +111,7 @@ class ProfileHeader extends StatelessWidget {
     );
   }
 
-  /// التليفون والإيميل بنفس الشكل الباهت تحت الاسم
+  /// التليفون والمدينة بنفس الشكل الباهت تحت الاسم
   Widget _buildSubtitle(String text) {
     return Text(
       text,
@@ -84,8 +123,8 @@ class ProfileHeader extends StatelessWidget {
     );
   }
 
-  /// صورة المستخدم، ولو مفيش بنعرض أول حرف من اسمه
-  Widget _buildAvatar() {
+  /// دايرة فيها أول حرف من اسم المستخدم
+  Widget _buildAvatar(UserModel user) {
     return Container(
       width: 64.r,
       height: 64.r,
@@ -96,20 +135,12 @@ class ProfileHeader extends StatelessWidget {
           color: AppColors.whiteColor.withValues(alpha: 0.5),
           width: 1.5,
         ),
-        image: user.hasImage
-            ? DecorationImage(
-                image: NetworkImage(user.image!),
-                fit: BoxFit.cover,
-              )
-            : null,
       ),
       alignment: Alignment.center,
-      child: user.hasImage
-          ? null
-          : Text(
-              user.initial,
-              style: TextStyles.whiteText(26, weight: FontWeight.w700),
-            ),
+      child: Text(
+        user.initial,
+        style: TextStyles.whiteText(26, weight: FontWeight.w700),
+      ),
     );
   }
 }

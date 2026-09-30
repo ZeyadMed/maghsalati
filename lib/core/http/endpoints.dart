@@ -63,6 +63,11 @@ abstract interface class Endpoints {
   /// جوه data.data ومعاها pageIndex و totalPages
   static const String orders = 'api/customer/orders';
 
+  /// GET: بترجع بيانات العميل { id, name, phoneNumber, address, cityId,
+  /// cityName, latitude, longitude, phoneNumberConfirmed, createdAt } جوه data
+  /// PUT: بتاخد { name, address, cityId, latitude, longitude } وبتعدلهم
+  static const String customerProfile = 'api/customer/profile';
+
   // ****************************** Notifications ********************************
   /// GET: بتاخد PageIndex و PageSize في الـ query وبترجع الإشعارات
   /// جوه data.data ومعاها pageIndex و totalPages
@@ -80,6 +85,13 @@ abstract interface class Endpoints {
   /// PUT: بتعلم كل الإشعارات كمقروءة
   static const String readAllNotifications =
       'api/customer/notifications/read-all';
+
+  // ****************************** App Info ********************************
+  /// GET: بترجع { phoneNumber1, phoneNumber2, email } جوه data
+  static const String contacts = 'api/auth/contacts';
+
+  /// GET: بترجع { content, updatedAt } جوه data، والـ content بيبقى HTML
+  static const String privacyPolicy = 'api/auth/privacy-policy';
 
   /// اند بوينتس مفتوحة بتتنادى قبل ما يبقى فيه جلسة، فمابنحطش عليها توكن
   /// والـ 401 منها معناه بيانات غلط مش جلسة منتهية

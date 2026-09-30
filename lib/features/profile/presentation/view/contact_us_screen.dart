@@ -1,20 +1,41 @@
 import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:maghsalati/core/bloc/base_bloc.dart';
 import 'package:maghsalati/core/common_widget/custom_app_bar.dart';
 import 'package:maghsalati/core/common_widget/custom_error_message.dart';
+import 'package:maghsalati/core/service_locator/service_locator.dart';
 import 'package:maghsalati/core/style/app_colors.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
+import 'package:maghsalati/features/profile/data/model/contact_info_model.dart';
+import 'package:maghsalati/features/profile/presentation/view/widget/retry_error_view.dart';
+import 'package:maghsalati/features/profile/presentation/view_model/contact_us_cubit.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-/// شاشة تواصل معنا: طرق التواصل المختلفة، كل واحدة بتفتح التطبيق بتاعها
-/// الأرقام والإيميل ثابتة هنا لحد ما ييجوا من إعدادات السيرفر
-class ContactUsScreen extends StatelessWidget {
+/// شاشة تواصل معنا: الأرقام والإيميل جايين من api/auth/contacts
+/// كل طريقة بتفتح التطبيق بتاعها، واللي بتيجي فاضية مابتظهرش
+class ContactUsScreen extends StatefulWidget {
   const ContactUsScreen({super.key});
 
-  static const String _phone = '+218911234567';
-  static const String _whatsapp = '+218911234567';
-  static const String _email = 'support@maghsalati.ly';
+  @override
+  State<ContactUsScreen> createState() => _ContactUsScreenState();
+}
+
+class _ContactUsScreenState extends State<ContactUsScreen> {
+  final ContactUsCubit _cubit = getIt<ContactUsCubit>();
+
+  @override
+  void initState() {
+    super.initState();
+    _cubit.getContacts();
+  }
+
+  @override
+  void dispose() {
+    _cubit.close();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -24,46 +45,68 @@ class ContactUsScreen extends StatelessWidget {
         title: 'contact_us',
         backgroundColor: AppColors.secondaryColor,
       ),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 24.h),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildHeaderCard(),
-            SizedBox(height: 18.h),
-            _buildChannelCard(
-              context: context,
-              icon: Icons.phone_in_talk_outlined,
-              color: AppColors.primaryColor,
-              titleKey: 'contact_phone',
-              value: _phone,
-              onTap: () => _launch(context, Uri.parse('tel:$_phone')),
-            ),
-            SizedBox(height: 12.h),
-            _buildChannelCard(
-              context: context,
-              icon: Icons.chat_outlined,
-              color: AppColors.greenColor,
-              titleKey: 'contact_whatsapp',
-              value: _whatsapp,
-              onTap: () => _launch(
-                context,
-                Uri.parse('https://wa.me/${_whatsapp.replaceAll('+', '')}'),
-              ),
-            ),
-            SizedBox(height: 12.h),
-            _buildChannelCard(
-              context: context,
-              icon: Icons.mail_outline_rounded,
-              color: AppColors.orangeColor,
-              titleKey: 'contact_email',
-              value: _email,
-              onTap: () => _launch(context, Uri.parse('mailto:$_email')),
-            ),
-            SizedBox(height: 22.h),
-            _buildWorkingHours(),
-          ],
+      body: BlocBuilder<ContactUsCubit, BaseState<ContactInfoModel>>(
+        bloc: _cubit,
+        builder: (context, state) {
+          final contacts = state.data;
+          if (state.isFailure) {
+            return RetryErrorView(
+              message: state.errorMessage,
+              onRetry: _cubit.getContacts,
+            );
+          }
+          if (contacts == null) {
+            return const Center(
+              child: CircularProgressIndicator(color: AppColors.primaryColor),
+            );
+          }
+          return _buildContent(contacts);
+        },
+      ),
+    );
+  }
+
+  Widget _buildContent(ContactInfoModel contacts) {
+    final channels = [
+      if (contacts.phoneNumber1.isNotEmpty)
+        _buildChannelCard(
+          icon: Icons.phone_in_talk_outlined,
+          color: AppColors.primaryColor,
+          titleKey: 'contact_phone',
+          value: contacts.phoneNumber1,
+          onTap: () => _launch(Uri.parse('tel:${contacts.phoneNumber1}')),
         ),
+      if (contacts.phoneNumber2.isNotEmpty)
+        _buildChannelCard(
+          icon: Icons.phone_outlined,
+          color: AppColors.greenColor,
+          titleKey: 'contact_phone_alt',
+          value: contacts.phoneNumber2,
+          onTap: () => _launch(Uri.parse('tel:${contacts.phoneNumber2}')),
+        ),
+      if (contacts.email.isNotEmpty)
+        _buildChannelCard(
+          icon: Icons.mail_outline_rounded,
+          color: AppColors.orangeColor,
+          titleKey: 'contact_email',
+          value: contacts.email,
+          onTap: () => _launch(Uri.parse('mailto:${contacts.email}')),
+        ),
+    ];
+
+    return SingleChildScrollView(
+      padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 24.h),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildHeaderCard(),
+          for (int i = 0; i < channels.length; i++) ...[
+            SizedBox(height: i == 0 ? 18.h : 12.h),
+            channels[i],
+          ],
+          // SizedBox(height: 22.h),
+          // _buildWorkingHours(),
+        ],
       ),
     );
   }
@@ -122,7 +165,6 @@ class ContactUsScreen extends StatelessWidget {
 
   /// سطر طريقة تواصل واحدة: أيقونة واسم وتحته القيمة، وبيفتح التطبيق لما يتداس
   Widget _buildChannelCard({
-    required BuildContext context,
     required IconData icon,
     required Color color,
     required String titleKey,
@@ -242,13 +284,13 @@ class ContactUsScreen extends StatelessWidget {
   }
 
   /// بيفتح اللينك، ولو الجهاز مش عارف يفتحه بنعرض رسالة بدل ما الدوسة تضيع
-  Future<void> _launch(BuildContext context, Uri uri) async {
+  Future<void> _launch(Uri uri) async {
     final launched = await launchUrl(
       uri,
       mode: LaunchMode.externalApplication,
     ).catchError((_) => false);
 
-    if (!launched && context.mounted) {
+    if (!launched && mounted) {
       CustomErrorOverlay.show(context: context, text: 'contact_failed'.tr());
     }
   }

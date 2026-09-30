@@ -13,6 +13,7 @@ class CityCubit extends Cubit<BaseState<CityModel>> {
     emit(state.copyWith(status: Status.loading));
 
     final result = await _cityDataSource.getCities(search: search);
+    if (isClosed) return;
 
     result.fold(
       (failure) => emit(
