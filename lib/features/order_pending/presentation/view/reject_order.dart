@@ -8,9 +8,11 @@ import 'package:maghsalati/core/style/app_colors.dart';
 import 'package:maghsalati/features/order_pending/data/model/pending_order_model.dart';
 import 'package:maghsalati/features/order_pending/presentation/view/widget/order_action_button.dart';
 import 'package:maghsalati/features/order_pending/presentation/view/widget/rejected_status_header.dart';
+import 'package:maghsalati/features/orders/data/model/order_details_args.dart';
 
-/// شاشة رفض الطلب، بتتفتح لما المغسلة ترفض الطلب
-/// قدام المستخدم اختيارين: يحاول تاني بنفس الطلب أو يختار مغسلة تانية
+/// شاشة رفض الطلب، بتتفتح من شاشة الانتظار لما المغسلة ترفض
+/// السلة اتفضت وقت التأكيد، فمفيش "إعادة إرسال" لنفس الطلب:
+/// يا يختار مغسلة تانية، يا يشوف تفاصيل الطلب المرفوض (فيها سبب الرفض لو موجود)
 class RejectOrder extends StatelessWidget {
   final PendingOrderModel order;
 
@@ -37,15 +39,17 @@ class RejectOrder extends StatelessWidget {
                     RejectedStatusHeader(laundryName: order.laundryName),
                     Gap(28.h),
                     OrderActionButton(
-                      label: 'try_again'.tr(),
-                      filled: true,
-                      onPressed: () => _retry(context),
-                    ),
-                    Gap(12.h),
-                    OrderActionButton(
                       label: 'choose_another_laundry'.tr(),
-                      onPressed: () => _chooseAnotherLaundry(context),
+                      filled: true,
+                      onPressed: () => context.go(AppRouter.initialRoot),
                     ),
+                    if (order.hasOrderId) ...[
+                      Gap(12.h),
+                      OrderActionButton(
+                        label: 'view_details'.tr(),
+                        onPressed: () => _openDetails(context),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -56,14 +60,10 @@ class RejectOrder extends StatelessWidget {
     );
   }
 
-  /// بيبعت نفس الطلب تاني ويرجع لشاشة الانتظار
-  /// TODO: اعمل resend للطلب على ال endpoint هنا الأول لما يجهز
-  void _retry(BuildContext context) {
-    context.pushReplacement(AppRouter.orderPending, extra: order);
-  }
-
-  /// بيرجع للرئيسية عشان يختار مغسلة تانية
-  void _chooseAnotherLaundry(BuildContext context) {
-    context.go(AppRouter.initialRoot);
+  void _openDetails(BuildContext context) {
+    context.pushReplacement(
+      AppRouter.orderDetails,
+      extra: OrderDetailsArgs(orderId: order.orderId),
+    );
   }
 }

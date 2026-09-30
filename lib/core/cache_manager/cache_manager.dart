@@ -1,4 +1,5 @@
 import 'dart:developer';
+import 'dart:io';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -77,8 +78,17 @@ class CacheManager {
     return await sharedPreferences.remove(key);
   }
 
-  static Future<String?> fetchAndSaveFcmToken() async {
+  /// على iOS الـ FCM مابيتعملش غير بعد ما توكن APNs يوصل من أبل، وده بيوصل
+  /// بعد طلب الصلاحية بشوية، فبنستناه لحد [apnsWait] بدل ما getToken
+  /// يرمي apns-token-not-set. ولو ماوصلش، onTokenRefresh بيحفظه لما يوصل
+  static Future<String?> fetchAndSaveFcmToken({
+    Duration apnsWait = const Duration(seconds: 5),
+  }) async {
     try {
+      if (!await waitForApnsToken(apnsWait)) {
+        log('APNs token not available yet, FCM token will come via refresh');
+        return null;
+      }
       String? fcmToken = await FirebaseMessaging.instance.getToken();
       if (fcmToken != null) {
         await saveFcmTokenToken(fcmToken);
@@ -191,6 +201,30 @@ class CacheManager {
   static Future<String?> getFcmToken() async {
     String? fcmToken = sharedPreferences.getString(_fcmToken);
         return fcmToken;
+  }
+
+  /// الـ FCM اللي بيتبعت deviceToken مع اللوجين والتحقق من الرقم عشان السيرفر
+  /// يبعت إشعارات الطلبات للجهاز ده، ولو ماتحفظش وقت فتح الأبلكيشن بنجيبه تاني
+  /// والتايم أوت عشان اللوجين مايقفش لو Firebase مش قادر يطلّع توكن
+  static Future<String> deviceToken() async {
+    final saved = await getFcmToken();
+    if (saved != null && saved.isNotEmpty) return saved;
+    final fetched = await fetchAndSaveFcmToken(
+      apnsWait: const Duration(seconds: 2),
+    ).timeout(const Duration(seconds: 5), onTimeout: () => null);
+    return fetched ?? '';
+  }
+
+  /// على أندرويد مفيش APNs فبيرجع true على طول
+  /// وعلى iOS بيسأل كل نص ثانية لحد ما التوكن يوصل أو المدة تخلص
+  static Future<bool> waitForApnsToken(Duration maxWait) async {
+    if (!Platform.isIOS) return true;
+    final deadline = DateTime.now().add(maxWait);
+    while (true) {
+      if (await FirebaseMessaging.instance.getAPNSToken() != null) return true;
+      if (DateTime.now().isAfter(deadline)) return false;
+      await Future.delayed(const Duration(milliseconds: 500));
+    }
   }
 
   static Future<bool> clear() async {

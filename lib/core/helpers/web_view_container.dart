@@ -1,149 +1,135 @@
+import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:maghsalati/core/common_widget/custom_app_bar.dart';
+import 'package:maghsalati/core/style/app_colors.dart';
+import 'package:maghsalati/core/theme/text_styles.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 
-// import 'dart:developer';
-// import 'package:easy_localization/easy_localization.dart';
-// import 'package:flutter/material.dart';
-// import 'package:go_router/go_router.dart';
-// import 'package:professional_lawyer/core/common_widget/loading_button.dart';
-// import 'package:professional_lawyer/core/router/app_router.dart';
-// import 'package:professional_lawyer/core/theme/text_styles.dart';
+/// اللي بيتبعت لـ [WebViewContainer] في state.extra
+class WebViewArgs {
+  final String url;
+  final String title;
 
-// import 'package:webview_flutter/webview_flutter.dart';
+  /// أول ما صفحة لينكها فيه واحد من دول تخلص تحميل، الشاشة بتقفل وترجع اللينك
+  /// زي صفحة الـ callback بتاعة الدفع
+  final List<String> finishUrls;
 
+  const WebViewArgs({
+    required this.url,
+    this.title = '',
+    this.finishUrls = const [],
+  });
+}
 
-// class WebViewContainer extends StatefulWidget {
-//   const WebViewContainer({super.key, required this.url});
-//   final String url;
+/// صفحة ويب جوه الأبلكيشن، مستخدمة في دفع MyFatoorah
+/// بترجع اللينك اللي خلصت عنده (من [WebViewArgs.finishUrls])،
+/// و null لو اليوزر خرج قبل ما توصل
+class WebViewContainer extends StatefulWidget {
+  final WebViewArgs args;
 
-//   @override
-//   State<WebViewContainer> createState() => _WebViewContainerState();
-// }
+  const WebViewContainer({super.key, required this.args});
 
-// class _WebViewContainerState extends State<WebViewContainer> {
-//   late final WebViewController controller;
-//   bool isLoading = true;
-//   bool isConnected = true;
-//   bool isErorr = false;
+  @override
+  State<WebViewContainer> createState() => _WebViewContainerState();
+}
 
-//   @override
-//   void initState() {
-//     super.initState();
+class _WebViewContainerState extends State<WebViewContainer> {
+  late final WebViewController _controller;
+  int _progress = 0;
+  bool _finished = false;
 
-//     // Initialize WebView controller
-//     controller = WebViewController()
-//       ..setJavaScriptMode(JavaScriptMode.unrestricted)
-//       ..setNavigationDelegate(NavigationDelegate(
-//         onNavigationRequest: (NavigationRequest request) async {
-//           // Check for callback URL
-//           log(request.url.toString());
-//           log("==========================");
-//           if (request.url
-//               .contains('https://khadmatmantakty.com/api/opay/callback')) {
-//             log("=========== ${request.url}");
+  @override
+  void initState() {
+    super.initState();
+    _controller = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onProgress: (progress) {
+            if (mounted) setState(() => _progress = progress);
+          },
+          // صفحة الـ callback لازم تحمّل للآخر مش نوقفها، لأن تحميلها هو
+          // اللي بيخلي الباك يسجل حالة الدفع، فبنقفل بعد ما تخلص
+          onPageFinished: _finishIfDone,
+          // لو صفحة النهاية نفسها وقعت فالريكوست وصل السيرفر خلاص
+          onWebResourceError: (error) {
+            if (error.isForMainFrame ?? true) _finishIfDone(error.url ?? '');
+          },
+        ),
+      )
+      ..loadRequest(Uri.parse(widget.args.url));
+  }
 
-//             _handleCallback(Uri.parse(request.url));
-//             return NavigationDecision.prevent; // Prevent further navigation
-//           }
-//           return NavigationDecision.navigate;
-//         },
-//         onPageStarted: (url) {
-//           setState(() {
-//             isLoading = true;
-//             isErorr = false;
-//           });
-//         },
-//         onPageFinished: (url) {
-//           setState(() {
-//             isLoading = false;
-//             isErorr = false;
-//           });
-//         },
-//         onWebResourceError: (error) {
-//           setState(() {
-//             isLoading = false;
-//             isErorr = true;
-//           });
-//           debugPrint("Failed to load the page: ${error.description}");
-//         },
-//       ))
-//       ..loadRequest(Uri.parse(widget.url));
-//   }
+  void _finishIfDone(String url) {
+    if (_finished || !mounted) return;
+    final done = widget.args.finishUrls.any(url.contains);
+    if (!done) return;
+    _finished = true;
+    Navigator.of(context).pop(url);
+  }
 
-//   void _handleCallback(Uri uri) {
-//     final status = uri.queryParameters['success'];
-//     // final transactionId = uri.queryParameters['id'];
-//     log("=========== $status");
-//     if (status == 'true') {
-//       context.go(AppRouter.initialRoot);
-//       log("========2=== $status");
-//       // _showDialog('status', "$status");
+  /// الخروج قبل ما الصفحة توصل للنهاية بيسأل الأول عشان مايقفلش الدفع بالغلط
+  Future<void> _confirmLeave() async {
+    final leave = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppColors.whiteColor,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16.r),
+        ),
+        title: Text('cancel_payment_title'.tr(), style: TextStyles.darkBold16),
+        content: Text(
+          'cancel_payment_message'.tr(),
+          style: TextStyles.greyColor2Regular14,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(
+              'continue_payment'.tr(),
+              style: TextStyles.greyColor2Regular14,
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(
+              'leave'.tr(),
+              style: TextStyles.darkBold14.copyWith(color: AppColors.redColor2),
+            ),
+          ),
+        ],
+      ),
+    );
+    if ((leave ?? false) && mounted) Navigator.of(context).pop();
+  }
 
-//       // context.go(AppRouters.kOrderAcceptedScreen);
-
-//       // getIt<GetCartCubit>().fetchCart();
-//     } else if (status == 'false') {
-//       context.pop();
-//       _showDialog('Payment Failed', 'Please try again later');
-//     }
-//   }
-
-//   void _showDialog(String title, String content) {
-//     showDialog(
-//       context: context,
-//       builder: (context) => AlertDialog(
-//         title: Text(title.tr()),
-//         content: Text(content.tr()),
-//         actions: [
-//           TextButton(
-//             onPressed: () {
-//               Navigator.pop(context); // Close the dialog
-//             },
-//             child: Text('OK'.tr()),
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       body: SafeArea(
-//         child: Stack(
-//           children: [
-//             if (isConnected && !isErorr) WebViewWidget(controller: controller),
-//             if (!isConnected || isErorr)
-//               Center(
-//                 child: Container(
-//                   height: MediaQuery.of(context).size.height * 0.1,
-//                   width: MediaQuery.of(context).size.width * 0.9,
-//                   decoration: BoxDecoration(
-//                     color: Colors.white,
-//                     borderRadius: BorderRadius.circular(15),
-//                     border: Border.all(width: 1, style: BorderStyle.solid),
-//                   ),
-//                   padding: const EdgeInsets.symmetric(vertical: 8),
-//                   child: Center(
-//                     child: Column(
-//                       mainAxisAlignment: MainAxisAlignment.center,
-//                       crossAxisAlignment: CrossAxisAlignment.center,
-//                       children: [
-//                         Text(
-//                           'No Internet Connection'.tr(),
-//                           style: TextStyles.darkRegular16.copyWith(
-//                               color: Colors.black, fontWeight: FontWeight.bold),
-//                         ),
-//                       ],
-//                     ),
-//                   ),
-//                 ),
-//               ),
-//             if (isLoading)
-//               const Center(
-//                 child: LoadingButton(),
-//               ),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-// }
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _confirmLeave();
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.whiteColor,
+        appBar: CustomAppBar(
+          title: widget.args.title,
+          backgroundColor: AppColors.whiteColor,
+        ),
+        body: Column(
+          children: [
+            if (_progress < 100)
+              LinearProgressIndicator(
+                value: _progress / 100,
+                minHeight: 2,
+                color: AppColors.primaryColor,
+                backgroundColor: AppColors.lightGreyColor,
+              ),
+            Expanded(child: WebViewWidget(controller: _controller)),
+          ],
+        ),
+      ),
+    );
+  }
+}

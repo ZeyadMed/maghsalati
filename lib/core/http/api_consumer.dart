@@ -502,9 +502,11 @@ final class BaseApiConsumer implements ApiConsumer {
               );
             }
             if (error.response?.statusCode == 404) {
-              navigatorKey.currentContext!.showErrorMessage('404');
+              // رسالة الباك أوضح من "404" لوحدها، زي "الطلب غير موجود"
+              final message = _backendMessage(decoded) ?? '404';
+              navigatorKey.currentContext!.showErrorMessage(message);
               return ServerFailure(
-                message: '404',
+                message: message,
                 statusCode: error.response?.statusCode,
               );
             }
@@ -517,14 +519,19 @@ final class BaseApiConsumer implements ApiConsumer {
             }
             if (error.response?.statusCode == 402) {
               return PaymentFailure(
-                message: error.message ?? "",
+                message: _backendMessage(decoded) ?? error.message ?? "",
                 statusCode: error.response?.statusCode,
               );
             }
-            // Handle OTP failure for 409 status code
+            // الـ 409 مش OTP بس، بيرجع كمان في تعارض حالة الطلب
+            // (زي الرد على تعديل اترد عليه قبل كده أو كود تسليم غلط)
+            // فرسالة الباك الأول، ورسالة الـ OTP لو الباك مابعتش حاجة
             if (error.response?.statusCode == 409) {
               loggerWarn('VERIFYERROR');
-              return VerifyOTPFailure(message: 'خطأ في التحقق من الكود');
+              return VerifyOTPFailure(
+                message: _backendMessage(decoded) ?? 'خطأ في التحقق من الكود',
+                statusCode: error.response?.statusCode,
+              );
             }
             if (decoded.containsKey('message')) {
               String message = decoded['message'];

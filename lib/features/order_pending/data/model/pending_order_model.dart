@@ -17,8 +17,10 @@ class PendingOrderLine {
 }
 
 /// الطلب اللي اتبعت للمغسلة وبيستنى موافقتها
-/// بيتبني في شاشة تفاصيل المغسلة من الكميات المختارة وبيتبعت هنا
+/// بيتبني من السلة وقت التأكيد، والشاشة بتتابع حالته الحقيقية بـ [orderId]
 class PendingOrderModel {
+  /// رقم الطلب اللي رجع من التأكيد، و 0 لو مش معروف
+  final int orderId;
   final String laundryName;
   final List<PendingOrderLine> lines;
 
@@ -28,8 +30,11 @@ class PendingOrderModel {
   const PendingOrderModel({
     required this.laundryName,
     required this.lines,
+    this.orderId = 0,
     this.deliveryPrice = 0,
   });
+
+  bool get hasOrderId => orderId > 0;
 
   num get servicesTotal =>
       lines.fold<num>(0, (sum, line) => sum + line.total);

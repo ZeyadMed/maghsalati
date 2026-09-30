@@ -15,7 +15,6 @@ import 'package:maghsalati/core/widget/loading_shimmer.dart';
 import 'package:maghsalati/features/cart/data/model/cart_model.dart';
 import 'package:maghsalati/features/cart/presentation/view/widget/confirm_cart_bottom_sheet.dart';
 import 'package:maghsalati/features/cart/presentation/view_model/cart_cubit.dart';
-import 'package:maghsalati/features/home/presentation/view/widget/timing_row.dart';
 import 'package:maghsalati/features/laundry_details/data/model/service_category_model.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view/category_items_screen.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view/widget/laundry_details_header.dart';
@@ -74,16 +73,28 @@ class _LaundryDetailsState extends State<LaundryDetails> {
   void initState() {
     super.initState();
     _servicesCubit.getServices(widget.laundryId);
-    if (_cartCubit.state.data == null) _cartCubit.getCart();
-    // السلة لمغسلة واحدة بس، فلو فيها حاجة من مغسلة تانية بنسأل الأول
-    if (_servicesController.belongsToOtherLaundry(widget.name)) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _askToReplaceCart();
-      });
+    // بعد الفريم عشان ديالوج الاستبدال مايتفتحش جوه initState
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkCartLaundry());
+  }
+
+  /// السلة لمغسلة واحدة بس، والسيرفر هو اللي بيرفض الإضافة من مغسلة تانية
+  /// فبنقارن بسلة السيرفر مش باللي على الموبايل، ولو لسه ماتحملتش بنستناها
+  Future<void> _checkCartLaundry() async {
+    if (_cartCubit.state.data == null) await _cartCubit.getCart();
+    if (!mounted) return;
+
+    final cart = _cartCubit.state.data;
+    if (cart != null && !cart.isEmpty && !_isThisLaundry(cart)) {
+      _askToReplaceCart(cart.laundryName);
     } else {
       _prepareCart();
     }
   }
+
+  /// لو السيرفر مابعتش laundryId بنقارن بالاسم
+  bool _isThisLaundry(CartModel cart) => cart.laundryId > 0
+      ? cart.laundryId == widget.laundryId
+      : cart.laundryName == widget.name;
 
   @override
   void dispose() {
@@ -113,9 +124,7 @@ class _LaundryDetailsState extends State<LaundryDetails> {
 
   /// لما يفتح مغسلة تانية والسلة لسه فيها حاجات من مغسلة قبلها
   /// يا إما يمسح ويكمل هنا، يا إما يرجع لمغسلته الأولى
-  Future<void> _askToReplaceCart() async {
-    final previousLaundry = _servicesController.laundryName;
-
+  Future<void> _askToReplaceCart(String previousLaundry) async {
     final replace = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -150,8 +159,10 @@ class _LaundryDetailsState extends State<LaundryDetails> {
     if (!mounted) return;
 
     if (replace ?? false) {
+      // سلة السيرفر لازم تتمسح هي كمان، وإلا أول إضافة هنا هتترفض
+      await _cartCubit.clearCart();
       _servicesController.clear();
-      _prepareCart();
+      if (mounted) _prepareCart();
     } else {
       // رجعه للمغسلة اللي سلته منها بدل ما يفضل في شاشة سلتها مش بتاعتها
       Navigator.of(context).maybePop();
@@ -173,24 +184,28 @@ class _LaundryDetailsState extends State<LaundryDetails> {
           // والطلب بيتبني من سلة السيرفر اللي في الشيت، بعد ما بيانات
           // الاستلام تتبعت والسيرفر يأكده
           onConfirmOrder: (cart) async {
-            final confirmed = await ConfirmCartBottomSheet.show(context);
-            if (!confirmed || !mounted) return;
-            _cartCubit.getCart();
+            final orderId = await ConfirmCartBottomSheet.show(context);
+            if (orderId == null || !mounted) return;
             Navigator.of(context).maybePop();
-            context.push(AppRouter.orderPending, extra: cart.toPendingOrder());
+            context.push(
+              AppRouter.orderPending,
+              extra: cart.toPendingOrder(orderId: orderId),
+            );
           },
         ),
       ),
     );
   }
 
-  /// بيفتح شيت بيانات الاستلام، ولما السيرفر يأكد الطلب بيحدث السلة
-  /// (لأنها بتفضى بعد التأكيد) ويودّي على شاشة انتظار موافقة المغسلة
+  /// بيفتح شيت بيانات الاستلام، ولما السيرفر يأكد الطلب بيودّي على شاشة
+  /// انتظار موافقة المغسلة ومعاه رقم الطلب (الشيت نفسه بيحدث السلة)
   Future<void> _confirmCart(CartModel cart) async {
-    final confirmed = await ConfirmCartBottomSheet.show(context);
-    if (!confirmed || !mounted) return;
-    _cartCubit.getCart();
-    context.push(AppRouter.orderPending, extra: cart.toPendingOrder());
+    final orderId = await ConfirmCartBottomSheet.show(context);
+    if (orderId == null || !mounted) return;
+    context.push(
+      AppRouter.orderPending,
+      extra: cart.toPendingOrder(orderId: orderId),
+    );
   }
 
   /// جريد الأقسام بيستنى ال endpoint، والـ listener بيحفظ الأقسام ويحمل الأسعار
@@ -301,14 +316,9 @@ class _LaundryDetailsState extends State<LaundryDetails> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  // بوكسات "استلام اليوم / تسليم غدًا" اتشالت لأن مفيش مواعيد
+                  // في السايكل، الاستلام بيبدأ لما مندوب يتعيّن على الرحلة
                   Gap(16.h),
-                  TimingRow(
-                    pickUpTime: 'اليوم',
-                    deliveryTime: 'غدا',
-                    showDeliveryPrice: true,
-                    deliveryPrice: widget.deliveryPrice,
-                  ),
-                  Gap(10.h),
                   WorkingHoursButton(
                     laundryId: widget.laundryId,
                     laundryName: widget.name,

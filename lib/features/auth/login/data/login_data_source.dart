@@ -1,3 +1,4 @@
+import 'package:maghsalati/core/cache_manager/cache_manager.dart';
 import 'package:maghsalati/core/helpers/generic_data_source.dart';
 import 'package:maghsalati/core/http/either.dart';
 import 'package:maghsalati/core/http/endpoints.dart';
@@ -34,6 +35,8 @@ class LoginDataSourceImpl implements LoginDataSource {
         'rememberMe': rememberMe,
         'deviceInfo': deviceInfo,
         'deviceId': deviceId,
+        // الـ FCM عشان إشعارات الطلبات (التعديل ووصول المندوب) توصل للجهاز ده
+        'deviceToken': await CacheManager.deviceToken(),
       },
       headers: {'Authorization': null},
       fromJson: (json) => AuthModel.fromJson(json),

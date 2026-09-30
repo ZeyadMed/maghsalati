@@ -59,11 +59,6 @@ class SelectedServicesController extends ChangeNotifier {
     _laundryName = name;
   }
 
-  /// السلة لمغسلة واحدة بس، فلو فيها حاجة من مغسلة تانية بترجع true
-  /// والشاشة بتسأل المستخدم يمسح القديم الأول
-  bool belongsToOtherLaundry(String name) =>
-      _quantities.isNotEmpty && _laundryName.isNotEmpty && _laundryName != name;
-
   void setDeliveryPrice(num price) {
     if (_deliveryPrice == price) return;
     _deliveryPrice = price;

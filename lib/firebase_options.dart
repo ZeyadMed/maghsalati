@@ -51,7 +51,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyBRHcY3pZFlg2P-OjIY_Qs1rCM-6FQ93UQ',
-    appId: '1:550015810677:android:55e72b3a73556fcf8b0c3c',
+    appId: '1:550015810677:android:715c0775ea056b8e8b0c3c',
     messagingSenderId: '550015810677',
     projectId: 'lavandria-b3e46',
     storageBucket: 'lavandria-b3e46.firebasestorage.app',
@@ -59,10 +59,11 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyAkIJyMAlYgPpyRHbgyeJSd-ax0Jyy_aiM',
-    appId: '1:550015810677:ios:55d1945df14343338b0c3c',
+    appId: '1:550015810677:ios:f72d9571ddd75c438b0c3c',
     messagingSenderId: '550015810677',
     projectId: 'lavandria-b3e46',
     storageBucket: 'lavandria-b3e46.firebasestorage.app',
-    iosBundleId: 'com.example.maghsalati',
+    iosBundleId: 'com.theone.maghsalati',
   );
+
 }

@@ -2,6 +2,8 @@
     <!-- مطلوبة عشان نجيب موقع اليوزر ونعرض عنوان الاستلام في الهوم -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <!-- إشعارات الطلبات، ومن أندرويد 13 لازم تتطلب صراحة -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <application
         android:label="Lavanderia"
         android:name="${applicationName}"
@@ -28,6 +30,11 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <!-- الإشعار اللي بيوصل والأبلكيشن في الخلفية بيتعرض على نفس القناة
+             اللي MessagingConfig بيعملها، عشان يطلع بأولوية عالية -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="high_importance_channel" />
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

@@ -1,18 +1,23 @@
+import 'dart:async';
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
+import 'package:go_router/go_router.dart';
 import 'package:maghsalati/core/bloc/base_bloc.dart';
+import 'package:maghsalati/core/router/app_router.dart';
 import 'package:maghsalati/core/service_locator/service_locator.dart';
 import 'package:maghsalati/core/style/app_colors.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
+import 'package:maghsalati/features/orders/data/model/order_details_args.dart';
 import 'package:maghsalati/features/orders/data/model/order_model.dart';
-import 'package:maghsalati/features/orders/presentation/view/order_details_screen.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/current_order_card.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/orders_header.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/orders_tabs_bar.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/previous_order_card.dart';
+import 'package:maghsalati/features/orders/presentation/view_model/order_updates.dart';
 import 'package:maghsalati/features/orders/presentation/view_model/orders_cubit.dart';
 
 /// شاشة الطلبات بتابين: الحالية والسابقة
@@ -27,24 +32,33 @@ class OrdersScreen extends StatefulWidget {
 
 class _OrdersScreenState extends State<OrdersScreen> {
   final OrdersCubit _cubit = getIt<OrdersCubit>();
+  late final StreamSubscription<int?> _updatesSubscription;
   int _selectedTab = 0;
 
   @override
   void initState() {
     super.initState();
     _cubit.getOrders();
+    // التاب عايش في IndexedStack، فبيتحدث لما طلب يتغير (إشعار أو أكشن أو
+    // طلب جديد) أو لما اليوزر يرجعله من البوتوم ناف
+    _updatesSubscription = getIt<OrderUpdates>().stream.listen(
+      (_) => _cubit.getOrders(),
+    );
   }
 
   @override
   void dispose() {
+    _updatesSubscription.cancel();
     _cubit.close();
     super.dispose();
   }
 
+  /// الطلب من الليستة بيتعرض على طول، والتفاصيل بتتجاب من السيرفر
   void _openDetails(OrderModel order) {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => OrderDetailsScreen(order: order)));
+    context.push(
+      AppRouter.orderDetails,
+      extra: OrderDetailsArgs.fromOrder(order),
+    );
   }
 
   /// بتتنادى بعد الفريم عشان الـ emit مايحصلش وسط الـ build

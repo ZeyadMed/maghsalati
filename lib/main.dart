@@ -1,4 +1,8 @@
+import 'dart:developer';
+
 import 'package:easy_localization/easy_localization.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -11,12 +15,14 @@ import 'dart:ui' as ui;
 import 'package:maghsalati/core/cache_manager/cache_manager.dart';
 import 'package:maghsalati/core/internet_connenction/internet_connection_state.dart';
 import 'package:maghsalati/core/internet_connenction/internet_connenction_cubit.dart';
+import 'package:maghsalati/core/notification/messaging_config.dart';
 import 'package:maghsalati/core/router/app_router.dart';
 import 'package:maghsalati/core/service_locator/service_locator.dart';
 import 'package:maghsalati/core/style/app_colors.dart';
 import 'package:maghsalati/core/style/assets.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
 import 'package:maghsalati/core/theme/theme.dart';
+import 'package:maghsalati/firebase_options.dart';
 
 final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
     GlobalKey<ScaffoldMessengerState>();
@@ -30,17 +36,16 @@ Future<void> main() async {
   // تهيئة ScreenUtil
   await ScreenUtil.ensureScreenSize();
 
-  // await Firebase.initializeApp(
-  //   options: DefaultFirebaseOptions.currentPlatform,
-  // );
-  // await FirebaseMessaging.instance.requestPermission();
-  // MessagingConfig.initFirebaseMessaging();
-  // FirebaseMessaging.onBackgroundMessage(MessagingConfig.messageHandler);
+  // الإشعارات هي اللي بتقول للعميل إن المغسلة ردت أو بعتت تعديل أو إن المندوب وصل
+  // ولو Firebase وقع لأي سبب الأبلكيشن بيكمل عادي من غير إشعارات
+  final firebaseReady = await _initFirebase();
 
   await CacheManager.init();
-  await CacheManager.fetchAndSaveFcmToken();
   EasyLocalization.ensureInitialized();
   await DI.getItInit();
+  // من غير await عشان طلب صلاحية الإشعارات مايوقفش فتح الأبلكيشن،
+  // وهي اللي بتحفظ الـ FCM اللي بيتبعت مع اللوجين
+  if (firebaseReady) MessagingConfig.initFirebaseMessaging();
 
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
@@ -58,6 +63,21 @@ Future<void> main() async {
       ),
     );
   });
+}
+
+/// الإشعار اللي بيوصل والأبلكيشن في الخلفية أو مقفول بيعرضه السيستم لوحده،
+/// والـ handler ده بس بيسجل إنه وصل
+Future<bool> _initFirebase() async {
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    FirebaseMessaging.onBackgroundMessage(MessagingConfig.messageHandler);
+    return true;
+  } catch (e) {
+    log('Firebase init failed: $e');
+    return false;
+  }
 }
 
 class MyApp extends StatelessWidget {

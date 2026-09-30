@@ -6,7 +6,8 @@ import 'package:maghsalati/core/style/app_colors.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
 
 /// الجزء اللي فوق في شاشة قبول الطلب: علامة الصح الخضرا
-/// وتحتها عنوان القبول واسم المغسلة ومواعيد الاستلام والتسليم
+/// وتحتها عنوان القبول واسم المغسلة وإن المندوب هيتواصل عشان الاستلام
+/// (مفيش مواعيد استلام وتسليم ثابتة في السايكل، فمابنوعدش بيوم معين)
 class AcceptedStatusHeader extends StatelessWidget {
   final String laundryName;
 
@@ -29,7 +30,11 @@ class AcceptedStatusHeader extends StatelessWidget {
         Gap(8.h),
         _buildAcceptedByLaundry(),
         Gap(4.h),
-        _buildTiming(),
+        Text(
+          'next_step_awaiting_pickup_body'.tr(),
+          style: TextStyles.greyColor2Regular14.copyWith(fontSize: 13.sp),
+          textAlign: TextAlign.center,
+        ),
       ],
     );
   }
@@ -53,26 +58,6 @@ class AcceptedStatusHeader extends StatelessWidget {
     return Text(
       '$laundryName ${'order_accepted_by'.tr()}',
       style: TextStyles.greyColor2Regular14.copyWith(fontSize: 13.sp),
-      textAlign: TextAlign.center,
-    );
-  }
-
-  /// "استلام: اليوم • تسليم: غداً" والقيم بخط تقيل
-  Widget _buildTiming() {
-    final labelStyle = TextStyles.greyColor2Regular14.copyWith(fontSize: 13.sp);
-    final valueStyle = TextStyles.darkBold14.copyWith(fontSize: 13.sp);
-
-    return Text.rich(
-      TextSpan(
-        style: labelStyle,
-        children: [
-          TextSpan(text: '${'pickup_label'.tr()}: '),
-          TextSpan(text: 'today'.tr(), style: valueStyle),
-          const TextSpan(text: ' • '),
-          TextSpan(text: '${'delivery_label'.tr()}: '),
-          TextSpan(text: 'tomorrow'.tr(), style: valueStyle),
-        ],
-      ),
       textAlign: TextAlign.center,
     );
   }

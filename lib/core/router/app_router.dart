@@ -1,4 +1,5 @@
 import 'package:go_router/go_router.dart';
+import 'package:maghsalati/core/helpers/web_view_container.dart';
 import 'package:maghsalati/core/router/bottom_nav_app.dart';
 import 'package:maghsalati/core/style/assets.dart';
 import 'package:maghsalati/features/auth/change_password/presentation/view/change_password_screen.dart';
@@ -16,7 +17,7 @@ import 'package:maghsalati/features/order_pending/data/model/pending_order_model
 import 'package:maghsalati/features/order_pending/presentation/view/confirm_order.dart';
 import 'package:maghsalati/features/order_pending/presentation/view/oreder_pending.dart';
 import 'package:maghsalati/features/order_pending/presentation/view/reject_order.dart';
-import 'package:maghsalati/features/orders/data/model/order_model.dart';
+import 'package:maghsalati/features/orders/data/model/order_details_args.dart';
 import 'package:maghsalati/features/orders/presentation/view/order_details_screen.dart';
 import 'package:maghsalati/features/orders/presentation/view/orders_screen.dart';
 import 'package:maghsalati/features/profile/data/model/user_model.dart';
@@ -64,23 +65,14 @@ abstract class AppRouter {
     routes: [
       // -----------------------------------Splash Screen and OnBoarding--------------------------------
       GoRoute(path: root, builder: (context, state) => const SplashScreen()),
-      //  GoRoute(
-      //     path: webViewContainer,
-      //     builder: (context, state) {
-      //       final extra = state.extra;
-      //       String url = '';
-      //       if (extra is String) {
-      //         url = extra;
-      //       } else if (extra is Map<String, dynamic>) {
-      //         url = (extra['url'] ?? '') as String;
-      //       } else if (extra is Map) {
-      //         url = (extra['url'] ?? '') as String;
-      //       }
-      //       return WebViewContainer(
-      //         url: url,
-      //       );
-      //     },
-      //   ),
+
+      // صفحة ويب جوه الأبلكيشن (الدفع)، والـ WebViewArgs بتيجي في state.extra
+      // والشاشة بترجع اللينك اللي خلصت عنده
+      GoRoute(
+        path: webViewContainer,
+        builder: (context, state) =>
+            WebViewContainer(args: state.extra as WebViewArgs),
+      ),
       GoRoute(
         path: initialRoot,
         builder: (context, state) => const BottomNavApp(),
@@ -168,11 +160,14 @@ abstract class AppRouter {
         builder: (context, state) => const OrdersScreen(),
       ),
 
-      // الطلب بيتبعت في state.extra جاي من كارت الطلب في شاشة الطلبات
+      // OrderDetailsArgs بتيجي في state.extra من كارت الطلب أو من الإشعار
+      // ومن غيرها مفيش رقم طلب نجيبه بيه فبيرجع للرئيسية
       GoRoute(
         path: orderDetails,
+        redirect: (context, state) =>
+            state.extra is OrderDetailsArgs ? null : initialRoot,
         builder: (context, state) =>
-            OrderDetailsScreen(order: state.extra as OrderModel),
+            OrderDetailsScreen(args: state.extra as OrderDetailsArgs),
       ),
       GoRoute(
         path: profileScreen,

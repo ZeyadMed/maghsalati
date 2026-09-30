@@ -63,6 +63,27 @@ abstract interface class Endpoints {
   /// جوه data.data ومعاها pageIndex و totalPages
   static const String orders = 'api/customer/orders';
 
+  /// GET: بترجع طلب واحد بتفاصيله جوه data (الأصناف والرحلات والتعديل والدفع)
+  /// شكل الريسبونس مش متوثق في الـ Swagger، فالموديل بيقرا أكتر من اسم للحقل
+  static String orderDetails(int orderId) => 'api/customer/orders/$orderId';
+
+  /// POST: بتاخد { approve } وبترد على تعديل المغسلة (AdjustmentPendingApproval)
+  /// الموافقة بتطبق التعديلات، والرفض بيرجّع الأصناف المختلف عليها ويلغي الزيادة
+  static String respondToAdjustment(int orderId) =>
+      'api/customer/orders/$orderId/adjustment/respond';
+
+  /// POST من غير body: بتعمل لينك دفع جديد لو الدفع فشل
+  /// مسموحة من InProgress لحد Delivered
+  static String retryPayment(int orderId) =>
+      'api/customer/orders/$orderId/retry-payment';
+
+  /// POST: بتاخد { otpCode } اللي مع المندوب لما يوصل، والطلب بيبقى Delivered
+  static String confirmDropoff(int tripId) =>
+      'api/customer/deliveries/$tripId/confirm-dropoff';
+
+  /// POST: بتاخد { laundryId, rating, comment } وبتضيف تقييم للمغسلة
+  static const String reviews = 'api/customer/reviews';
+
   /// GET: بترجع بيانات العميل { id, name, phoneNumber, address, cityId,
   /// cityName, latitude, longitude, phoneNumberConfirmed, createdAt } جوه data
   /// PUT: بتاخد { name, address, cityId, latitude, longitude } وبتعدلهم
@@ -85,6 +106,12 @@ abstract interface class Endpoints {
   /// PUT: بتعلم كل الإشعارات كمقروءة
   static const String readAllNotifications =
       'api/customer/notifications/read-all';
+
+  // ****************************** Payment ********************************
+  /// MyFatoorah بيحوّل صفحة الدفع على المسارين دول بعد الدفع ومعاهم ?paymentId
+  /// والباك بيسجل حالة الدفع لما الصفحة دي تتفتح، فالـ WebView لازم يسيبها تحمّل
+  static const String paymentCallback = 'api/payments/myfatoorah/callback';
+  static const String paymentError = 'api/payments/myfatoorah/error';
 
   // ****************************** App Info ********************************
   /// GET: بترجع { phoneNumber1, phoneNumber2, email } جوه data

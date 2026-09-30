@@ -7,18 +7,20 @@ import 'package:go_router/go_router.dart';
 import 'package:maghsalati/core/bloc/base_bloc.dart';
 import 'package:maghsalati/core/common_widget/custom_app_bar.dart';
 import 'package:maghsalati/core/common_widget/custom_error_message.dart';
+import 'package:maghsalati/core/router/app_router.dart';
 import 'package:maghsalati/core/service_locator/service_locator.dart';
 import 'package:maghsalati/core/style/app_colors.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
 import 'package:maghsalati/features/notifications/data/model/notification_model.dart';
 import 'package:maghsalati/features/notifications/presentation/view/widget/notification_card.dart';
 import 'package:maghsalati/features/notifications/presentation/view_model/notifications_cubit.dart';
+import 'package:maghsalati/features/orders/data/model/order_details_args.dart';
 
 enum _NotificationsAction { readAll, deleteAll }
 
-/// شاشة الإشعارات: الإشعارات بتيجي من api/laundry/notifications صفحة صفحة
-/// الضغط على الإشعار بيعلمه كمقروء، والسحب بيمسحه، والقايمة اللي فوق
-/// فيها تعليم الكل كمقروء ومسح الكل
+/// شاشة الإشعارات: الإشعارات بتيجي من api/customer/notifications صفحة صفحة
+/// الضغط على الإشعار بيعلمه كمقروء ويفتح الطلب لو مربوط بطلب، والسحب بيمسحه،
+/// والقايمة اللي فوق فيها تعليم الكل كمقروء ومسح الكل
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
 
@@ -217,7 +219,22 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       onDismissed: (_) => _run(_cubit.deleteNotification(notification.id)),
       child: NotificationCard(
         notification: notification,
-        onTap: () => _run(_cubit.markAsRead(notification.id)),
+        onTap: () => _onTap(notification),
+      ),
+    );
+  }
+
+  /// بيتعلّم كمقروء، ولو مربوط بطلب بيفتح تفاصيله ومعاه رقم الرحلة لو موجود
+  /// (إشعار وصول المندوب) عشان تأكيد الاستلام يلاقيه
+  void _onTap(NotificationModel notification) {
+    _run(_cubit.markAsRead(notification.id));
+    final orderId = notification.orderId;
+    if (orderId == null) return;
+    context.push(
+      AppRouter.orderDetails,
+      extra: OrderDetailsArgs(
+        orderId: orderId,
+        deliveryTripId: notification.deliveryTripId,
       ),
     );
   }

@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:maghsalati/core/common_widget/custom_error_message.dart';
+import 'package:maghsalati/core/notification/messaging_config.dart';
 import 'package:maghsalati/core/service_locator/service_locator.dart';
 import 'package:maghsalati/core/style/app_colors.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
@@ -11,6 +12,7 @@ import 'package:maghsalati/features/cart/presentation/view_model/cart_cubit.dart
 import 'package:maghsalati/features/home/presentation/view/home_screen.dart';
 import 'package:maghsalati/features/home/presentation/view/search_screen.dart';
 import 'package:maghsalati/features/orders/presentation/view/orders_screen.dart';
+import 'package:maghsalati/features/orders/presentation/view_model/order_updates.dart';
 import 'package:maghsalati/features/profile/presentation/view/profile_screen.dart';
 import 'package:maghsalati/features/splash/presentation/view/splash_screen.dart';
 
@@ -67,6 +69,16 @@ class _BottomNavAppState extends State<BottomNavApp> {
     super.initState();
     // Only load home page initially
     _getPage(0);
+    // لو الأبلكيشن اتفتح من إشعار طلب، الطلب بيتفتح فوق الرئيسية بعد أول فريم
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => MessagingConfig.markAppReady(),
+    );
+  }
+
+  @override
+  void dispose() {
+    MessagingConfig.markAppNotReady();
+    super.dispose();
   }
 
   Widget _getPage(int index) {
@@ -103,6 +115,10 @@ class _BottomNavAppState extends State<BottomNavApp> {
     // تاب السلة متكاش فبنحدث السلة كل ما يرجعله، وأول مرة بتتجاب من initState بتاعه
     if (index == 2 && _cachedPages.containsKey(2)) {
       getIt<CartCubit>().getCart();
+    }
+    // وتاب الطلبات بنفس الفكرة، عشان حالة الطلبات بتتغير من غير ما اليوزر يعمل حاجة
+    if (index == 3 && _cachedPages.containsKey(3)) {
+      getIt<OrderUpdates>().notify();
     }
 
     setState(() {

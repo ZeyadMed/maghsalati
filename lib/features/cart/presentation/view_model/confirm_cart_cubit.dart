@@ -5,10 +5,11 @@ import 'package:maghsalati/features/cart/data/model/confirm_cart_request.dart';
 
 /// بتبعت بيانات الاستلام على api/customer/cart/confirm عشان السلة تتحول لطلب
 /// بتتعمل جديدة مع كل شيت تأكيد وبتتقفل معاه
-class ConfirmCartCubit extends Cubit<BaseState<void>> {
+/// لما تنجح state.data بيبقى فيه رقم الطلب اللي اتعمل (0 لو مش معروف)
+class ConfirmCartCubit extends Cubit<BaseState<int>> {
   final CartDataSource _dataSource;
 
-  ConfirmCartCubit(this._dataSource) : super(const BaseState<void>());
+  ConfirmCartCubit(this._dataSource) : super(const BaseState<int>());
 
   Future<void> confirm(ConfirmCartRequest request) async {
     // ريكوست واحد في المرة عشان الدبل كليك مايعملش طلبين
@@ -23,7 +24,7 @@ class ConfirmCartCubit extends Cubit<BaseState<void>> {
       (failure) => emit(
         state.copyWith(status: Status.failure, errorMessage: failure.message),
       ),
-      (_) => emit(state.copyWith(status: Status.success)),
+      (orderId) => emit(state.copyWith(status: Status.success, data: orderId)),
     );
   }
 }

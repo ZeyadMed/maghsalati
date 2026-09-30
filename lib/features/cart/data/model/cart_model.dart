@@ -56,8 +56,10 @@ class CartModel {
   num get deliveryFees => pickupFee + dropoffFee;
 
   /// بيحول السلة لطلب شاشة الانتظار، والتوصيل = رسوم الاستلام + التسليم
-  PendingOrderModel toPendingOrder() {
+  /// [orderId] هو رقم الطلب اللي رجع من التأكيد
+  PendingOrderModel toPendingOrder({int orderId = 0}) {
     return PendingOrderModel(
+      orderId: orderId,
       laundryName: laundryName,
       deliveryPrice: pickupFee + dropoffFee,
       lines: items

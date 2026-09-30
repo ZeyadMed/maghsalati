@@ -11,6 +11,13 @@ abstract interface class LaundryReviewsDataSource {
     required int pageSize,
     int? rating,
   });
+
+  /// تقييم العميل للمغسلة بعد ما الطلب يتسلّم، والتعليق اختياري
+  Future<Either<Failure, void>> addReview({
+    required int laundryId,
+    required int rating,
+    String? comment,
+  });
 }
 
 class LaundryReviewsDataSourceImpl implements LaundryReviewsDataSource {
@@ -34,5 +41,18 @@ class LaundryReviewsDataSourceImpl implements LaundryReviewsDataSource {
       },
       fromJson: ReviewsPageModel.fromJson,
     );
+  }
+
+  @override
+  Future<Either<Failure, void>> addReview({
+    required int laundryId,
+    required int rating,
+    String? comment,
+  }) async {
+    final result = await _genericDataSource.postData<Map<String, dynamic>>(
+      endpoint: Endpoints.reviews,
+      data: {'laundryId': laundryId, 'rating': rating, 'comment': ?comment},
+    );
+    return result.fold((failure) => Left(failure), (_) => const Right(null));
   }
 }

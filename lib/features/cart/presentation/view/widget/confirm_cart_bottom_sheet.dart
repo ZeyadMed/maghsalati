@@ -12,23 +12,26 @@ import 'package:maghsalati/core/widget/custom_phone_field.dart';
 import 'package:maghsalati/core/widget/custom_text_field.dart';
 import 'package:maghsalati/features/auth/register/presentation/view/widget/location_picker_field.dart';
 import 'package:maghsalati/features/cart/data/model/confirm_cart_request.dart';
+import 'package:maghsalati/features/cart/presentation/view_model/cart_cubit.dart';
 import 'package:maghsalati/features/cart/presentation/view_model/confirm_cart_cubit.dart';
 import 'package:maghsalati/features/home/presentation/view_model/location_controller.dart';
+import 'package:maghsalati/features/laundry_details/presentation/view_model/selected_services_controller.dart';
+import 'package:maghsalati/features/orders/presentation/view_model/order_updates.dart';
 
 /// شيت بيانات الاستلام: العنوان والموقع واسم ورقم اللي هيسلم الهدوم،
 /// وبيبعتهم على api/customer/cart/confirm قبل ما الطلب يتأكد
 class ConfirmCartBottomSheet extends StatefulWidget {
   const ConfirmCartBottomSheet({super.key});
 
-  /// بيرجع true لو الطلب اتأكد من السيرفر، و false لو قفل الشيت من غير تأكيد
-  static Future<bool> show(BuildContext context) async {
-    final confirmed = await showModalBottomSheet<bool>(
+  /// بيرجع رقم الطلب لو اتأكد من السيرفر (0 لو الرقم مش معروف)،
+  /// و null لو قفل الشيت من غير تأكيد
+  static Future<int?> show(BuildContext context) {
+    return showModalBottomSheet<int>(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (_) => const ConfirmCartBottomSheet(),
     );
-    return confirmed ?? false;
   }
 
   @override
@@ -47,6 +50,9 @@ class _ConfirmCartBottomSheetState extends State<ConfirmCartBottomSheet> {
 
   /// الرقم كامل بكود الدولة، بيتحدث من [CustomPhoneField] مع كل كتابة
   String _completePhone = '';
+
+  /// خطأ من الشيت نفسه قبل ما الريكوست يتبعت، زي إن الموقع مش متحدد
+  String? _localError;
 
   @override
   void initState() {
@@ -74,10 +80,11 @@ class _ConfirmCartBottomSheetState extends State<ConfirmCartBottomSheet> {
     if (!_formKey.currentState!.validate()) return;
 
     // الإحداثيات بتيجي من الـ GPS بس، فلو العنوان اتكتب بإيده لازم يحدد موقعه
-    if (_latitude == null || _longitude == null) {
-      context.showErrorMessage('pickup_location_required'.tr());
-      return;
-    }
+    final missingLocation = _latitude == null || _longitude == null;
+    setState(() {
+      _localError = missingLocation ? 'pickup_location_required'.tr() : null;
+    });
+    if (missingLocation) return;
 
     _cubit.confirm(
       ConfirmCartRequest(
@@ -90,16 +97,22 @@ class _ConfirmCartBottomSheetState extends State<ConfirmCartBottomSheet> {
     );
   }
 
+  /// السلة اتفضت على السيرفر، فبنفضي الكميات اللي على الموبايل ونحدث السلة
+  /// ونبلّغ ليستة الطلبات إن فيه طلب جديد
+  void _onConfirmed(int orderId) {
+    getIt<SelectedServicesController>().clear();
+    getIt<CartCubit>().getCart();
+    getIt<OrderUpdates>().notify();
+    Navigator.of(context).pop(orderId);
+  }
+
   @override
   Widget build(BuildContext context) {
-    return BlocListener<ConfirmCartCubit, BaseState<void>>(
+    // الخطأ بيتعرض جوه الشيت فوق الزرار، لأن السناك بار بيطلع تحت الشيت ومابيبانش
+    return BlocListener<ConfirmCartCubit, BaseState<int>>(
       bloc: _cubit,
-      listener: (context, state) {
-        if (state.isSuccess) Navigator.of(context).pop(true);
-        if (state.isFailure) {
-          context.showErrorMessage(state.errorMessage ?? 'try_again'.tr());
-        }
-      },
+      listenWhen: (previous, current) => current.isSuccess,
+      listener: (context, state) => _onConfirmed(state.data ?? 0),
       child: Padding(
         // الشيت بيطلع فوق الكيبورد عشان الخانات ماتستخباش
         padding: EdgeInsets.only(bottom: context.keyboardHeight),
@@ -204,46 +217,88 @@ class _ConfirmCartBottomSheetState extends State<ConfirmCartBottomSheet> {
                 ? 'phoneNumberEmpty'.tr()
                 : null,
           ),
+          SizedBox(height: 12.h),
+          _buildFinalPriceNote(),
         ],
       ),
+    );
+  }
+
+  /// المغسلة بتعد القطع بعد ما توصلها وممكن تبعت تعديل، والدفع بيتطلب بعدها
+  /// فبنوضح من الأول إن الإجمالي ده مبدئي ومفيش دفع دلوقتي
+  Widget _buildFinalPriceNote() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(Icons.info_outline, size: 16.r, color: AppColors.primaryColor),
+        SizedBox(width: 6.w),
+        Expanded(
+          child: Text(
+            'final_price_note'.tr(),
+            style: TextStyles.greyColor2Regular14.copyWith(fontSize: 12.sp),
+          ),
+        ),
+      ],
     );
   }
 
   Widget _buildSubmitButton() {
     return Padding(
       padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 12.h),
-      child: BlocBuilder<ConfirmCartCubit, BaseState<void>>(
+      child: BlocBuilder<ConfirmCartCubit, BaseState<int>>(
         bloc: _cubit,
         builder: (context, state) {
-          return SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: state.isLoading ? null : _submit,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryColor,
-                foregroundColor: AppColors.whiteColor,
-                disabledBackgroundColor: AppColors.primaryColor.withValues(
-                  alpha: 0.6,
+          final error =
+              _localError ??
+              (state.isFailure ? state.errorMessage ?? 'try_again'.tr() : null);
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (error != null) ...[
+                Text(
+                  error,
+                  style: TextStyles.darkRegular12.copyWith(
+                    color: AppColors.redColor2,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
-                elevation: 0,
-                padding: EdgeInsets.symmetric(vertical: 14.h),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12.r),
-                ),
-              ),
-              child: state.isLoading
-                  ? SizedBox(
-                      width: 20.r,
-                      height: 20.r,
-                      child: const CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: AppColors.whiteColor,
-                      ),
-                    )
-                  : Text('confirm_order'.tr(), style: TextStyles.whiteBold15),
-            ),
+                SizedBox(height: 8.h),
+              ],
+              _buildButton(state),
+            ],
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildButton(BaseState<int> state) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: state.isLoading ? null : _submit,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.primaryColor,
+          foregroundColor: AppColors.whiteColor,
+          disabledBackgroundColor: AppColors.primaryColor.withValues(
+            alpha: 0.6,
+          ),
+          elevation: 0,
+          padding: EdgeInsets.symmetric(vertical: 14.h),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12.r),
+          ),
+        ),
+        child: state.isLoading
+            ? SizedBox(
+                width: 20.r,
+                height: 20.r,
+                child: const CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: AppColors.whiteColor,
+                ),
+              )
+            : Text('confirm_order'.tr(), style: TextStyles.whiteBold15),
       ),
     );
   }

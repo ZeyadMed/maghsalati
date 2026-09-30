@@ -60,16 +60,26 @@ class OrderItemRow extends StatelessWidget {
   }
 
   /// اسم القطعة وتحته الكمية × سعر القطعة
+  /// ولو العميل رفض التعديل عليها بيبان جنب اسمها إنها راجعة من غير غسيل
   Widget _buildNameAndQuantity() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          item.name,
-          style: TextStyles.darkBold14.copyWith(fontWeight: FontWeight.w600),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
+        Row(
+          children: [
+            Flexible(
+              child: Text(
+                item.name,
+                style: TextStyles.darkBold14.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            if (item.isReturned) ...[Gap(6.w), _buildReturnedChip()],
+          ],
         ),
         Gap(4.h),
         Text(
@@ -85,11 +95,30 @@ class OrderItemRow extends StatelessWidget {
     );
   }
 
-  /// سعر السطر كله (الكمية × سعر القطعة)
+  Widget _buildReturnedChip() {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
+      decoration: BoxDecoration(
+        color: AppColors.redColor2.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20.r),
+      ),
+      child: Text(
+        'returned_item'.tr(),
+        style: TextStyles.darkBold12.copyWith(color: AppColors.redColor2),
+      ),
+    );
+  }
+
+  /// سعر السطر كله (الكمية × سعر القطعة)، ومتشطب لو القطعة راجعة
+  /// لأن سعرها اتشال من الإجمالي
   Widget _buildPrice() {
     return Text(
       '${formatOrderPrice(item.total)} ${'currency'.tr()}',
-      style: TextStyles.darkBold14.copyWith(fontWeight: FontWeight.w700),
+      style: TextStyles.darkBold14.copyWith(
+        fontWeight: FontWeight.w700,
+        color: item.isReturned ? AppColors.greyColor3 : null,
+        decoration: item.isReturned ? TextDecoration.lineThrough : null,
+      ),
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
     );

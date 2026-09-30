@@ -2,12 +2,18 @@ import 'dart:convert';
 import 'dart:developer';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:maghsalati/core/extensions/string_extension.dart';
+import 'package:maghsalati/core/cache_manager/cache_manager.dart';
+import 'package:maghsalati/core/router/app_router.dart';
+import 'package:maghsalati/core/service_locator/service_locator.dart';
+import 'package:maghsalati/features/orders/data/model/order_details_args.dart';
+import 'package:maghsalati/features/orders/presentation/view_model/order_updates.dart';
 
 import '../helpers/logger.dart';
 
+/// إشعارات الطلبات (المغسلة قبلت أو رفضت، فيه تعديل، المندوب وصل، الدفع...)
+/// الإشعار اللي فيه orderId بيحدّث شاشات الطلب المفتوحة أول ما يوصل،
+/// ولما يدوس عليه بيفتح تفاصيل الطلب ده، وغير كده بيفتح شاشة الإشعارات
 class MessagingConfig {
   static final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
@@ -15,8 +21,12 @@ class MessagingConfig {
   // Safety Tip 1: Add a flag to track if initialization is complete
   static bool _initializationComplete = false;
 
-  // Safety Tip 2: Queue for notifications received before initialization
-  static final List<Map<String, dynamic>> _pendingNotifications = [];
+  /// الأبلكيشن وصل للرئيسية وبقى ينفع نفتح شاشات فوقها
+  static bool _appReady = false;
+
+  /// إشعار اتداس عليه قبل ما الأبلكيشن يوصل للرئيسية (فتحه وهو مقفول)
+  /// بيستنى لحد البوتوم ناف، عشان السبلاش مايمسحش الشاشة اللي فتحناها
+  static Map<String, dynamic>? _pendingTap;
 
   static Future<void> createNotificationChannel() async {
     const AndroidNotificationChannel channel = AndroidNotificationChannel(
@@ -87,7 +97,7 @@ class MessagingConfig {
             iOS: initializationSettingsIOS,
           );
 
-      // Safety Tip 4: Initialize notifications with robust error handling
+      // الإشعار اللي بنعرضه واحنا جوه الأبلكيشن بيشيل الـ data في الـ payload
       await flutterLocalNotificationsPlugin.initialize(
         initializationSettings,
         onDidReceiveNotificationResponse: (NotificationResponse response) {
@@ -96,7 +106,7 @@ class MessagingConfig {
             try {
               final data =
                   jsonDecode(response.payload!) as Map<String, dynamic>;
-              _handleNotificationWithSafetyChecks(data);
+              _handleTap(data);
             } catch (e) {
               log('Error parsing notification payload: $e');
             }
@@ -104,41 +114,29 @@ class MessagingConfig {
         },
       );
 
-      // Safety Tip 5: Handle all possible permission states
-      switch (settings.authorizationStatus) {
-        case AuthorizationStatus.authorized:
-          log('User granted permission');
-          break;
-        case AuthorizationStatus.provisional:
-          log('User granted provisional permission');
-          break;
-        case AuthorizationStatus.denied:
-          log('User denied permission');
-          break;
-        case AuthorizationStatus.notDetermined:
-          log('Permission not determined');
-          break;
-      }
+      log('Notification permission: ${settings.authorizationStatus}');
 
-      // Safety Tip 6: Add error handling for topic subscription
-      try {
-        await FirebaseMessaging.instance.subscribeToTopic('notifications');
-      } catch (e) {
-        log('Error subscribing to topic: $e');
-      }
-
-      FirebaseMessaging.instance.onTokenRefresh.listen((newFCM) async {
-        // Handle token refresh with your backend
+      // التوكن بيتبعت مع اللوجين والتحقق من الرقم، فبنحفظه كل ما يتغير
+      // (مفيش endpoint نحدثه بيه من غير لوجين جديد). وعلى iOS لو توكن APNs
+      // اتأخر، أول FCM بيوصل من هنا
+      FirebaseMessaging.instance.onTokenRefresh.listen((token) async {
+        await CacheManager.saveFcmTokenToken(token);
+        await _subscribeToTopic();
       });
 
-      FirebaseMessaging.instance.getToken().then((token) async {
-        // Handle token with your backend
+      // على iOS الـ FCM والتوبيك الاتنين محتاجين توكن APNs يوصل الأول،
+      // وده بيوصل بعد طلب الصلاحية بشوية، فبنستناه في الخلفية من غير await
+      // عشان تسجيل الـ listeners اللي تحت (زي الإشعار اللي فتح الأبلكيشن) مايتأخرش
+      CacheManager.fetchAndSaveFcmToken(
+        apnsWait: const Duration(seconds: 15),
+      ).then((token) {
+        if (token != null) _subscribeToTopic();
       });
 
-      // Safety Tip 7: Add error handling for message listeners
+      // إشعار وصل والأبلكيشن مفتوح: بنعرضه ونحدث شاشات الطلب على طول
       FirebaseMessaging.onMessage.listen((RemoteMessage event) async {
-        _incrementBadgeCount();
         log("Foreground message received");
+        _notifyOrderChanged(event.data);
         try {
           final RemoteNotification? notification = event.notification;
           if (notification != null) {
@@ -168,169 +166,113 @@ class MessagingConfig {
         }
       });
 
-      // Modified handlers with safety checks
+      // الأبلكيشن كان مقفول واتفتح من الإشعار
       FirebaseMessaging.instance.getInitialMessage().then((
         RemoteMessage? message,
       ) {
-        _incrementBadgeCount();
         if (message != null) {
           log('Terminated state message received');
-          // navigatorKey.currentState!.context.read<NotificationBadgeCubit>().incrementUnreadCount();
-          _handleNotificationWithSafetyChecks(message.data);
+          _handleTap(message.data);
         }
       });
 
+      // الأبلكيشن كان في الخلفية ورجع بالدوس على الإشعار
       FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-        _incrementBadgeCount();
         log('Background state message received');
-        _handleNotificationWithSafetyChecks(message.data);
+        _notifyOrderChanged(message.data);
+        _handleTap(message.data);
       });
 
       _initializationComplete = true;
-
-      // Safety Tip 8: Process any pending notifications
-      if (_pendingNotifications.isNotEmpty) {
-        log('Processing ${_pendingNotifications.length} pending notifications');
-        for (final data in _pendingNotifications) {
-          _handleNotificationWithSafetyChecks(data);
-        }
-        _pendingNotifications.clear();
-      }
     } catch (e) {
       log('Error initializing Firebase Messaging: $e');
     }
   }
 
+  /// توبيك الإشعارات العامة، وبيتنادى تاني مع تجديد التوكن ومفيش مشكلة في التكرار
+  static Future<void> _subscribeToTopic() async {
+    try {
+      await FirebaseMessaging.instance.subscribeToTopic('notifications');
+    } catch (e) {
+      log('Error subscribing to topic: $e');
+    }
+  }
+
+  /// بيشتغل والأبلكيشن في الخلفية أو مقفول، والسيستم هو اللي بيعرض الإشعار
+  /// فمابنفتحش أي شاشة هنا، الفتح بيحصل لما اليوزر يدوس
   @pragma('vm:entry-point')
   static Future<void> messageHandler(RemoteMessage message) async {
-    log('Background message handler triggered');
+    log('Background message data: ${message.data}');
+  }
 
-    // Safety Tip 9: Ensure Flutter binding is initialized
-    WidgetsFlutterBinding.ensureInitialized();
-    _incrementBadgeCount();
+  /// البوتوم ناف بيناديها أول ما يتبني، ولو فيه إشعار اتداس عليه قبلها بيتفتح دلوقتي
+  static void markAppReady() {
+    _appReady = true;
+    final pending = _pendingTap;
+    _pendingTap = null;
+    if (pending != null) _handleTap(pending);
+  }
+
+  /// لما البوتوم ناف يتقفل (خروج أو انتهاء الجلسة) مانفتحش طلبات فوق اللوجين
+  static void markAppNotReady() => _appReady = false;
+
+  /// قبل الرئيسية بيستنى في [_pendingTap]، وبعدها بيفتح على طول
+  /// (مش في post frame callback لأنه مابيطلبش فريم، فممكن يفضل مستني لو الشاشة ساكنة)
+  static void _handleTap(Map<String, dynamic> data) {
+    if (!_appReady) {
+      _pendingTap = data;
+      return;
+    }
+    _openFromTap(data);
+  }
+
+  /// الإشعار اللي فيه orderId بيفتح تفاصيل الطلب ده، ومعاه رقم الرحلة لو موجود
+  /// (إشعار وصول المندوب) عشان تأكيد الاستلام يلاقيه
+  static void _openFromTap(Map<String, dynamic> data) {
     try {
-      log('Background message data: ${message.data}');
-
-      // Safety Tip 10: Store the notification if app isn't ready
-      if (!_initializationComplete) {
-        _pendingNotifications.add(message.data);
-        log('Added notification to pending queue');
+      final orderId = _orderIdOf(data);
+      logger('Notification tapped for order: $orderId');
+      if (orderId == null) {
+        AppRouter.router.push(AppRouter.notificationScreen);
         return;
       }
-
-      // Wait for app to potentially initialize
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      _handleNotificationWithSafetyChecks(message.data);
+      AppRouter.router.push(
+        AppRouter.orderDetails,
+        extra: OrderDetailsArgs(
+          orderId: orderId,
+          deliveryTripId: _intOf(data, const ['deliveryTripId', 'tripId']),
+        ),
+      );
     } catch (e) {
-      log('Error in background message handler: $e');
+      log('Error opening notification: $e');
     }
   }
 
-  // Safety Tip 11: Centralized notification handling with all safety checks
-  static void _handleNotificationWithSafetyChecks(Map<String, dynamic> data) {
-    try {
-      // Safety Tip 12: Use post-frame callback to ensure widget tree is ready
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _processNotificationData(data);
-      });
-    } catch (e) {
-      log('Error in notification handler: $e');
+  /// شاشة الطلب المفتوحة (أو الليستة) بتجيبه تاني من السيرفر
+  static void _notifyOrderChanged(Map<String, dynamic> data) {
+    final orderId = _orderIdOf(data);
+    if (orderId != null && getIt.isRegistered<OrderUpdates>()) {
+      getIt<OrderUpdates>().notify(orderId);
     }
   }
 
-  // Safety Tip 13: Separate data processing from navigation logic
-  static void _processNotificationData(Map<String, dynamic> data) {
-    _incrementBadgeCount();
+  /// شكل الـ data مش متوثق، فبنقرا الأسماء المتوقعة زي الإشعارات المحفوظة
+  static int? _orderIdOf(Map<String, dynamic> data) =>
+      _intOf(data, const ['orderId', 'order_id', 'OrderId']);
 
-    try {
-      final String? route = data['route'];
-      logger('Notification route: $route');
-
-      if (route == null) {
-        loggerError(
-          'Route missing or navigator not ready - adding to pending queue',
-        );
-        _pendingNotifications.add(data);
-        return;
-      }
-      // Get the bloc instance and refresh notifications
-
-      // Safety Tip 14: Use a switch statement for better route handling
-      switch (route) {
-        case "show_order_for_nurse":
-          _navigateToPatientScreen(data);
-          break;
-        case "notification":
-          _navigateToNotificationScreen();
-          break;
-        default:
-          log('Unknown notification route: $route');
-      }
-    } catch (e) {
-      log('Error processing notification data: $e');
+  /// قيم الـ data في FCM بتيجي نصوص، فبنحولها لأرقام
+  static int? _intOf(Map<String, dynamic> data, List<String> keys) {
+    for (final key in keys) {
+      final value = int.tryParse('${data[key] ?? ''}');
+      if (value != null && value > 0) return value;
     }
-  }
-
-  // Safety Tip 15: Isolate navigation methods for better error handling
-  static void _navigateToPatientScreen(Map<String, dynamic> data) {
-    try {
-      final id = data['order_id']?.toString().toInt;
-      final phoneNumber = data['phone_number']?.toString();
-
-      if (id == null || phoneNumber == null) {
-        loggerError(
-          'Missing required parameters for patient screen id $id or phone number $phoneNumber',
-        );
-        return;
-      }
-
-      // _goToScreen(
-      //   PationtScreen(id: id, phoneNumber: phoneNumber),
-      // );
-    } catch (e) {
-      log('Error navigating to patient screen: $e');
-    }
-  }
-
-  static void _navigateToNotificationScreen() {
-    try {
-      // _goToScreen(const NurserNotificationScreen());
-    } catch (e) {
-      log('Error navigating to notification screen: $e');
-    }
-  }
-
-  // static void _goToScreen(Widget widget) {
-  //   if (navigatorKey.currentState != null) {
-  //     navigatorKey.currentState?.context.go(widget);
-  //   } else {
-  //     log('Navigator context is not available');
-  //   }
-  // }
-
-  static void _incrementBadgeCount() {
-    try {
-      // Try to get cubit from service locator first
-      // getIt<NotificationBadgeCubit>().incrementUnreadCount();
-      log('Incremented badge count via service locator');
-    } catch (e) {
-      // Fallback to navigator context if available
-      // if (navigatorKey.currentState != null) {
-      //   navigatorKey.currentState!.context
-      //       .read<NotificationBadgeCubit>()
-      //       .incrementUnreadCount();
-      //   log('Incremented badge count via navigator context');
-      // } else {
-      //   log('Could not increment badge - no access to cubit');
-      // }
-    }
+    return null;
   }
 
   // Safety Tip 16: Dispose method to clear notifications and reset state
   static void dispose() {
     flutterLocalNotificationsPlugin.cancelAll();
     _initializationComplete = false;
-    _pendingNotifications.clear();
+    _pendingTap = null;
   }
 }

@@ -36,13 +36,15 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   /// بيفتح شيت بيانات الاستلام، ولما السيرفر يأكد الطلب بيودي على شاشة
-  /// انتظار موافقة المغسلة ويحدث السلة لأنها بتفضى بعد التأكيد
+  /// انتظار موافقة المغسلة ومعاه رقم الطلب (الشيت نفسه بيحدث السلة)
   Future<void> _onConfirmOrder(CartModel cart) async {
     if (cart.isEmpty) return;
-    final confirmed = await ConfirmCartBottomSheet.show(context);
-    if (!confirmed || !mounted) return;
-    _cartCubit.getCart();
-    context.push(AppRouter.orderPending, extra: cart.toPendingOrder());
+    final orderId = await ConfirmCartBottomSheet.show(context);
+    if (orderId == null || !mounted) return;
+    context.push(
+      AppRouter.orderPending,
+      extra: cart.toPendingOrder(orderId: orderId),
+    );
   }
 
   /// بنأكد قبل مسح السلة كلها عشان مايمسحهاش بالغلط

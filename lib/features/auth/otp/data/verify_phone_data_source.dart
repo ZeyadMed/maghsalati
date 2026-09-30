@@ -1,3 +1,4 @@
+import 'package:maghsalati/core/cache_manager/cache_manager.dart';
 import 'package:maghsalati/core/helpers/generic_data_source.dart';
 import 'package:maghsalati/core/http/either.dart';
 import 'package:maghsalati/core/http/endpoints.dart';
@@ -31,6 +32,8 @@ class VerifyPhoneDataSourceImpl implements VerifyPhoneDataSource {
         'code': code,
         'deviceInfo': deviceInfo,
         'deviceId': deviceId,
+        // الـ FCM عشان إشعارات الطلبات توصل من أول جلسة بعد التسجيل
+        'deviceToken': await CacheManager.deviceToken(),
       },
       headers: {'Authorization': null},
       fromJson: (json) => AuthModel.fromJson(json),
