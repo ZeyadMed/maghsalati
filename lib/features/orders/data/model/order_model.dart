@@ -29,6 +29,19 @@ enum OrderStatus {
 
   /// مرفوضة (9) - نهائية، والطلب بيروح على تاب السابقة
   rejected,
+
+  /// بانتظار مندوب التوصيل (10) - الطلب جاهز والمندوب رايح المغسلة ياخده
+  awaitingDropoffCollection,
+
+  /// فشل الاستلام (11) - المندوب معرفش ياخد الهدوم من العميل،
+  /// والمغسلة يا تعيد المحاولة يا تلغي
+  pickupFailed,
+
+  /// فشل التوصيل (12) - المندوب معرفش يسلّم ورجّع الهدوم للمغسلة
+  deliveryFailed,
+
+  /// ملغية (13) - نهائية، والطلب بيروح على تاب السابقة
+  cancelled,
 }
 
 extension OrderStatusX on OrderStatus {
@@ -44,17 +57,28 @@ extension OrderStatusX on OrderStatus {
     OrderStatus.outForDelivery => 'status_out_for_delivery',
     OrderStatus.delivered => 'status_delivered',
     OrderStatus.rejected => 'status_rejected',
+    OrderStatus.awaitingDropoffCollection =>
+      'status_awaiting_dropoff_collection',
+    OrderStatus.pickupFailed => 'status_pickup_failed',
+    OrderStatus.deliveryFailed => 'status_delivery_failed',
+    OrderStatus.cancelled => 'status_cancelled',
   };
 
-  /// المسلّمة والمرفوضة خلصوا خلاص، فبيروحوا على تاب السابقة
-  bool get isFinished =>
-      this == OrderStatus.delivered || this == OrderStatus.rejected;
+  /// المسلّمة والمرفوضة والملغية خلصوا خلاص، فبيروحوا على تاب السابقة
+  bool get isFinished => switch (this) {
+    OrderStatus.delivered ||
+    OrderStatus.rejected ||
+    OrderStatus.cancelled => true,
+    _ => false,
+  };
 
   /// الدفع بيتطلب بعد المطابقة، وإعادة الدفع مسموحة من InProgress لحد Delivered
   bool get isPaymentPhase => switch (this) {
     OrderStatus.inProgress ||
     OrderStatus.ready ||
+    OrderStatus.awaitingDropoffCollection ||
     OrderStatus.outForDelivery ||
+    OrderStatus.deliveryFailed ||
     OrderStatus.delivered => true,
     _ => false,
   };
@@ -74,6 +98,10 @@ extension OrderStatusX on OrderStatus {
         7 => OrderStatus.outForDelivery,
         8 => OrderStatus.delivered,
         9 => OrderStatus.rejected,
+        10 => OrderStatus.awaitingDropoffCollection,
+        11 => OrderStatus.pickupFailed,
+        12 => OrderStatus.deliveryFailed,
+        13 => OrderStatus.cancelled,
         _ => OrderStatus.newOrder,
       };
     }
@@ -86,6 +114,10 @@ extension OrderStatusX on OrderStatus {
       'outfordelivery' => OrderStatus.outForDelivery,
       'delivered' => OrderStatus.delivered,
       'rejected' => OrderStatus.rejected,
+      'awaitingdropoffcollection' => OrderStatus.awaitingDropoffCollection,
+      'pickupfailed' => OrderStatus.pickupFailed,
+      'deliveryfailed' => OrderStatus.deliveryFailed,
+      'cancelled' || 'canceled' => OrderStatus.cancelled,
       _ => OrderStatus.newOrder,
     };
   }
@@ -437,8 +469,7 @@ class OrderModel {
   bool get hasPaymentUrl => paymentUrl != null && paymentUrl!.isNotEmpty;
 
   /// رقم رحلة التسليم اللي بيتبعت مع كود التسليم، null لو مش معروف
-  int? get dropoffTripId =>
-      (dropoffTrip?.id ?? 0) > 0 ? dropoffTrip!.id : null;
+  int? get dropoffTripId => (dropoffTrip?.id ?? 0) > 0 ? dropoffTrip!.id : null;
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
     final laundry = json.pickMap(['laundry']) ?? const <String, dynamic>{};
@@ -448,8 +479,7 @@ class OrderModel {
 
     return OrderModel(
       id: (json['id'] as num?)?.toInt() ?? 0,
-      laundryId:
-          json.pickInt(['laundryId']) ?? laundry.pickInt(['id']) ?? 0,
+      laundryId: json.pickInt(['laundryId']) ?? laundry.pickInt(['id']) ?? 0,
       laundryName: _firstNotEmpty([
         json['laundryName']?.toString() ?? '',
         laundry.pickString(['name']),
@@ -493,7 +523,8 @@ class OrderModel {
     // لو النوع مش مكتوب بالاسم، الاستلام بيتعمل الأول والتسليم بعده
     final index = type == DeliveryTripType.pickup ? 0 : 1;
     final hasNamedType = trips.any(
-      (trip) => OrderTripModel.tripTypeOf(trip.pick(['type', 'tripType'])) != null,
+      (trip) =>
+          OrderTripModel.tripTypeOf(trip.pick(['type', 'tripType'])) != null,
     );
     if (!hasNamedType && trips.length > index) {
       return OrderTripModel.fromJson(trips[index], type: type);

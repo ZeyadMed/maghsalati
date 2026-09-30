@@ -7,7 +7,10 @@ import 'package:maghsalati/features/orders/data/model/order_model.dart';
 abstract final class OrderStatusStyle {
   /// لون الكلام جوا الشارة
   static Color foregroundOf(OrderStatus status) => switch (status) {
-    OrderStatus.rejected => AppColors.redColor2,
+    OrderStatus.rejected ||
+    OrderStatus.pickupFailed ||
+    OrderStatus.deliveryFailed => AppColors.redColor2,
+    OrderStatus.cancelled => AppColors.greyColor3,
     OrderStatus.ready || OrderStatus.delivered => AppColors.greenColor,
     _ => AppColors.orangeColor,
   };

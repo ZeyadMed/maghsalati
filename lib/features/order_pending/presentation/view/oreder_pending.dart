@@ -72,14 +72,15 @@ class _OrederPendingState extends State<OrederPending>
     super.dispose();
   }
 
-  /// أي حالة بعد "جديدة" غير الرفض معناها إن المغسلة قبلت
+  /// أي حالة بعد "جديدة" غير الرفض والإلغاء معناها إن المغسلة قبلت
   /// و pushReplacement عشان لو رجع مايرجعش للانتظار
   void _onOrderLoaded(OrderModel order) {
     if (_resultShown || order.status == OrderStatus.newOrder) return;
     _resultShown = true;
     _pollTimer?.cancel();
     context.pushReplacement(
-      order.status == OrderStatus.rejected
+      order.status == OrderStatus.rejected ||
+              order.status == OrderStatus.cancelled
           ? AppRouter.rejectOrder
           : AppRouter.confirmOrder,
       extra: widget.order,

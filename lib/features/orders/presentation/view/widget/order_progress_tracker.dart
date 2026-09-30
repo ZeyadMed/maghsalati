@@ -23,7 +23,7 @@ class OrderProgressTracker extends StatelessWidget {
 
   const OrderProgressTracker({super.key, required this.status});
 
-  /// رقم الخطوة الحالية، و -1 للمرفوضة فالشريط بيبان كله رمادي
+  /// رقم الخطوة الحالية، و -1 للمرفوضة والملغية فالشريط بيبان كله رمادي
   int get _currentIndex => switch (status) {
     // المطابقة وموافقة التعديل بيحصلوا في المغسلة قبل الغسيل،
     // فالاستلام خلص وخطوة قيد التنفيذ هي اللي شغالة
@@ -31,6 +31,11 @@ class OrderProgressTracker extends StatelessWidget {
     OrderStatus.adjustmentPendingApproval => _steps.indexOf(
       OrderStatus.inProgress,
     ),
+    // الفشل بيفضل على الخطوة اللي وقف عندها، ومستني المندوب يعدي على المغسلة
+    // لسه جاهزة من ناحية العميل
+    OrderStatus.pickupFailed => _steps.indexOf(OrderStatus.awaitingPickup),
+    OrderStatus.awaitingDropoffCollection => _steps.indexOf(OrderStatus.ready),
+    OrderStatus.deliveryFailed => _steps.indexOf(OrderStatus.outForDelivery),
     // اتسلم يبقى كل الخطوات خلصت
     OrderStatus.delivered => _steps.length - 1,
     _ => _steps.indexOf(status),

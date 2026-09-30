@@ -33,6 +33,7 @@ class OrderNextStepCard extends StatelessWidget {
     // المندوب اللي يهم العميل: بتاع الاستلام قبل ما الهدوم تتاخد وبتاع التسليم بعدها
     final driverTrip = switch (order.status) {
       OrderStatus.awaitingPickup => order.pickupTrip,
+      OrderStatus.awaitingDropoffCollection ||
       OrderStatus.outForDelivery => order.dropoffTrip,
       _ => null,
     };
@@ -150,6 +151,12 @@ class OrderNextStepCard extends StatelessWidget {
       titleKey: 'next_step_ready_title',
       body: 'next_step_ready_body'.tr(),
     ),
+    OrderStatus.awaitingDropoffCollection => _NextStep(
+      icon: Icons.storefront_outlined,
+      color: AppColors.primaryColor,
+      titleKey: 'next_step_awaiting_dropoff_collection_title',
+      body: 'next_step_awaiting_dropoff_collection_body'.tr(),
+    ),
     // الزرار ظاهر طول التوصيل لأن أسماء حالات الرحلة مش متوثقة،
     // بس لو الرحلة قالت إن المندوب وصل العنوان بيقول كده
     OrderStatus.outForDelivery => _NextStep(
@@ -179,6 +186,27 @@ class OrderNextStepCard extends StatelessWidget {
       body: order.rejectionReason.isNotEmpty
           ? '${'rejection_reason'.tr()}: ${order.rejectionReason}'
           : 'next_step_rejected_body'.tr(),
+      actionKey: 'choose_another_laundry',
+      onAction: onChooseAnotherLaundry,
+    ),
+    // الفشل مش مطلوب فيه حاجة من العميل، المغسلة هي اللي بتقرر الخطوة الجاية
+    OrderStatus.pickupFailed => _NextStep(
+      icon: Icons.error_outline_rounded,
+      color: AppColors.redColor2,
+      titleKey: 'next_step_pickup_failed_title',
+      body: 'next_step_pickup_failed_body'.tr(),
+    ),
+    OrderStatus.deliveryFailed => _NextStep(
+      icon: Icons.error_outline_rounded,
+      color: AppColors.redColor2,
+      titleKey: 'next_step_delivery_failed_title',
+      body: 'next_step_delivery_failed_body'.tr(),
+    ),
+    OrderStatus.cancelled => _NextStep(
+      icon: Icons.block_rounded,
+      color: AppColors.greyColor3,
+      titleKey: 'next_step_cancelled_title',
+      body: 'next_step_cancelled_body'.tr(),
       actionKey: 'choose_another_laundry',
       onAction: onChooseAnotherLaundry,
     ),
