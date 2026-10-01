@@ -37,10 +37,10 @@ class ServicesSection extends StatelessWidget {
           padding: EdgeInsets.zero,
           itemCount: categories.length,
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 4,
+            crossAxisCount: 3,
             crossAxisSpacing: 10.w,
             mainAxisSpacing: 10.h,
-            childAspectRatio: 0.82,
+            childAspectRatio: 0.78,
           ),
           itemBuilder: (context, index) {
             final category = categories[index];

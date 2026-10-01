@@ -45,12 +45,21 @@ class CategoryGridCard extends StatelessWidget {
           children: [
             Expanded(child: _buildImage()),
             SizedBox(height: 8.h),
-            Text(
-              category.name,
-              style: TextStyles.darkBold14.copyWith(fontSize: 13.sp),
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+            // مساحة ثابتة لسطرين عشان الصور تفضل بنفس الحجم في كل الكروت
+            SizedBox(
+              height: 13.sp * 1.3 * 2,
+              child: Center(
+                child: Text(
+                  category.name,
+                  style: TextStyles.darkBold14.copyWith(
+                    fontSize: 13.sp,
+                    height: 1.3,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
             ),
           ],
         ),
