@@ -1,6 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:maghsalati/core/common_widget/custom_error_message.dart';
 import 'package:maghsalati/core/notification/messaging_config.dart';
+import 'package:maghsalati/core/realtime/realtime_service.dart';
+import 'package:maghsalati/core/realtime/realtime_status_bar.dart';
 import 'package:maghsalati/core/service_locator/service_locator.dart';
 import 'package:maghsalati/core/style/app_colors.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
@@ -23,7 +25,10 @@ class BottomNavApp extends StatefulWidget {
   State<BottomNavApp> createState() => _BottomNavAppState();
 }
 
-class _BottomNavAppState extends State<BottomNavApp> {
+class _BottomNavAppState extends State<BottomNavApp>
+    with WidgetsBindingObserver {
+  final RealtimeService _realtime = getIt<RealtimeService>();
+
   int _selectedIndex = 0;
   DateTime? _lastBackPressed;
   //final List<Widget?> _pages = List.filled(4, null);
@@ -73,10 +78,22 @@ class _BottomNavAppState extends State<BottomNavApp> {
     WidgetsBinding.instance.addPostFrameCallback(
       (_) => MessagingConfig.markAppReady(),
     );
+    // البوتوم ناف بيتبني بعد اللوجين أو من السبلاش لو فيه جلسة، فده أول
+    // مكان نتوصل فيه بالـ realtime، والخروج بيقفله من Session.clear
+    WidgetsBinding.instance.addObserver(this);
+    _realtime.start();
+  }
+
+  /// الاتصال ممكن يكون وقع واحنا في الخلفية، فبنوصل تاني والـ service
+  /// بيقول للشاشات تجيب من السيرفر لو كان اتقطع
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _realtime.start();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     MessagingConfig.markAppNotReady();
     super.dispose();
   }
@@ -213,7 +230,14 @@ class _BottomNavAppState extends State<BottomNavApp> {
       onWillPop: _onWillPop,
       child: Scaffold(
         backgroundColor: scaffoldColor,
-        body: IndexedStack(index: _selectedIndex, children: children),
+        body: Column(
+          children: [
+            Expanded(
+              child: IndexedStack(index: _selectedIndex, children: children),
+            ),
+            RealtimeStatusBar(status: _realtime.status),
+          ],
+        ),
         bottomNavigationBar: Container(
           decoration: BoxDecoration(
             color: navBarColor,

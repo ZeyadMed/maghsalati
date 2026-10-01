@@ -1,4 +1,5 @@
 import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:maghsalati/core/common_widget/custom_app_bar.dart';
@@ -15,10 +16,15 @@ class WebViewArgs {
   /// زي صفحة الـ callback بتاعة الدفع
   final List<String> finishUrls;
 
+  /// لو قيمته بقت مش null الشاشة بتقفل وترجعها، من غير ما تستنى الصفحة.
+  /// تفاصيل الطلب بتستخدمه لما نتيجة الدفع توصل من الـ realtime الأول
+  final ValueListenable<String?>? closeSignal;
+
   const WebViewArgs({
     required this.url,
     this.title = '',
     this.finishUrls = const [],
+    this.closeSignal,
   });
 }
 
@@ -38,6 +44,7 @@ class _WebViewContainerState extends State<WebViewContainer> {
   late final WebViewController _controller;
   int _progress = 0;
   bool _finished = false;
+  bool _confirmingLeave = false;
 
   @override
   void initState() {
@@ -59,18 +66,37 @@ class _WebViewContainerState extends State<WebViewContainer> {
         ),
       )
       ..loadRequest(Uri.parse(widget.args.url));
+    widget.args.closeSignal?.addListener(_onCloseSignal);
+  }
+
+  @override
+  void dispose() {
+    widget.args.closeSignal?.removeListener(_onCloseSignal);
+    super.dispose();
   }
 
   void _finishIfDone(String url) {
+    if (!widget.args.finishUrls.any(url.contains)) return;
+    _finish(url);
+  }
+
+  void _onCloseSignal() {
+    final result = widget.args.closeSignal?.value;
+    if (result != null) _finish(result);
+  }
+
+  void _finish(String result) {
     if (_finished || !mounted) return;
-    final done = widget.args.finishUrls.any(url.contains);
-    if (!done) return;
     _finished = true;
-    Navigator.of(context).pop(url);
+    final navigator = Navigator.of(context);
+    // لو ديالوج "هتخرج من الدفع؟" مفتوح بنقفله الأول، وإلا الـ pop هيقفله هو بس
+    if (_confirmingLeave) navigator.pop();
+    navigator.pop(result);
   }
 
   /// الخروج قبل ما الصفحة توصل للنهاية بيسأل الأول عشان مايقفلش الدفع بالغلط
   Future<void> _confirmLeave() async {
+    _confirmingLeave = true;
     final leave = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -101,7 +127,8 @@ class _WebViewContainerState extends State<WebViewContainer> {
         ],
       ),
     );
-    if ((leave ?? false) && mounted) Navigator.of(context).pop();
+    _confirmingLeave = false;
+    if ((leave ?? false) && mounted && !_finished) Navigator.of(context).pop();
   }
 
   @override

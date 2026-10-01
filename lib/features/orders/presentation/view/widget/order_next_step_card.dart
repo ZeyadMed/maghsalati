@@ -157,8 +157,9 @@ class OrderNextStepCard extends StatelessWidget {
       titleKey: 'next_step_awaiting_dropoff_collection_title',
       body: 'next_step_awaiting_dropoff_collection_body'.tr(),
     ),
-    // الزرار ظاهر طول التوصيل لأن أسماء حالات الرحلة مش متوثقة،
-    // بس لو الرحلة قالت إن المندوب وصل العنوان بيقول كده
+    // زرار الكود بيظهر بس لما الرحلة تقول إنها مستنية العميل
+    // (awaitingConfirmationBy == Customer)، لأن رحلة التسليم ليها كود قبله
+    // للمغسلة. ولو الريسبونس قديم من غير الحقل ده بيفضل ظاهر طول التوصيل
     OrderStatus.outForDelivery => _NextStep(
       icon: Icons.delivery_dining_outlined,
       color: AppColors.primaryColor,
@@ -166,9 +167,11 @@ class OrderNextStepCard extends StatelessWidget {
           ? 'next_step_driver_arrived_title'
           : 'next_step_out_for_delivery_title',
       body: 'next_step_out_for_delivery_body'.tr(),
-      actionKey: 'confirm_receipt',
+      actionKey: (order.dropoffTrip?.awaitsCustomer ?? true)
+          ? 'confirm_receipt'
+          : null,
       onAction: onConfirmDropoff,
-      needsAction: true,
+      needsAction: order.dropoffTrip?.awaitsCustomer ?? true,
     ),
     OrderStatus.delivered => _NextStep(
       icon: Icons.check_circle_outline_rounded,

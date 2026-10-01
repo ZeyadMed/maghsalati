@@ -4,6 +4,7 @@ import 'dart:developer';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:maghsalati/core/cache_manager/cache_manager.dart';
+import 'package:maghsalati/core/realtime/realtime_service.dart';
 import 'package:maghsalati/core/router/app_router.dart';
 import 'package:maghsalati/core/service_locator/service_locator.dart';
 import 'package:maghsalati/features/orders/data/model/order_details_args.dart';
@@ -127,16 +128,23 @@ class MessagingConfig {
       // على iOS الـ FCM والتوبيك الاتنين محتاجين توكن APNs يوصل الأول،
       // وده بيوصل بعد طلب الصلاحية بشوية، فبنستناه في الخلفية من غير await
       // عشان تسجيل الـ listeners اللي تحت (زي الإشعار اللي فتح الأبلكيشن) مايتأخرش
-      CacheManager.fetchAndSaveFcmToken(
-        apnsWait: const Duration(seconds: 15),
-      ).then((token) {
-        if (token != null) _subscribeToTopic();
-      });
+      CacheManager.fetchAndSaveFcmToken(apnsWait: const Duration(seconds: 15))
+          .then((token) {
+            if (token != null) _subscribeToTopic();
+          });
 
       // إشعار وصل والأبلكيشن مفتوح: بنعرضه ونحدث شاشات الطلب على طول
+      // ولو الـ realtime متوصل مابنعرضهوش، لأن نفس الحدث وصل من الـ hub
+      // والشاشة أو التنبيه اللي جوه الأبلكيشن اتعامل معاه.
+      // إشعارات التوبيك العامة مش أحداث hub فبتتعرض عادي
       FirebaseMessaging.onMessage.listen((RemoteMessage event) async {
         log("Foreground message received");
         _notifyOrderChanged(event.data);
+        final fromTopic = event.from?.startsWith('/topics/') ?? false;
+        if (!fromTopic && _realtimeConnected) {
+          log('Realtime connected, skipping foreground banner');
+          return;
+        }
         try {
           final RemoteNotification? notification = event.notification;
           if (notification != null) {
@@ -188,6 +196,10 @@ class MessagingConfig {
       log('Error initializing Firebase Messaging: $e');
     }
   }
+
+  static bool get _realtimeConnected =>
+      getIt.isRegistered<RealtimeService>() &&
+      getIt<RealtimeService>().isConnected;
 
   /// توبيك الإشعارات العامة، وبيتنادى تاني مع تجديد التوكن ومفيش مشكلة في التكرار
   static Future<void> _subscribeToTopic() async {

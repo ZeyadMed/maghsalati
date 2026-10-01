@@ -1,4 +1,5 @@
 import 'package:maghsalati/core/cache_manager/cache_manager.dart';
+import 'package:maghsalati/core/realtime/realtime_service.dart';
 import 'package:maghsalati/core/service_locator/service_locator.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view_model/selected_services_controller.dart';
 
@@ -9,7 +10,11 @@ abstract final class Session {
 
   /// بتمسح التوكنز وبيانات المستخدم والسلة، عشان اللي يدخل بعده
   /// مايلاقيش حاجة من الحساب القديم
+  /// والـ realtime بيقفل عشان الحساب اللي بعده مايستقبلش أحداثه
   static Future<void> clear() async {
+    if (getIt.isRegistered<RealtimeService>()) {
+      await getIt<RealtimeService>().stop();
+    }
     await CacheManager.clearTokens();
     await CacheManager.clearUserData();
     if (getIt.isRegistered<SelectedServicesController>()) {
@@ -25,6 +30,13 @@ abstract final class Session {
     return true;
   }
 
-  /// بتتنادى بعد لوجين ناجح عشان لو الجلسة الجديدة انتهت نحوّل تاني
-  static void started() => _expiryHandled = false;
+  /// بتتنادى بعد لوجين ناجح عشان لو الجلسة الجديدة انتهت نحوّل تاني،
+  /// وبتوصل الـ realtime على طول (لو كان ضيف والبوتوم ناف مفتوح أصلًا
+  /// مش هيتبني تاني فمش هيوصل هو)
+  static void started() {
+    _expiryHandled = false;
+    if (getIt.isRegistered<RealtimeService>()) {
+      getIt<RealtimeService>().start();
+    }
+  }
 }

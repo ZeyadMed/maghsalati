@@ -113,6 +113,12 @@ abstract interface class Endpoints {
   static const String paymentCallback = 'api/payments/myfatoorah/callback';
   static const String paymentError = 'api/payments/myfatoorah/error';
 
+  // ****************************** Realtime ********************************
+  /// SignalR hub واحد للتلت أبلكيشنز، السيرفر بيبعت بس والعميل بيسمع
+  /// التوكن بيتبعت في ?access_token والسيرفر بيحط كل يوزر في جروب لوحده
+  /// العميل بيستقبل OrderUpdated (OrderDto) و AdjustmentCreated (OrderAdjustmentDto)
+  static const String ordersHub = 'hubs/orders';
+
   // ****************************** App Info ********************************
   /// GET: بترجع { phoneNumber1, phoneNumber2, email } جوه data
   static const String contacts = 'api/auth/contacts';

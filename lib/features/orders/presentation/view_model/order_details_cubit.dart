@@ -22,6 +22,19 @@ class OrderDetailsCubit extends Cubit<BaseState<OrderModel>> {
     return refresh();
   }
 
+  /// الطلب كله وصل من الـ realtime، فبنعرضه على طول ونلغي أي ريكوست شغال
+  /// عشان نتيجته القديمة ماترجعش فوقه.
+  /// لينك الدفع مابيتاخدش من الأحداث، فلو جه فاضي بنسيب اللي كان معانا
+  void apply(OrderModel order) {
+    if (isClosed || order.id != _orderId) return;
+    ++_requestId;
+    final current = state.data;
+    final merged = !order.hasPaymentUrl && (current?.hasPaymentUrl ?? false)
+        ? order.withPaymentUrl(current!.paymentUrl)
+        : order;
+    emit(state.copyWith(status: Status.success, data: merged));
+  }
+
   Future<void> refresh() async {
     if (_orderId <= 0) return;
     final requestId = ++_requestId;

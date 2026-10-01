@@ -43,6 +43,23 @@ class OrdersCubit extends Cubit<BaseState<OrderModel>> {
     );
   }
 
+  /// طلب اتغير من الـ realtime: لو موجود في الليستة بنبدله مكانه،
+  /// ولو مش موجود (طلب جديد أو في صفحة لسه ماتحملتش) بنجيب أول صفحة تاني
+  void applyOrder(OrderModel order) {
+    if (isClosed) return;
+    final index = state.items.indexWhere((item) => item.id == order.id);
+    if (index < 0) {
+      getOrders();
+      return;
+    }
+    final current = state.items[index];
+    final items = [...state.items];
+    items[index] = !order.hasPaymentUrl && current.hasPaymentUrl
+        ? order.withPaymentUrl(current.paymentUrl)
+        : order;
+    emit(state.copyWith(items: items));
+  }
+
   /// الصفحة اللي بعدها، بتتنادى لما اليوزر يوصل لآخر الليستة
   Future<void> loadMore() async {
     if (state.hasReachedMax || state.isLoading || state.isLoadingMore) return;

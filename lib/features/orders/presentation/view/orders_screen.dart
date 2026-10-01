@@ -33,6 +33,7 @@ class OrdersScreen extends StatefulWidget {
 class _OrdersScreenState extends State<OrdersScreen> {
   final OrdersCubit _cubit = getIt<OrdersCubit>();
   late final StreamSubscription<int?> _updatesSubscription;
+  late final StreamSubscription<OrderModel> _ordersSubscription;
   int _selectedTab = 0;
 
   @override
@@ -44,11 +45,16 @@ class _OrdersScreenState extends State<OrdersScreen> {
     _updatesSubscription = getIt<OrderUpdates>().stream.listen(
       (_) => _cubit.getOrders(),
     );
+    // الطلب كله جاي من الـ realtime، فبيتبدل مكانه من غير ما نجيب الليستة كلها
+    _ordersSubscription = getIt<OrderUpdates>().orders.listen(
+      _cubit.applyOrder,
+    );
   }
 
   @override
   void dispose() {
     _updatesSubscription.cancel();
+    _ordersSubscription.cancel();
     _cubit.close();
     super.dispose();
   }

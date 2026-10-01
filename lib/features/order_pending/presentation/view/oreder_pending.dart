@@ -20,8 +20,8 @@ import 'package:maghsalati/features/orders/presentation/view_model/order_details
 import 'package:maghsalati/features/orders/presentation/view_model/order_updates.dart';
 
 /// شاشة انتظار موافقة المغسلة، بتتفتح بعد ما تدوس تأكيد الطلب
-/// بتتابع حالة الطلب الحقيقية: كل شوية بتسأل السيرفر، وكمان بتتحدث على طول
-/// لما ييجي إشعار عن الطلب. أول ما المغسلة تقبل أو ترفض بتروح للشاشة المناسبة
+/// بتتابع حالة الطلب الحقيقية: بتتحدث على طول من الـ realtime (OrderUpdated)
+/// أو الإشعار، وكل دقيقة بتسأل السيرفر احتياطي. أول ما المغسلة تقبل أو ترفض بتروح للشاشة المناسبة
 /// كل المحتوى في نص الشاشة، ولو الطلب طويل بيبقى قابل للسكرول
 class OrederPending extends StatefulWidget {
   final PendingOrderModel order;
@@ -34,12 +34,13 @@ class OrederPending extends StatefulWidget {
 
 class _OrederPendingState extends State<OrederPending>
     with WidgetsBindingObserver {
-  /// الإشعار هو اللي بيحرك الشاشة غالبًا، والسؤال ده احتياطي لو الإشعار ماوصلش
-  static const Duration _pollInterval = Duration(seconds: 15);
+  /// الـ realtime هو اللي بيحرك الشاشة، والسؤال ده احتياطي لو الاتصال وقع
+  static const Duration _pollInterval = Duration(seconds: 60);
 
   final OrderDetailsCubit _cubit = getIt<OrderDetailsCubit>();
   Timer? _pollTimer;
   StreamSubscription<int?>? _updatesSubscription;
+  StreamSubscription<OrderModel>? _ordersSubscription;
 
   /// عشان مانفتحش شاشة النتيجة مرتين لو ردين وصلوا ورا بعض
   bool _resultShown = false;
@@ -53,9 +54,12 @@ class _OrederPendingState extends State<OrederPending>
     WidgetsBinding.instance.addObserver(this);
     _cubit.load(widget.order.orderId);
     _pollTimer = Timer.periodic(_pollInterval, (_) => _cubit.refresh());
-    _updatesSubscription = getIt<OrderUpdates>().stream.listen((orderId) {
+    final updates = getIt<OrderUpdates>()..watch(widget.order.orderId);
+    _updatesSubscription = updates.stream.listen((orderId) {
       if (orderId == null || orderId == widget.order.orderId) _cubit.refresh();
     });
+    // الـ cubit بيتجاهل أي طلب تاني غير ده
+    _ordersSubscription = updates.orders.listen(_cubit.apply);
   }
 
   @override
@@ -68,6 +72,10 @@ class _OrederPendingState extends State<OrederPending>
     WidgetsBinding.instance.removeObserver(this);
     _pollTimer?.cancel();
     _updatesSubscription?.cancel();
+    _ordersSubscription?.cancel();
+    if (widget.order.hasOrderId) {
+      getIt<OrderUpdates>().unwatch(widget.order.orderId);
+    }
     _cubit.close();
     super.dispose();
   }

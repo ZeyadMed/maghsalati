@@ -34,6 +34,8 @@ import 'package:maghsalati/features/orders/presentation/view_model/payment_link_
 /// فوق حالة الطلب والخطوة الجاية (ولو فيه حاجة مطلوبة من العميل زرارها هنا)
 /// والدفع، وتحت القطع والحساب
 /// بتتحدث بالسحب، ولما التطبيق يرجع من الخلفية، ولما ييجي تحديث للطلب ده
+/// والـ realtime بيبعت الطلب كله فبيتعرض على طول، ولو المغسلة بعتت تعديل
+/// شيت المراجعة بيتفتح لوحده، ولو نتيجة الدفع وصلت صفحة الدفع بتقفل
 class OrderDetailsScreen extends StatefulWidget {
   final OrderDetailsArgs args;
 
@@ -48,6 +50,15 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen>
   final OrderDetailsCubit _cubit = getIt<OrderDetailsCubit>();
   final PaymentLinkCubit _paymentCubit = getIt<PaymentLinkCubit>();
   late final StreamSubscription<int?> _updatesSubscription;
+  late final StreamSubscription<OrderModel> _ordersSubscription;
+  late final StreamSubscription<int> _adjustmentsSubscription;
+
+  /// موجود بس وصفحة الدفع مفتوحة، وبيقفلها لما النتيجة توصل من الـ realtime
+  ValueNotifier<String?>? _paymentCloseSignal;
+
+  /// عشان شيت التعديل مايتفتحش مرتين (من الزرار ومن الحدث)
+  bool _adjustmentSheetOpen = false;
+  bool _dropoffSheetOpen = false;
 
   int get _orderId => widget.args.orderId;
 
@@ -57,9 +68,54 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen>
     WidgetsBinding.instance.addObserver(this);
     _cubit.load(_orderId, initial: widget.args.order);
     // إشعار أو أكشن غيّر الطلب ده (أو كل الطلبات لو الرقم null)
-    _updatesSubscription = getIt<OrderUpdates>().stream.listen((orderId) {
+    final updates = getIt<OrderUpdates>()..watch(_orderId);
+    _updatesSubscription = updates.stream.listen((orderId) {
       if (orderId == null || orderId == _orderId) _cubit.refresh();
     });
+    _ordersSubscription = updates.orders.listen(_onRealtimeOrder);
+    _adjustmentsSubscription = updates.adjustments.listen((orderId) {
+      if (orderId == _orderId) _onAdjustmentCreated();
+    });
+  }
+
+  /// OrderUpdated للطلب ده: بيتعرض على طول، ولو صفحة الدفع مفتوحة
+  /// والدفع نجح أو فشل بنقفلها و [_openPayment] يكمل ويعرض النتيجة
+  void _onRealtimeOrder(OrderModel order) {
+    if (order.id != _orderId) return;
+    final previousPayment = _cubit.state.data?.paymentStatus;
+    final wasAwaitingCode = _cubit.state.data?.awaitsDropoffCode ?? false;
+    _cubit.apply(order);
+
+    // المندوب وصل وبقى مستني الكود: نفتح شيت الكود لو الشاشة دي قدام اليوزر
+    if (order.awaitsDropoffCode &&
+        !wasAwaitingCode &&
+        (ModalRoute.of(context)?.isCurrent ?? false)) {
+      _confirmDropoff(order);
+    }
+
+    final settled =
+        order.paymentStatus == PaymentStatus.successful ||
+        order.paymentStatus == PaymentStatus.failed;
+    if (settled && order.paymentStatus != previousPayment) {
+      _paymentCloseSignal?.value = 'realtime';
+    }
+  }
+
+  /// AdjustmentCreated: بيوصل بعد OrderUpdated بحالة AdjustmentPendingApproval
+  /// فالطلب اللي معانا فيه التعديل غالبًا، ولو مش فيه بنجيبه الأول.
+  /// الشيت بيتفتح بس لو الشاشة دي اللي قدام اليوزر (مش تحت صفحة الدفع مثلًا)
+  Future<void> _onAdjustmentCreated() async {
+    if (_adjustmentSheetOpen) return;
+    var order = _cubit.state.data;
+    if (order?.adjustment == null ||
+        order!.status != OrderStatus.adjustmentPendingApproval) {
+      await _cubit.refresh();
+      order = _cubit.state.data;
+    }
+    if (!mounted || order == null) return;
+    if (order.status != OrderStatus.adjustmentPendingApproval) return;
+    if (!(ModalRoute.of(context)?.isCurrent ?? false)) return;
+    _reviewAdjustment(order);
   }
 
   /// الحالة ممكن تكون اتغيرت واليوزر بره التطبيق، زي بعد مكالمة المندوب
@@ -72,6 +128,10 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _updatesSubscription.cancel();
+    _ordersSubscription.cancel();
+    _adjustmentsSubscription.cancel();
+    // _paymentCloseSignal بيتقفل في _openPayment لما صفحة الدفع ترجع
+    getIt<OrderUpdates>().unwatch(_orderId);
     _cubit.close();
     _paymentCubit.close();
     super.dispose();
@@ -81,7 +141,10 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen>
   void _notifyOrderChanged() => getIt<OrderUpdates>().notify(_orderId);
 
   Future<void> _reviewAdjustment(OrderModel order) async {
+    if (_adjustmentSheetOpen) return;
+    _adjustmentSheetOpen = true;
     final approved = await AdjustmentReviewSheet.show(context, order);
+    _adjustmentSheetOpen = false;
     if (approved == null || !mounted) return;
     context.showSuccessMessage(
       (approved ? 'adjustment_approved' : 'adjustment_rejected').tr(),
@@ -94,16 +157,22 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen>
   void _pay(OrderModel order) => _paymentCubit.prepare(order);
 
   /// صفحة MyFatoorah بتقفل لوحدها لما توصل للـ callback أو الـ error،
+  /// أو لما نتيجة الدفع توصل من الـ realtime الأول ([_paymentCloseSignal])،
   /// وبعدها بنجيب حالة الدفع الحقيقية من السيرفر بدل ما نعتمد على اللينك
   Future<void> _openPayment(String url) async {
+    final closeSignal = ValueNotifier<String?>(null);
+    _paymentCloseSignal = closeSignal;
     final finishedAt = await context.push<String>(
       AppRouter.webViewContainer,
       extra: WebViewArgs(
         url: url,
         title: 'payment',
         finishUrls: const [Endpoints.paymentCallback, Endpoints.paymentError],
+        closeSignal: closeSignal,
       ),
     );
+    _paymentCloseSignal = null;
+    closeSignal.dispose();
     if (finishedAt == null || !mounted) return;
 
     await _cubit.refresh();
@@ -126,11 +195,14 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen>
   }
 
   Future<void> _confirmDropoff(OrderModel order) async {
+    if (_dropoffSheetOpen) return;
+    _dropoffSheetOpen = true;
     final confirmed = await ConfirmDropoffSheet.show(
       context,
       orderId: order.id,
       tripId: order.dropoffTripId ?? widget.args.deliveryTripId,
     );
+    _dropoffSheetOpen = false;
     if (!confirmed || !mounted) return;
     context.showSuccessMessage('dropoff_confirmed'.tr());
     _notifyOrderChanged();
@@ -153,8 +225,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen>
   Widget build(BuildContext context) {
     return BlocListener<PaymentLinkCubit, BaseState<String>>(
       bloc: _paymentCubit,
-      listenWhen: (previous, current) =>
-          current.isSuccess || current.isFailure,
+      listenWhen: (previous, current) => current.isSuccess || current.isFailure,
       listener: (context, state) {
         final url = state.data;
         if (state.isSuccess && url != null) _openPayment(url);

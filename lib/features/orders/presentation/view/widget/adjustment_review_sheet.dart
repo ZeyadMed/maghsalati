@@ -121,9 +121,17 @@ class _AdjustmentReviewSheetState extends State<AdjustmentReviewSheet> {
             _AdjustmentItemRow(item: items[i]),
           ],
         Gap(16.h),
-        _buildTotals(adjustment?.newItemsTotal),
+        _buildTotals(_newItemsTotal(adjustment)),
       ],
     );
+  }
+
+  /// الـ DTO الرسمي بيبعت فرق السعر بس، فالإجمالي الجديد = الحالي + الفرق
+  num? _newItemsTotal(OrderAdjustmentModel? adjustment) {
+    if (adjustment == null) return null;
+    if (adjustment.newItemsTotal != null) return adjustment.newItemsTotal;
+    final difference = adjustment.priceDifference;
+    return difference == null ? null : widget.order.itemsTotal + difference;
   }
 
   /// إجمالي القطع دلوقتي، وبعد التعديل لو السيرفر بعته
@@ -158,7 +166,9 @@ class _AdjustmentReviewSheetState extends State<AdjustmentReviewSheet> {
             label,
             style: highlighted
                 ? TextStyles.darkBold14
-                : TextStyles.darkRegular14.copyWith(color: AppColors.greyColor2),
+                : TextStyles.darkRegular14.copyWith(
+                    color: AppColors.greyColor2,
+                  ),
           ),
         ),
         Text(
@@ -220,11 +230,7 @@ class _AdjustmentItemRow extends StatelessWidget {
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildActionBadge(),
-              Gap(6.h),
-              ..._buildLines(),
-            ],
+            children: [_buildActionBadge(), Gap(6.h), ..._buildLines()],
           ),
         ),
         if (item.priceDifference != null) ...[

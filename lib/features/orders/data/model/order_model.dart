@@ -154,6 +154,10 @@ extension PaymentStatusX on PaymentStatus {
 /// نوع رحلة المندوب: الاستلام من بيت العميل للمغسلة، والتسليم من المغسلة للعميل
 enum DeliveryTripType { pickup, dropoff }
 
+/// مين اللي مستني يدخل الكود دلوقتي (awaitingConfirmationBy)
+/// رحلة التسليم ليها كودين: الأول للمغسلة وهي بتسلّم المندوب، والتاني للعميل
+enum TripConfirmer { laundry, customer }
+
 /// رحلة من رحلات الطلب. العميل محتاج منها رقمها عشان يأكد التسليم بالكود،
 /// وبيانات المندوب عشان يعرف مين جاي
 class OrderTripModel {
@@ -165,18 +169,43 @@ class OrderTripModel {
   final String driverName;
   final String driverPhone;
 
+  /// null لو مفيش حد مستني كود دلوقتي
+  final TripConfirmer? awaitingConfirmationBy;
+
+  /// السيرفر بعت حقول التأكيد (DeliveryTripDto الرسمي)، فـ [awaitingConfirmationBy]
+  /// لما يبقى null معناه إن مفيش كود مطلوب، مش إن الحقل مش موجود
+  final bool hasConfirmationInfo;
+
+  /// العميل أكد الاستلام بالكود والطلب بقى Delivered
+  final bool isConfirmed;
+
+  /// المغسلة سلمت الهدوم للمندوب (في رحلة التسليم)
+  final bool isHandedOver;
+
   const OrderTripModel({
     required this.id,
     required this.type,
     this.status = '',
     this.driverName = '',
     this.driverPhone = '',
+    this.awaitingConfirmationBy,
+    this.hasConfirmationInfo = false,
+    this.isConfirmed = false,
+    this.isHandedOver = false,
   });
 
   bool get hasDriver => driverName.isNotEmpty || driverPhone.isNotEmpty;
 
   /// المندوب وصل باب العميل وبقى معاه كود التسليم
-  bool get hasArrived => status.toLowerCase().contains('arriv');
+  bool get hasArrived =>
+      awaitingConfirmationBy == TripConfirmer.customer ||
+      status.toLowerCase().contains('arriv');
+
+  /// الكود مطلوب من العميل دلوقتي. لو السيرفر مابعتش حقول التأكيد (ريسبونس
+  /// قديم) بنفضل على السلوك القديم ونسيب الزرار ظاهر طول التوصيل
+  bool get awaitsCustomer => hasConfirmationInfo
+      ? awaitingConfirmationBy == TripConfirmer.customer
+      : true;
 
   /// { id, type, status, driverName, driverPhoneNumber } زي أبلكيشن المغسلة
   /// وبيانات المندوب ممكن تيجي جوه "driver" بدل ما تبقى في الرحلة نفسها
@@ -197,8 +226,22 @@ class OrderTripModel {
         json.pickString(['driverPhoneNumber', 'driverPhone']),
         driver.pickString(['phoneNumber', 'phone']),
       ]),
+      awaitingConfirmationBy: confirmerOf(json['awaitingConfirmationBy']),
+      hasConfirmationInfo:
+          json.containsKey('awaitingConfirmationBy') ||
+          json.containsKey('isAwaitingConfirmation'),
+      isConfirmed: json['isConfirmed'] == true,
+      isHandedOver: json['isHandedOver'] == true,
     );
   }
+
+  /// "Laundry" أو "Customer" بالاسم
+  static TripConfirmer? confirmerOf(Object? value) =>
+      switch ('${value ?? ''}'.toLowerCase()) {
+        'customer' => TripConfirmer.customer,
+        'laundry' => TripConfirmer.laundry,
+        _ => null,
+      };
 
   /// النوع بيتقري من الاسم بس، لأن الأرقام مش متوثقة ومش عارفين بتبدأ من كام
   static DeliveryTripType? tripTypeOf(Object? value) {
@@ -304,19 +347,46 @@ class OrderAdjustmentItemModel {
 
 /// التعديل اللي المغسلة بعتته ومستني رد العميل
 class OrderAdjustmentModel {
+  final int id;
   final List<OrderAdjustmentItemModel> items;
 
   /// إجمالي الأصناف بعد التعديل، لو السيرفر بعته
   final num? newItemsTotal;
 
-  const OrderAdjustmentModel({required this.items, this.newItemsTotal});
+  /// فرق السعر على التعديل كله (OrderAdjustmentDto.priceDifference)
+  final num? priceDifference;
+
+  const OrderAdjustmentModel({
+    required this.items,
+    this.id = 0,
+    this.newItemsTotal,
+    this.priceDifference,
+  });
+
+  /// OrderAdjustmentDto { id, status, priceDifference, createdAt, items }
+  /// وهو نفسه اللي بييجي في حدث AdjustmentCreated
+  factory OrderAdjustmentModel.fromJson(Map<String, dynamic> json) {
+    return OrderAdjustmentModel(
+      id: json.pickInt(['id']) ?? 0,
+      items: json
+          .pickList(['items', 'adjustmentItems', 'lines'])
+          .map(OrderAdjustmentItemModel.fromJson)
+          .toList(),
+      newItemsTotal: json.pickNum([
+        'newItemsTotal',
+        'itemsTotalAfter',
+        'adjustedItemsTotal',
+      ]),
+      priceDifference: json.pickNum(['priceDifference', 'totalDifference']),
+    );
+  }
 
   /// التعديل ممكن ييجي object في "adjustment"، أو ليستة في "adjustments"
   /// (تعديلات كاملة بناخد آخر واحد، أو أسطر على طول)
   static OrderAdjustmentModel? fromOrderJson(Map<String, dynamic> json) {
     var source = json.pickMap([
-      'adjustment',
       'pendingAdjustment',
+      'adjustment',
       'currentAdjustment',
       'lastAdjustment',
     ]);
@@ -325,18 +395,7 @@ class OrderAdjustmentModel {
       if (list.isEmpty) return null;
       source = list.last.containsKey('items') ? list.last : {'items': list};
     }
-
-    return OrderAdjustmentModel(
-      items: source
-          .pickList(['items', 'adjustmentItems', 'lines'])
-          .map(OrderAdjustmentItemModel.fromJson)
-          .toList(),
-      newItemsTotal: source.pickNum([
-        'newItemsTotal',
-        'itemsTotalAfter',
-        'adjustedItemsTotal',
-      ]),
-    );
+    return OrderAdjustmentModel.fromJson(source);
   }
 }
 
@@ -471,6 +530,36 @@ class OrderModel {
   /// رقم رحلة التسليم اللي بيتبعت مع كود التسليم، null لو مش معروف
   int? get dropoffTripId => (dropoffTrip?.id ?? 0) > 0 ? dropoffTrip!.id : null;
 
+  /// المندوب وصل والسيرفر قال صراحة إنه مستني كود العميل. مش بنعتمد هنا على
+  /// fallback الريسبونس القديم عشان مانطلعش تنبيه "المندوب وصل" غلط
+  bool get awaitsDropoffCode =>
+      (dropoffTrip?.hasConfirmationInfo ?? false) &&
+      dropoffTrip!.awaitingConfirmationBy == TripConfirmer.customer;
+
+  /// نسخة من الطلب بلينك دفع تاني. أحداث الـ realtime ممكن تيجي من غير
+  /// لينك، فبنحتفظ باللي كان معانا بدل ما زرار الدفع يختفي
+  OrderModel withPaymentUrl(String? url) => OrderModel(
+    id: id,
+    laundryId: laundryId,
+    laundryName: laundryName,
+    status: status,
+    date: date,
+    deliveryAddress: deliveryAddress,
+    pickupContactName: pickupContactName,
+    pickupContactPhone: pickupContactPhone,
+    pickupFee: pickupFee,
+    dropoffFee: dropoffFee,
+    itemsTotal: itemsTotal,
+    totalPrice: totalPrice,
+    paymentStatus: paymentStatus,
+    paymentUrl: url,
+    rejectionReason: rejectionReason,
+    items: items,
+    pickupTrip: pickupTrip,
+    dropoffTrip: dropoffTrip,
+    adjustment: adjustment,
+  );
+
   factory OrderModel.fromJson(Map<String, dynamic> json) {
     final laundry = json.pickMap(['laundry']) ?? const <String, dynamic>{};
     final paymentStatus = json['isPaid'] == true
@@ -507,13 +596,17 @@ class OrderModel {
     );
   }
 
-  /// شكل الرحلات مش متوثق، فبنقرا الأشكال المتوقعة زي أبلكيشن المغسلة:
-  /// ليستة "deliveryTrips" أو "trips" كل رحلة فيها "type"،
-  /// أو "pickupTrip" / "dropoffTrip"، أو "pickupTripId" / "dropoffTripId" بس
+  /// الشكل الرسمي (OrderDto) فيه "pickupTrip" و "dropoffTrip" (آخر رحلة من كل نوع)
+  /// ولو مش موجودين بنقرا الأشكال القديمة: ليستة "deliveryTrips" أو "trips"
+  /// كل رحلة فيها "type"، أو "pickupTripId" / "dropoffTripId" بس
   static OrderTripModel? _readTrip(
     Map<String, dynamic> json,
     DeliveryTripType type,
   ) {
+    final key = type == DeliveryTripType.pickup ? 'pickup' : 'dropoff';
+    final trip = json.pickMap(['${key}Trip']);
+    if (trip != null) return OrderTripModel.fromJson(trip, type: type);
+
     final trips = json.pickList(['deliveryTrips', 'trips']);
     for (final trip in trips) {
       if (OrderTripModel.tripTypeOf(trip.pick(['type', 'tripType'])) == type) {
@@ -529,10 +622,6 @@ class OrderModel {
     if (!hasNamedType && trips.length > index) {
       return OrderTripModel.fromJson(trips[index], type: type);
     }
-
-    final key = type == DeliveryTripType.pickup ? 'pickup' : 'dropoff';
-    final trip = json.pickMap(['${key}Trip']);
-    if (trip != null) return OrderTripModel.fromJson(trip, type: type);
 
     final tripId = json.pickInt(['${key}TripId']);
     if (tripId != null) return OrderTripModel(id: tripId, type: type);
