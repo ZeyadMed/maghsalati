@@ -17,7 +17,9 @@ class LaundryDetailsServicesLocator {
     getIt.registerFactory<WorkingHoursCubit>(
       () => WorkingHoursCubit(getIt()),
     );
-    getIt.registerFactory<AddToCartCubit>(() => AddToCartCubit(getIt()));
+    getIt.registerFactory<AddToCartCubit>(
+      () => AddToCartCubit(getIt(), getIt(), getIt()),
+    );
     getIt.registerLazySingleton<LaundryReviewsDataSource>(
       () => LaundryReviewsDataSourceImpl(getIt()),
     );

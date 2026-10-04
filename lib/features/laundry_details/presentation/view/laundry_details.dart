@@ -17,8 +17,9 @@ import 'package:maghsalati/features/cart/presentation/view/widget/confirm_cart_b
 import 'package:maghsalati/features/cart/presentation/view_model/cart_cubit.dart';
 import 'package:maghsalati/features/laundry_details/data/model/service_category_model.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view/category_items_screen.dart';
+import 'package:maghsalati/features/laundry_details/presentation/view/widget/cart_bottom_bar.dart';
+import 'package:maghsalati/features/laundry_details/presentation/view/widget/cart_bottom_sheet.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view/widget/laundry_details_header.dart';
-import 'package:maghsalati/features/laundry_details/presentation/view/widget/order_summary_bar.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view/widget/reviews_button.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view/widget/services_section.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view/widget/working_hours_button.dart';
@@ -170,13 +171,12 @@ class _LaundryDetailsState extends State<LaundryDetails> {
   }
 
   /// بيفتح شاشة القطع وهي واقفة على القسم اللي اتداس عليه
-  /// الكنترولر بيتبعت زي ما هو فالسلة مشتركة بين الشاشتين
+  /// والسلة مشتركة بين الشاشتين لأنها سلة السيرفر نفسها
   void _openCategory(int index) {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => CategoryItemsScreen(
           categories: _categories,
-          controller: _servicesController,
           title: widget.name,
           initialIndex: index,
           // إتمام الطلب من شيت السلة بيقفل شاشة القطع الأول عشان لما يرجع
@@ -205,6 +205,31 @@ class _LaundryDetailsState extends State<LaundryDetails> {
     context.push(
       AppRouter.orderPending,
       extra: cart.toPendingOrder(orderId: orderId),
+    );
+  }
+
+  /// شيت السلة اللي فيه تعديل الكميات والمسح، والتأكيد من جواه نفس زرار البار
+  void _openCart() {
+    CartBottomSheet.show(context: context, onConfirm: _confirmCart);
+  }
+
+  /// نفس بار شاشة القطع: السلة وعدد القطع والسعر التقديري وزرار التأكيد
+  /// بيقرا من سلة السيرفر، ولو السلة بتاعة مغسلة تانية بيبان فاضي
+  Widget _buildBottomBar() {
+    return BlocBuilder<CartCubit, BaseState<CartModel>>(
+      bloc: _cartCubit,
+      buildWhen: (previous, current) => previous.data != current.data,
+      builder: (context, state) {
+        final data = state.data;
+        final cart = data != null && _isThisLaundry(data) ? data : null;
+        return CartBottomBar(
+          pieces: cart?.totalPieces ?? 0,
+          estimatedPrice: cart?.itemsTotal ?? 0,
+          deliveryFees: cart?.deliveryFees ?? 0,
+          onBasketTap: _openCart,
+          onConfirm: cart == null ? null : () => _confirmCart(cart),
+        );
+      },
     );
   }
 
@@ -240,21 +265,21 @@ class _LaundryDetailsState extends State<LaundryDetails> {
     );
   }
 
+  /// نفس مقاس خانات الجريد عشان الصفحة ماتتنططش لما الأقسام توصل
   Widget _buildServicesLoading() {
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      padding: EdgeInsets.zero,
-      itemCount: 8,
+      padding: EdgeInsets.symmetric(horizontal: 16.w),
+      itemCount: ServicesSection.maxColumns,
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 4,
-        crossAxisSpacing: 10.w,
-        mainAxisSpacing: 10.h,
-        childAspectRatio: 0.82,
+        crossAxisCount: ServicesSection.maxColumns,
+        crossAxisSpacing: 8.w,
+        mainAxisExtent: ServicesSection.cellHeight,
       ),
       itemBuilder: (context, index) => ShimmerBox(
         height: double.infinity,
-        borderRadius: BorderRadius.circular(16.r),
+        borderRadius: BorderRadius.circular(8.r),
       ),
     );
   }
@@ -265,7 +290,7 @@ class _LaundryDetailsState extends State<LaundryDetails> {
     VoidCallback? onRetry,
   }) {
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: 24.h),
+      padding: EdgeInsets.symmetric(vertical: 24.h, horizontal: 16.w),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -295,12 +320,8 @@ class _LaundryDetailsState extends State<LaundryDetails> {
       backgroundColor: AppColors.secondaryColor,
       // الصورة لازم توصل لحد فوق خالص تحت الاستاتس بار
       extendBodyBehindAppBar: true,
-      // ثابت تحت الصفحة، والإجمالي جواه بيتغير مع كل قطعة تتختار
-      bottomNavigationBar: OrderSummaryBar(
-        cartCubit: _cartCubit,
-        laundryId: widget.laundryId,
-        onConfirm: _confirmCart,
-      ),
+      // ثابت تحت الصفحة، والأرقام جواه بتتحدث مع سلة السيرفر
+      bottomNavigationBar: _buildBottomBar(),
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -340,11 +361,12 @@ class _LaundryDetailsState extends State<LaundryDetails> {
                     ),
                   ),
                   Gap(12.h),
-                  _buildServices(),
-                  Gap(16.h),
                 ],
               ),
             ),
+            // برة الـ padding عشان الجريد يوصل لحرف الشاشة زي الديزاين
+            _buildServices(),
+            Gap(16.h),
           ],
         ),
       ),

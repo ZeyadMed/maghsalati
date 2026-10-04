@@ -12,19 +12,18 @@ import 'package:maghsalati/features/cart/data/model/cart_model.dart';
 import 'package:maghsalati/features/cart/presentation/view_model/cart_cubit.dart';
 import 'package:maghsalati/features/laundry_details/data/model/service_category_model.dart';
 import 'package:maghsalati/features/laundry_details/data/model/service_item_model.dart';
+import 'package:maghsalati/features/laundry_details/presentation/view/widget/cart_bottom_bar.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view/widget/cart_bottom_sheet.dart';
-import 'package:maghsalati/features/laundry_details/presentation/view/widget/cart_floating_button.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view/widget/service_item_card.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view/widget/services_promo_banner.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view/widget/sub_category_filter_chips.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view_model/add_to_cart_cubit.dart';
-import 'package:maghsalati/features/laundry_details/presentation/view_model/selected_services_controller.dart';
 
 /// شاشة القطع: تابات لكل الأقسام الرئيسية فوق، وتحتها شيبس الأقسام الفرعية
-/// والقطع في جريد. الكنترولر بيتبعت من شاشة التفاصيل فالسلة مشتركة بين الشاشتين
+/// والقطع في جريد 3 في الصف. الدوسة على القطعة بتزود منها واحدة في سلة السيرفر،
+/// والسلة اللي تحت بتفتح الشيت اللي فيه تعديل الكميات والمسح
 class CategoryItemsScreen extends StatefulWidget {
   final List<ServiceCategoryModel> categories;
-  final SelectedServicesController controller;
 
   /// القسم اللي الشاشة بتفتح عليه، جاي من الكارت اللي اتداس عليه
   final int initialIndex;
@@ -32,13 +31,12 @@ class CategoryItemsScreen extends StatefulWidget {
   /// اسم المغسلة بيتعرض في الأبار
   final String title;
 
-  /// بيتنفذ لما يدوس على إتمام الطلب من جوا شيت السلة
+  /// بيتنفذ لما يدوس على تأكيد الطلب من البار أو من جوا شيت السلة
   final ValueChanged<CartModel>? onConfirmOrder;
 
   const CategoryItemsScreen({
     super.key,
     required this.categories,
-    required this.controller,
     required this.title,
     this.initialIndex = 0,
     this.onConfirmOrder,
@@ -50,17 +48,26 @@ class CategoryItemsScreen extends StatefulWidget {
 
 class _CategoryItemsScreenState extends State<CategoryItemsScreen>
     with SingleTickerProviderStateMixin {
+  static const int _columns = 3;
+
   late final TabController _tabController;
 
   /// الفلتر المختار لكل قسم (categoryId -> subCategoryId)
   /// محفوظ لكل قسم لوحده عشان لما ترجع للتاب تلاقي فلترك زي ما سيبته
   final Map<int, int?> _selectedSubCategories = {};
 
-  /// بيبعت القطعة لسلة العميل لما يدوس "أضف للسلة" في الكارت
+  /// كل دوسة على قطعة بتزود منها واحدة في سلة العميل
   final AddToCartCubit _addToCartCubit = getIt<AddToCartCubit>();
 
   /// singleton ومشترك مع تاب السلة، فمش بيتعمله close هنا
   final CartCubit _cartCubit = getIt<CartCubit>();
+
+  /// سعر كل قطعة (itemId -> السعر) عشان السعر التقديري يزيد مع الدوسة
+  /// قبل ما السلة الجديدة توصل من السيرفر
+  late final Map<int, num> _prices = {
+    for (final category in widget.categories)
+      for (final ServiceItemModel item in category.items) item.id: item.price,
+  };
 
   @override
   void initState() {
@@ -72,7 +79,7 @@ class _CategoryItemsScreenState extends State<CategoryItemsScreen>
     );
     // الشيبس بتتغير مع التاب فمحتاجين rebuild مع كل تنقل
     _tabController.addListener(_onTabChanged);
-    // عدد القطع في الزرار العايم جاي من سلة السيرفر، فلو لسه ماتجابتش بنجيبها
+    // الأرقام اللي على القطع والسلة جاية من سلة السيرفر، فلو لسه ماتجابتش بنجيبها
     if (_cartCubit.state.data == null) _cartCubit.getCart();
   }
 
@@ -104,27 +111,31 @@ class _CategoryItemsScreenState extends State<CategoryItemsScreen>
     final selectedSub = _selectedSubCategories[category.id];
     final items = category.itemsOf(selectedSub);
 
-    return Scaffold(
-      backgroundColor: AppColors.secondaryColor,
-      appBar: _buildAppBar(),
-      floatingActionButton: CartFloatingButton(
-        cartCubit: _cartCubit,
-        onTap: _openCart,
-      ),
-      body: Column(
-        children: [
-          // ServicesPromoBanner(title: 'promo_banner_title'.tr()),
-          Gap(12.h),
-          SubCategoryFilterChips(
-            subCategories: category.subCategories,
-            selectedId: selectedSub,
-            onSelected: (id) => setState(() {
-              _selectedSubCategories[category.id] = id;
-            }),
-          ),
-          if (category.subCategories.isNotEmpty) Gap(12.h),
-          Expanded(child: _buildItemsGrid(items)),
-        ],
+    return BlocListener<AddToCartCubit, BaseState<Map<int, int>>>(
+      bloc: _addToCartCubit,
+      listenWhen: (previous, current) =>
+          previous.status != current.status && current.isFailure,
+      listener: (context, state) =>
+          context.showErrorMessage(state.errorMessage ?? 'try_again'.tr()),
+      child: Scaffold(
+        backgroundColor: AppColors.whiteColor,
+        appBar: _buildAppBar(),
+        bottomNavigationBar: _withCart(_buildBottomBar),
+        body: Column(
+          children: [
+            // ServicesPromoBanner(title: 'promo_banner_title'.tr()),
+            Gap(12.h),
+            SubCategoryFilterChips(
+              subCategories: category.subCategories,
+              selectedId: selectedSub,
+              onSelected: (id) => setState(() {
+                _selectedSubCategories[category.id] = id;
+              }),
+            ),
+            if (category.subCategories.isNotEmpty) Gap(12.h),
+            Expanded(child: _buildItemsGrid(items)),
+          ],
+        ),
       ),
     );
   }
@@ -165,8 +176,25 @@ class _CategoryItemsScreenState extends State<CategoryItemsScreen>
     );
   }
 
-  /// الجريد بيسمع على الـ cubit عشان اللودينج بتاع زرار السلة
-  /// وجواه بيسمع على الكنترولر عشان الكاونتر يتحدث مع كل زيادة أو نقصان
+  /// الرقم على القطع والسلة اللي تحت = سلة السيرفر + الدوسات اللي لسه بتتبعت
+  /// فبيسمع على الاتنين
+  Widget _withCart(
+    Widget Function(CartModel? cart, Map<int, int> pending) builder,
+  ) {
+    return BlocBuilder<CartCubit, BaseState<CartModel>>(
+      bloc: _cartCubit,
+      buildWhen: (previous, current) => previous.data != current.data,
+      builder: (context, cartState) =>
+          BlocBuilder<AddToCartCubit, BaseState<Map<int, int>>>(
+            bloc: _addToCartCubit,
+            builder: (context, addState) =>
+                builder(cartState.data, addState.data ?? const {}),
+          ),
+    );
+  }
+
+  /// خانات لازقة في بعض من غير مسافات، وخط فوق أول صف
+  /// والباقي كل خانة بترسم الخط اللي تحتها واللي على جنبها
   Widget _buildItemsGrid(List<ServiceItemModel> items) {
     if (items.isEmpty) {
       return Center(
@@ -174,71 +202,54 @@ class _CategoryItemsScreenState extends State<CategoryItemsScreen>
       );
     }
 
-    return BlocConsumer<AddToCartCubit, BaseState<int>>(
-      bloc: _addToCartCubit,
-      listenWhen: (previous, current) => previous.status != current.status,
-      listener: _onAddToCartChanged,
-      builder: (context, _) => _buildGrid(items),
-    );
-  }
-
-  /// بيبعت القطعة بالكمية اللي اتحددت في الكاونتر مرة واحدة
-  void _addToCart(ServiceItemModel item) {
-    _addToCartCubit.addItem(
-      itemId: item.id,
-      quantity: widget.controller.quantityOf(item.id),
-    );
-  }
-
-  void _onAddToCartChanged(BuildContext context, BaseState<int> state) {
-    if (state.isSuccess) {
-      // السلة اتغيرت على السيرفر فبنحدثها عشان الشيت وتاب السلة يشوفوا الجديد
-      _cartCubit.getCart();
-      final name = _itemName(state.data);
-      context.showSuccessMessage('added_to_cart'.tr(args: [name]));
-    }
-    if (state.isFailure) {
-      context.showErrorMessage(state.errorMessage ?? 'try_again'.tr());
-    }
-  }
-
-  String _itemName(int? itemId) {
-    for (final category in widget.categories) {
-      for (final ServiceItemModel item in category.items) {
-        if (item.id == itemId) return item.name;
-      }
-    }
-    return '';
-  }
-
-  Widget _buildGrid(List<ServiceItemModel> items) {
-    return AnimatedBuilder(
-      animation: widget.controller,
-      builder: (context, _) {
-        return GridView.builder(
-          padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 90.h),
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        border: Border(top: BorderSide(color: AppColors.borderColor)),
+      ),
+      child: _withCart(
+        (cart, pending) => GridView.builder(
+          padding: EdgeInsets.zero,
           itemCount: items.length,
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            crossAxisSpacing: 10.w,
-            mainAxisSpacing: 10.h,
-            childAspectRatio: 0.66,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: _columns,
+            childAspectRatio: 0.75,
           ),
           itemBuilder: (context, index) {
             final item = items[index];
             return ServiceItemCard(
               key: ValueKey(item.id),
               item: item,
-              quantity: widget.controller.quantityOf(item.id),
-              onSelect: () => widget.controller.select(item.id),
-              onIncrement: () => widget.controller.increment(item.id),
-              onDecrement: () => widget.controller.decrement(item.id),
-              onAddToCart: () => _addToCart(item),
-              isAddingToCart: _addToCartCubit.isAdding(item.id),
+              quantity:
+                  (cart?.piecesOf([item.id]) ?? 0) + (pending[item.id] ?? 0),
+              showEndBorder: index % _columns != _columns - 1,
+              onTap: () => _addToCartCubit.addOne(item.id),
             );
           },
-        );
-      },
+        ),
+      ),
+    );
+  }
+
+  /// السعر التقديري = إجمالي سلة السيرفر + أسعار الدوسات اللي لسه بتتبعت
+  /// والتأكيد والشيت بيستنوا لحد ما الدوسات توصل عشان السلة تبقى آخر حاجة
+  Widget _buildBottomBar(CartModel? cart, Map<int, int> pending) {
+    final pendingPieces = pending.values.fold(0, (sum, count) => sum + count);
+    final pendingPrice = pending.entries.fold<num>(
+      0,
+      (sum, entry) => sum + (_prices[entry.key] ?? 0) * entry.value,
+    );
+    final isSyncing = _addToCartCubit.isSyncing;
+    final onConfirm = widget.onConfirmOrder;
+
+    return CartBottomBar(
+      pieces: (cart?.totalPieces ?? 0) + pendingPieces,
+      estimatedPrice: (cart?.itemsTotal ?? 0) + pendingPrice,
+      deliveryFees: cart?.deliveryFees ?? 0,
+      isBusy: isSyncing,
+      onBasketTap: isSyncing ? null : _openCart,
+      onConfirm: cart == null || onConfirm == null
+          ? null
+          : () => onConfirm(cart),
     );
   }
 }

@@ -5,101 +5,99 @@ import 'package:maghsalati/core/style/app_colors.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
 import 'package:maghsalati/core/widget/flexiable_image.dart';
 import 'package:maghsalati/features/laundry_details/data/model/service_item_model.dart';
-import 'package:maghsalati/features/laundry_details/presentation/view/widget/quantity_counter.dart';
+import 'package:maghsalati/features/laundry_details/presentation/view/widget/count_badge.dart';
 
-/// كارت القطعة في الجريد: صورة فوق وتحتها الاسم والسعر وزرار الإضافة
-/// وهي مش مختارة بيبان زرار + ، ولما تتختار بيتحول لكاونتر بالكمية
+/// خانة القطعة في الجريد: صورة وتحتها الاسم والسعر. الخانات لازقة في بعض
+/// وبينها خطوط رفيعة زي الديزاين، والدوسة على الخانة بتزود قطعة في السلة
+/// والرقم الأحمر فوق الصورة هو عدد اللي اتختار منها
 class ServiceItemCard extends StatelessWidget {
   final ServiceItemModel item;
+
+  /// عدد القطع المختارة، صفر يعني مفيش رقم
   final int quantity;
-  final VoidCallback onSelect;
-  final VoidCallback onIncrement;
-  final VoidCallback onDecrement;
+  final VoidCallback onTap;
 
-  /// بيبعت القطعة بالكمية اللي اتحددت للسلة، والزرار بيبان بس لما تتختار
-  final VoidCallback? onAddToCart;
-
-  /// الريكوست بتاع القطعة دي شغال، فالزرار بيعرض لودينج ومابيتداسش
-  final bool isAddingToCart;
+  /// آخر خانة في الصف مالهاش خط على جنبها لأن الجريد واصل لحرف الشاشة
+  final bool showEndBorder;
 
   const ServiceItemCard({
     super.key,
     required this.item,
     required this.quantity,
-    required this.onSelect,
-    required this.onIncrement,
-    required this.onDecrement,
-    this.onAddToCart,
-    this.isAddingToCart = false,
+    required this.onTap,
+    this.showEndBorder = true,
   });
-
-  bool get _isSelected => quantity > 0;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.whiteColor,
-        borderRadius: BorderRadius.circular(14.r),
-        border: Border.all(
-          color: _isSelected ? AppColors.primaryColor : AppColors.borderColor,
-          width: _isSelected ? 1.5 : 1,
+    const side = BorderSide(color: AppColors.borderColor);
+
+    return Material(
+      color: AppColors.whiteColor,
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          decoration: BoxDecoration(
+            border: BorderDirectional(
+              bottom: side,
+              end: showEndBorder ? side : BorderSide.none,
+            ),
+          ),
+          padding: EdgeInsets.fromLTRB(8.w, 10.h, 8.w, 10.h),
+          child: Column(
+            children: [
+              Expanded(child: _buildImage()),
+              SizedBox(height: 8.h),
+              Text(
+                item.name,
+                style: TextStyles.darkRegular14.copyWith(fontSize: 13.sp),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              SizedBox(height: 4.h),
+              Text(
+                _priceLabel(),
+                style: TextStyles.boldStyle(14, color: AppColors.redColor2),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
         ),
-      ),
-      padding: EdgeInsets.all(8.r),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Expanded(child: _buildImage()),
-          SizedBox(height: 6.h),
-          Text(
-            item.name,
-            style: TextStyles.darkBold14.copyWith(fontSize: 12.sp),
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          SizedBox(height: 2.h),
-          Text(
-            _priceLabel(),
-            style: TextStyles.orangeBold12,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          SizedBox(height: 6.h),
-          _buildAction(),
-          if (_isSelected && onAddToCart != null) ...[
-            SizedBox(height: 6.h),
-            _buildAddToCartButton(),
-          ],
-        ],
       ),
     );
   }
 
   /// الصورة ممكن تكون لينك أو إيموجي جاي من السيرفر، فبنفرق بينهم هنا
+  /// والرقم بيتحط في ركن الصورة بـ Stack
   Widget _buildImage() {
     final isEmoji = !item.image.startsWith('http');
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(10.r),
-      child: SizedBox(
-        width: double.infinity,
-        child: isEmoji
-            ? Container(
-                color: AppColors.secondaryColor,
-                alignment: Alignment.center,
-                child: Text(
-                  item.image.isEmpty ? '👕' : item.image,
-                  style: TextStyle(fontSize: 28.sp),
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: isEmoji
+              ? Center(
+                  child: Text(
+                    item.image.isEmpty ? '👕' : item.image,
+                    style: TextStyle(fontSize: 40.sp),
+                  ),
+                )
+              // contain عشان القطعة تبان كلها على الأبيض زي الديزاين
+              : FlexibleImage(
+                  source: item.image,
+                  borderRadius: 0,
+                  fit: BoxFit.contain,
                 ),
-              )
-            : FlexibleImage(
-                source: item.image,
-                borderRadius: 0,
-                fit: BoxFit.cover,
-              ),
-      ),
+        ),
+        if (quantity > 0)
+          PositionedDirectional(
+            top: 0,
+            end: 0,
+            child: CountBadge(count: quantity),
+          ),
+      ],
     );
   }
 
@@ -110,72 +108,5 @@ class ServiceItemCard extends StatelessWidget {
         ? item.price.toInt().toString()
         : item.price.toString();
     return '$value ${'currency'.tr()}';
-  }
-
-  /// مش مختارة يبقى زرار + دايرة، ولما تتختار الكاونتر بياخد مكانه
-  Widget _buildAction() {
-    if (!_isSelected) {
-      return InkWell(
-        onTap: onSelect,
-        customBorder: const CircleBorder(),
-        child: Container(
-          width: 28.r,
-          height: 28.r,
-          alignment: Alignment.center,
-          decoration: const BoxDecoration(
-            color: AppColors.primaryColor,
-            shape: BoxShape.circle,
-          ),
-          child: Icon(Icons.add, size: 18.r, color: AppColors.whiteColor),
-        ),
-      );
-    }
-
-    return QuantityCounter(
-      quantity: quantity,
-      onIncrement: onIncrement,
-      onDecrement: onDecrement,
-      compact: true,
-    );
-  }
-
-  /// بيبعت الكمية اللي في الكاونتر مرة واحدة، مش مع كل + أو -
-  Widget _buildAddToCartButton() {
-    return SizedBox(
-      width: double.infinity,
-      height: 26.h,
-      child: ElevatedButton(
-        onPressed: isAddingToCart ? null : onAddToCart,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primaryColor,
-          disabledBackgroundColor: AppColors.primaryColor.withValues(
-            alpha: 0.6,
-          ),
-          elevation: 0,
-          padding: EdgeInsets.symmetric(horizontal: 4.w),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8.r),
-          ),
-        ),
-        child: isAddingToCart
-            ? SizedBox(
-                width: 14.r,
-                height: 14.r,
-                child: const CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: AppColors.whiteColor,
-                ),
-              )
-            : FittedBox(
-                child: Text(
-                  'add_to_cart'.tr(),
-                  style: TextStyles.darkBold12.copyWith(
-                    color: AppColors.whiteColor,
-                    fontSize: 11.sp,
-                  ),
-                ),
-              ),
-      ),
-    );
   }
 }

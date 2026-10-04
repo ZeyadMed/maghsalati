@@ -52,6 +52,14 @@ class CartModel {
         .fold(0, (sum, item) => sum + item.quantity);
   }
 
+  /// سطر القطعة دي في السلة، و null لو لسه مااتضافتش
+  CartItemModel? lineOf(int laundryServiceItemId) {
+    for (final item in items) {
+      if (item.laundryServiceItemId == laundryServiceItemId) return item;
+    }
+    return null;
+  }
+
   /// رسوم الاستلام + رسوم التسليم
   num get deliveryFees => pickupFee + dropoffFee;
 
