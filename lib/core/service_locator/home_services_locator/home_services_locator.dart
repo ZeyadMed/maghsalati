@@ -1,5 +1,7 @@
 import 'package:get_it/get_it.dart';
+import 'package:maghsalati/features/home/data/advertisements_data_source.dart';
 import 'package:maghsalati/features/home/data/nearby_laundries_data_source.dart';
+import 'package:maghsalati/features/home/presentation/view_model/advertisements_cubit.dart';
 import 'package:maghsalati/features/home/presentation/view_model/nearby_laundries_cubit.dart';
 
 class HomeServicesLocator {
@@ -9,6 +11,12 @@ class HomeServicesLocator {
     );
     getIt.registerFactory<NearbyLaundriesCubit>(
       () => NearbyLaundriesCubit(getIt(), getIt()),
+    );
+    getIt.registerLazySingleton<AdvertisementsDataSource>(
+      () => AdvertisementsDataSourceImpl(getIt()),
+    );
+    getIt.registerFactory<AdvertisementsCubit>(
+      () => AdvertisementsCubit(getIt()),
     );
   }
 }

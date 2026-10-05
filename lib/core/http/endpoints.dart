@@ -126,6 +126,10 @@ abstract interface class Endpoints {
   /// GET: بترجع { content, updatedAt } جوه data، والـ content بيبقى HTML
   static const String privacyPolicy = 'api/auth/privacy-policy';
 
+  /// GET: بتاخد targetType في الـ query (Customer عندنا) وبترجع list
+  /// فيها { id, title, imageUrl, targetType } جوه data
+  static const String advertisements = 'api/auth/advertisements';
+
   /// اند بوينتس مفتوحة بتتنادى قبل ما يبقى فيه جلسة، فمابنحطش عليها توكن
   /// والـ 401 منها معناه بيانات غلط مش جلسة منتهية
   static bool isPublicAuth(String path) {

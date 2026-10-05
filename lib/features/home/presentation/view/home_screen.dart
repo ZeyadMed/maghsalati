@@ -3,12 +3,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:maghsalati/core/common_widget/label.dart';
-import 'package:maghsalati/core/extensions/context_extension.dart';
 import 'package:maghsalati/core/service_locator/service_locator.dart';
 import 'package:maghsalati/core/style/app_colors.dart';
-import 'package:maghsalati/core/style/assets.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
-import 'package:maghsalati/core/widget/carousel_slider_widget.dart';
+import 'package:maghsalati/features/home/presentation/view/widget/home_ads_carousel.dart';
 import 'package:maghsalati/features/home/presentation/view/widget/home_header.dart';
 import 'package:maghsalati/features/home/presentation/view/widget/nearby_laundries_list.dart';
 import 'package:maghsalati/features/home/presentation/view_model/location_controller.dart';
@@ -79,26 +77,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Gap(16.h),
-                    CarouselSliderWidget(
-                      autoPlay: true,
-                      autoPlayInterval: const Duration(seconds: 3),
-                      height: context.screenHeight * 0.2,
-                      widgets: [
-                        Image.asset(
-                          Assets.assetsImagesLaundry,
-                          fit: BoxFit.cover,
-                        ),
-                        Image.asset(
-                          Assets.assetsImagesLaundry,
-                          fit: BoxFit.cover,
-                        ),
-                        Image.asset(
-                          Assets.assetsImagesLaundry,
-                          fit: BoxFit.cover,
-                        ),
-                      ],
-                    ),
-                    Gap(16.h),
+                    // المسافة اللي تحته جواه عشان تختفي معاه لو مفيش إعلانات
+                    const HomeAdsCarousel(),
                     LocalizedLabel(
                       text: 'cleaner_near_you',
                       style: TextStyles.blackBold16.copyWith(
