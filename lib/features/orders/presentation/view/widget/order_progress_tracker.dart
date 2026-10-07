@@ -6,8 +6,9 @@ import 'package:maghsalati/core/style/app_colors.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
 import 'package:maghsalati/features/orders/data/model/order_model.dart';
 
-/// شريط خطوات الطلب: الخطوات الخالصة بعلامة صح زرقا واللي لسه برقمها ورمادي
-/// الترتيب من جديدة لحد قيد التوصيل، والاتجاه بيتظبط لوحده حسب اللغة
+/// شريط خطوات الطلب: الخطوات اللي الطلب وصلها أيقونتها زرقا واللي لسه رمادي،
+/// والخطوط بينها لازقة في الدواير. الترتيب من جديدة لحد قيد التوصيل،
+/// والاتجاه بيتظبط لوحده حسب اللغة
 class OrderProgressTracker extends StatelessWidget {
   final OrderStatus status;
 
@@ -45,87 +46,97 @@ class OrderProgressTracker extends StatelessWidget {
   Widget build(BuildContext context) {
     final currentIndex = _currentIndex;
 
+    // كل الخطوات نفس العرض، والاسم في نص الخطوة تحت الدايرة بالظبط
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: List.generate(_steps.length * 2 - 1, (index) {
-        // الفردي بينهم خطوط واصلة والزوجي دواير الخطوات
-        if (index.isOdd) {
-          final stepIndex = index ~/ 2;
-          return Expanded(child: _buildConnector(stepIndex < currentIndex));
-        }
-        final stepIndex = index ~/ 2;
-        return _buildStep(stepIndex, currentIndex);
-      }),
+      children: [
+        for (int i = 0; i < _steps.length; i++)
+          Expanded(child: _buildStep(i, currentIndex)),
+      ],
     );
   }
 
-  /// الخط اللي بين كل دايرتين، بيتلون أزرق لو الخطوة اللي قبله خلصت
-  Widget _buildConnector(bool isDone) {
-    return Padding(
-      // بيتحط في نص ارتفاع الدايرة عشان يبان واصل بينهم
-      padding: EdgeInsets.only(top: 13.h),
-      child: Container(
-        height: 2.h,
-        color: isDone ? AppColors.primaryColor : AppColors.semiWhiteColor2,
-      ),
-    );
-  }
-
-  /// الدايرة + اسم الخطوة تحتها
+  /// الدايرة وعلى جنبيها نصين الخط، فالخط بيلزق فيها ويكمل في الخطوة اللي
+  /// جنبها من غير فراغ، واسم الخطوة تحتها
   Widget _buildStep(int stepIndex, int currentIndex) {
     final step = _steps[stepIndex];
     final isDone = stepIndex <= currentIndex;
     final isCurrent = stepIndex == currentIndex;
 
-    return SizedBox(
-      width: 56.w,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _buildCircle(stepIndex, isDone),
-          Gap(6.h),
-          Text(
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          children: [
+            // نص الخط اللي جاي من الخطوة اللي قبلها، أزرق لو وصلنا الخطوة دي
+            Expanded(
+              child: stepIndex == 0
+                  ? const SizedBox.shrink()
+                  : _buildConnector(isDone),
+            ),
+            _buildCircle(stepIndex, isDone),
+            // نص الخط اللي رايح للخطوة اللي بعدها، أزرق لو وصلنا اللي بعدها
+            Expanded(
+              child: stepIndex == _steps.length - 1
+                  ? const SizedBox.shrink()
+                  : _buildConnector(stepIndex < currentIndex),
+            ),
+          ],
+        ),
+        Gap(6.h),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 2.w),
+          child: Text(
             step.labelKey.tr(),
             textAlign: TextAlign.center,
             style: TextStyles.darkRegular12.copyWith(
               fontSize: 10.sp,
               // الخطوة الحالية بتبان أوضح من اللي حواليها
-              color: isCurrent
-                  ? AppColors.primaryColor
-                  : AppColors.greyColor3,
+              color: isCurrent ? AppColors.primaryColor : AppColors.greyColor3,
               fontWeight: isCurrent ? FontWeight.w600 : FontWeight.w400,
             ),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
-  /// دايرة زرقا بعلامة صح للخطوة اللي خلصت، ورمادية برقمها للي لسه
+  Widget _buildConnector(bool isDone) {
+    return Container(
+      height: 2.h,
+      color: isDone ? AppColors.primaryColor : AppColors.semiWhiteColor2,
+    );
+  }
+
+  /// دايرة بأيقونة الخطوة: زرقا للي الطلب وصلها ورمادية للي لسه
   Widget _buildCircle(int stepIndex, bool isDone) {
+    final color = isDone ? AppColors.primaryColor : AppColors.greyColor3;
     return Container(
       width: 26.r,
       height: 26.r,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: isDone ? AppColors.primaryColor : AppColors.whiteColor,
+        color: isDone
+            ? AppColors.primaryColor.withValues(alpha: 0.12)
+            : AppColors.whiteColor,
         shape: BoxShape.circle,
         border: Border.all(
           color: isDone ? AppColors.primaryColor : AppColors.semiWhiteColor2,
           width: 1.5,
         ),
       ),
-      child: isDone
-          ? Icon(Icons.check, size: 14.r, color: AppColors.whiteColor)
-          : Text(
-              '${stepIndex + 1}',
-              style: TextStyles.darkBold12.copyWith(
-                fontSize: 11.sp,
-                color: AppColors.greyColor3,
-              ),
-            ),
+      child: Icon(_iconFor(_steps[stepIndex]), size: 15.r, color: color),
     );
   }
+
+  IconData _iconFor(OrderStatus step) => switch (step) {
+    OrderStatus.newOrder => Icons.receipt_long_outlined,
+    OrderStatus.awaitingPickup => Icons.local_shipping_outlined,
+    OrderStatus.inProgress => Icons.local_laundry_service_outlined,
+    OrderStatus.ready => Icons.inventory_2_outlined,
+    OrderStatus.outForDelivery => Icons.delivery_dining_outlined,
+    _ => Icons.circle_outlined,
+  };
 }

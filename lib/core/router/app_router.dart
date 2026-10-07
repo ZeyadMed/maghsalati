@@ -11,6 +11,9 @@ import 'package:maghsalati/features/auth/register/presentation/view/register_scr
 import 'package:maghsalati/features/home/data/model/nearby_laundry_model.dart';
 import 'package:maghsalati/features/home/presentation/view/home_screen.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view/laundry_details.dart';
+import 'package:maghsalati/features/laundry_details/presentation/view/service_area_screen.dart';
+import 'package:maghsalati/features/laundry_details/presentation/view/service_mechanism_screen.dart';
+import 'package:maghsalati/features/laundry_details/presentation/view/service_provider_screen.dart';
 import 'package:maghsalati/features/notifications/presentation/view/notifications_screen.dart';
 import 'package:maghsalati/features/on_boarding/presentation/views/on_boarding_screen.dart';
 import 'package:maghsalati/features/order_pending/data/model/pending_order_model.dart';
@@ -58,6 +61,9 @@ abstract class AppRouter {
   static const String aboutUs = '/aboutUs';
   static const String updateProfileScreen = '/updateProfileScreen';
   static const String privacyPolicy = '/privacyPolicy';
+  static const String serviceArea = '/serviceArea';
+  static const String serviceProvider = '/serviceProvider';
+  static const String serviceMechanism = '/serviceMechanism';
   static const String comingSoonScreen = '/CommingSoonScreen';
 
   static final GoRouter router = GoRouter(
@@ -189,7 +195,22 @@ abstract class AppRouter {
         path: contactUsScreen,
         builder: (context, state) => const ContactUsScreen(),
       ),
-      GoRoute(path: aboutUs, builder: (context, state) => const AboutUsScreen()),
+      GoRoute(
+        path: aboutUs,
+        builder: (context, state) => const AboutUsScreen(),
+      ),
+      GoRoute(
+        path: serviceArea,
+        builder: (context, state) => const ServiceAreaScreen(),
+      ),
+      GoRoute(
+        path: serviceProvider,
+        builder: (context, state) => const ServiceProviderScreen(),
+      ),
+      GoRoute(
+        path: serviceMechanism,
+        builder: (context, state) => const ServiceMechanismScreen(),
+      ),
       GoRoute(
         path: notificationScreen,
         builder: (context, state) => const NotificationsScreen(),

@@ -5,7 +5,6 @@ import 'package:gap/gap.dart';
 import 'package:maghsalati/core/style/app_colors.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
 import 'package:maghsalati/features/orders/data/model/order_model.dart';
-import 'package:maghsalati/features/orders/presentation/view/widget/order_driver_tile.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/order_sheet_frame.dart';
 
 /// كارت "الخطوة الجاية" في تفاصيل الطلب: الطلب فين دلوقتي، ولو فيه حاجة
@@ -30,13 +29,6 @@ class OrderNextStepCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final step = _stepOf(order);
-    // المندوب اللي يهم العميل: بتاع الاستلام قبل ما الهدوم تتاخد وبتاع التسليم بعدها
-    final driverTrip = switch (order.status) {
-      OrderStatus.awaitingPickup => order.pickupTrip,
-      OrderStatus.awaitingDropoffCollection ||
-      OrderStatus.outForDelivery => order.dropoffTrip,
-      _ => null,
-    };
 
     return Container(
       padding: EdgeInsets.all(16.r),
@@ -81,10 +73,6 @@ class OrderNextStepCard extends StatelessWidget {
               ),
             ],
           ),
-          if (driverTrip != null && driverTrip.hasDriver) ...[
-            Gap(12.h),
-            OrderDriverTile(trip: driverTrip),
-          ],
           if (step.actionKey != null && step.onAction != null) ...[
             Gap(14.h),
             SheetButton(

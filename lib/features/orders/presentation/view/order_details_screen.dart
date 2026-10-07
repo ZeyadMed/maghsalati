@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
@@ -19,6 +20,7 @@ import 'package:maghsalati/features/orders/data/model/order_details_args.dart';
 import 'package:maghsalati/features/orders/data/model/order_model.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/adjustment_review_sheet.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/confirm_dropoff_sheet.dart';
+import 'package:maghsalati/features/orders/presentation/view/widget/order_driver_tile.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/order_item_row.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/order_next_step_card.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/order_payment_card.dart';
@@ -357,64 +359,124 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen>
     );
   }
 
-  /// كارت فوق: اسم المغسلة ورقم الطلب وتاريخه وحالته
-  /// وشريط الخطوات بيبان بس لو الطلب لسه شغال
+  /// كارت فوق زي الديزاين: شريط الخطوات (لو الطلب لسه شغال) ورقم الطلب،
+  /// وتحتهم كارت المندوب لو اتعيّن مندوب، وكارت عنوان التوصيل وكارت المغسلة
   Widget _buildInfoCard(BuildContext context, OrderModel order) {
+    final driverTrip = order.driverTrip;
+
     return _buildCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      order.laundryName,
-                      style: TextStyles.darkBold16.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                      textAlign: TextAlign.start,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    Gap(4.h),
-                    Text(
-                      DateFormat(
-                        'd MMMM yyyy',
-                        context.locale.toString(),
-                      ).format(order.date),
-                      style: TextStyles.darkRegular12.copyWith(
-                        color: AppColors.greyColor3,
-                      ),
-                      textAlign: TextAlign.start,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    Gap(2.h),
-                    Text(
-                      '${'order_number'.tr()}: ${order.reference}',
-                      style: TextStyles.darkRegular12.copyWith(
-                        color: AppColors.greyColor3,
-                      ),
-                      textAlign: TextAlign.start,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-              Gap(12.w),
-              OrderStatusBadge(status: order.status),
-            ],
-          ),
           if (order.isCurrent) ...[
-            Gap(18.h),
             OrderProgressTracker(status: order.status),
+            Gap(18.h),
           ],
+          _buildOrderNumber(context, order),
+          if (!order.isCurrent) ...[
+            Gap(10.h),
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: OrderStatusBadge(status: order.status),
+            ),
+          ],
+          if (driverTrip != null) ...[
+            Gap(12.h),
+            OrderDriverTile(trip: driverTrip),
+          ],
+          if (order.deliveryAddress.isNotEmpty) ...[
+            Gap(10.h),
+            _buildInfoTile(
+              icon: Icons.location_on_rounded,
+              label: 'delivery_address'.tr(),
+              value: order.deliveryAddress,
+            ),
+          ],
+          if (order.laundryName.isNotEmpty) ...[
+            Gap(10.h),
+            _buildInfoTile(
+              icon: Icons.storefront_rounded,
+              label: 'ordered_from'.tr(),
+              value: order.laundryName,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOrderNumber(BuildContext context, OrderModel order) {
+    return Row(
+      children: [
+        Icon(
+          Icons.receipt_long_outlined,
+          size: 22.r,
+          color: AppColors.greyColor2,
+        ),
+        Gap(8.w),
+        Expanded(
+          child: Text(
+            '${'order_number'.tr()}: ${order.reference}',
+            style: TextStyles.darkBold16,
+          ),
+        ),
+        IconButton(
+          tooltip: 'copy'.tr(),
+          onPressed: () async {
+            await Clipboard.setData(ClipboardData(text: order.reference));
+            if (context.mounted) context.showSuccessMessage('copied'.tr());
+          },
+          icon: Icon(Icons.copy_outlined, size: 20.r),
+          color: AppColors.greyColor2,
+          visualDensity: VisualDensity.compact,
+        ),
+      ],
+    );
+  }
+
+  /// كارت أبيض بإطار رفيع: الأيقونة في مربع ملون وجنبها العنوان والقيمة
+  Widget _buildInfoTile({
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
+    return Container(
+      padding: EdgeInsets.all(12.r),
+      decoration: BoxDecoration(
+        color: AppColors.whiteColor,
+        borderRadius: BorderRadius.circular(14.r),
+        border: Border.all(color: AppColors.borderColor),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44.r,
+            height: 44.r,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: AppColors.primaryColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12.r),
+            ),
+            child: Icon(icon, size: 24.r, color: AppColors.primaryColor),
+          ),
+          Gap(12.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  label,
+                  style: TextStyles.darkRegular12.copyWith(
+                    color: AppColors.greyColor3,
+                  ),
+                ),
+                Gap(2.h),
+                Text(value, style: TextStyles.darkBold14),
+              ],
+            ),
+          ),
         ],
       ),
     );

@@ -6,6 +6,7 @@ import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:maghsalati/core/bloc/base_bloc.dart';
 import 'package:maghsalati/core/common_widget/label.dart';
+import 'package:maghsalati/core/extensions/context_extension.dart';
 import 'package:maghsalati/core/router/app_router.dart';
 import 'package:maghsalati/core/service_locator/service_locator.dart';
 import 'package:maghsalati/core/style/app_colors.dart';
@@ -17,9 +18,11 @@ import 'package:maghsalati/features/cart/presentation/view/widget/confirm_cart_b
 import 'package:maghsalati/features/cart/presentation/view_model/cart_cubit.dart';
 import 'package:maghsalati/features/laundry_details/data/model/service_category_model.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view/category_items_screen.dart';
+import 'package:maghsalati/features/laundry_details/presentation/view/price_center_screen.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view/widget/cart_bottom_bar.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view/widget/cart_bottom_sheet.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view/widget/laundry_details_header.dart';
+import 'package:maghsalati/features/laundry_details/presentation/view/widget/laundry_shortcuts_section.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view/widget/reviews_button.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view/widget/services_section.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view/widget/working_hours_button.dart';
@@ -213,6 +216,28 @@ class _LaundryDetailsState extends State<LaundryDetails> {
     CartBottomSheet.show(context: context, onConfirm: _confirmCart);
   }
 
+  /// الاختصارات اللي تحت الأقسام، واللي لسه مالهاش شاشة بتعرض "قريباً"
+  void _onShortcutTap(LaundryShortcut shortcut) {
+    switch (shortcut) {
+      case LaundryShortcut.serviceArea:
+        context.push(AppRouter.serviceArea);
+      case LaundryShortcut.serviceProvider:
+        context.push(AppRouter.serviceProvider);
+      case LaundryShortcut.priceCenter:
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => PriceCenterScreen(laundryId: widget.laundryId),
+          ),
+        );
+      case LaundryShortcut.groupWashing:
+        context.showSuccessMessage(
+          'coming_soon'.tr(),
+          icon: Icons.info_outline_rounded,
+          color: AppColors.primaryColor,
+        );
+    }
+  }
+
   /// نفس بار شاشة القطع: السلة وعدد القطع والسعر التقديري وزرار التأكيد
   /// بيقرا من سلة السيرفر، ولو السلة بتاعة مغسلة تانية بيبان فاضي
   Widget _buildBottomBar() {
@@ -366,6 +391,8 @@ class _LaundryDetailsState extends State<LaundryDetails> {
             ),
             // برة الـ padding عشان الجريد يوصل لحرف الشاشة زي الديزاين
             _buildServices(),
+            Gap(16.h),
+            LaundryShortcutsSection(onTap: _onShortcutTap),
             Gap(16.h),
           ],
         ),

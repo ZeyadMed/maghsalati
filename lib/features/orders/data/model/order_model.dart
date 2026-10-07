@@ -530,6 +530,14 @@ class OrderModel {
   /// رقم رحلة التسليم اللي بيتبعت مع كود التسليم، null لو مش معروف
   int? get dropoffTripId => (dropoffTrip?.id ?? 0) > 0 ? dropoffTrip!.id : null;
 
+  /// آخر مندوب اتعيّن على الطلب: بتاع التسليم لو اتعيّن، وإلا بتاع الاستلام،
+  /// فبيفضل ظاهر وقت ما الهدوم في المغسلة. null لو لسه مفيش مندوب خالص
+  OrderTripModel? get driverTrip {
+    if (dropoffTrip?.hasDriver ?? false) return dropoffTrip;
+    if (pickupTrip?.hasDriver ?? false) return pickupTrip;
+    return null;
+  }
+
   /// المندوب وصل والسيرفر قال صراحة إنه مستني كود العميل. مش بنعتمد هنا على
   /// fallback الريسبونس القديم عشان مانطلعش تنبيه "المندوب وصل" غلط
   bool get awaitsDropoffCode =>

@@ -8,7 +8,8 @@ import 'package:maghsalati/core/theme/text_styles.dart';
 import 'package:maghsalati/features/orders/data/model/order_model.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-/// المندوب المتعيّن على الرحلة: اسمه وزرار اتصال بيفتح التليفون
+/// كارت المندوب المتعيّن على الرحلة زي الديزاين: أيقونة توصيل واسمه ورقمه
+/// وزرار اتصال مدوّر بيفتح التليفون. لونه مختلف عن الكروت اللي تحته عشان يبان
 class OrderDriverTile extends StatelessWidget {
   final OrderTripModel trip;
 
@@ -29,23 +30,28 @@ class OrderDriverTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+      padding: EdgeInsets.all(12.r),
       decoration: BoxDecoration(
-        color: AppColors.secondaryColor,
-        borderRadius: BorderRadius.circular(12.r),
+        color: AppColors.primaryColor.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(14.r),
       ),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 18.r,
-            backgroundColor: AppColors.whiteColor,
+          Container(
+            width: 44.r,
+            height: 44.r,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: AppColors.whiteColor,
+              borderRadius: BorderRadius.circular(12.r),
+            ),
             child: Icon(
-              Icons.person_outline_rounded,
-              size: 20.r,
+              Icons.delivery_dining_rounded,
+              size: 26.r,
               color: AppColors.primaryColor,
             ),
           ),
-          Gap(10.w),
+          Gap(12.w),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -66,19 +72,42 @@ class OrderDriverTile extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
+                if (trip.driverName.isNotEmpty && trip.driverPhone.isNotEmpty)
+                  Text(
+                    trip.driverPhone,
+                    style: TextStyles.darkRegular12.copyWith(
+                      color: AppColors.greyColor3,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
               ],
             ),
           ),
-          if (trip.driverPhone.isNotEmpty)
-            IconButton(
-              onPressed: () => _call(context),
-              icon: Icon(
-                Icons.call_rounded,
-                size: 22.r,
-                color: AppColors.primaryColor,
-              ),
-            ),
+          if (trip.driverPhone.isNotEmpty) ...[
+            Gap(8.w),
+            _buildCallButton(context),
+          ],
         ],
+      ),
+    );
+  }
+
+  Widget _buildCallButton(BuildContext context) {
+    return Material(
+      color: AppColors.whiteColor,
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: () => _call(context),
+        child: SizedBox.square(
+          dimension: 42.r,
+          child: Icon(
+            Icons.call_rounded,
+            size: 20.r,
+            color: AppColors.primaryColor,
+          ),
+        ),
       ),
     );
   }
