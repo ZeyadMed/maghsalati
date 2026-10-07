@@ -26,8 +26,14 @@ class LoginBloc extends Bloc<LoginEvent, BaseState<AuthModel>> {
     );
 
     result.fold(
+      // الـ failure نفسه بيتبعت عشان الشاشة تعرف الـ 409 (رقم مش متفعل)
+      // وتاخد منه الرقم وتحوّل على الـ OTP
       (failure) => emit(
-        BaseState(status: Status.failure, errorMessage: failure.message),
+        BaseState(
+          status: Status.failure,
+          errorMessage: failure.message,
+          failure: failure,
+        ),
       ),
       (data) => emit(BaseState(status: Status.success, data: data)),
     );

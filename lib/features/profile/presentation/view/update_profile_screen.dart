@@ -86,10 +86,7 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
 
   void _onUpdateStateChanged(BuildContext context, BaseState<UserModel> state) {
     if (state.isSuccess) {
-      CustomSuccessOverlay.show(
-        context: context,
-        text: 'profile_updated'.tr(),
-      );
+      CustomSuccessOverlay.show(context: context, text: 'profile_updated'.tr());
       context.pop(state.data);
     } else if (state.isFailure) {
       CustomErrorOverlay.show(

@@ -531,6 +531,9 @@ final class BaseApiConsumer implements ApiConsumer {
               return VerifyOTPFailure(
                 message: _backendMessage(decoded) ?? 'خطأ في التحقق من الكود',
                 statusCode: error.response?.statusCode,
+                data: decoded['data'] is Map<String, dynamic>
+                    ? decoded['data'] as Map<String, dynamic>
+                    : null,
               );
             }
             if (decoded.containsKey('message')) {

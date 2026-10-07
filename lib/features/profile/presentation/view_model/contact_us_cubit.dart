@@ -7,8 +7,7 @@ import 'package:maghsalati/features/profile/data/model/contact_info_model.dart';
 class ContactUsCubit extends Cubit<BaseState<ContactInfoModel>> {
   final AppInfoDataSource _dataSource;
 
-  ContactUsCubit(this._dataSource)
-    : super(const BaseState<ContactInfoModel>());
+  ContactUsCubit(this._dataSource) : super(const BaseState<ContactInfoModel>());
 
   Future<void> getContacts() async {
     emit(state.copyWith(status: Status.loading));
@@ -20,7 +19,8 @@ class ContactUsCubit extends Cubit<BaseState<ContactInfoModel>> {
       (failure) => emit(
         state.copyWith(status: Status.failure, errorMessage: failure.message),
       ),
-      (contacts) => emit(state.copyWith(status: Status.success, data: contacts)),
+      (contacts) =>
+          emit(state.copyWith(status: Status.success, data: contacts)),
     );
   }
 }

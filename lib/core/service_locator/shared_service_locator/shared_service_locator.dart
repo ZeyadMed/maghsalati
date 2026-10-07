@@ -6,6 +6,7 @@ import 'package:get_it/get_it.dart';
 import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 import 'package:maghsalati/core/helpers/generic_data_source.dart';
 import 'package:maghsalati/core/helpers/location_service.dart';
+import 'package:maghsalati/core/service_locator/auth_sevices_locator/forget_password_services_locator.dart';
 import 'package:maghsalati/core/service_locator/auth_sevices_locator/login_services_locator.dart';
 import 'package:maghsalati/core/service_locator/auth_sevices_locator/logout_services_locator.dart';
 import 'package:maghsalati/core/service_locator/auth_sevices_locator/otp_services_locator.dart';
@@ -64,6 +65,7 @@ class SharedServiceLocator {
     await OtpServicesLocator.init(getIt: getIt);
     await LoginServicesLocator.init(getIt: getIt);
     await LogoutServicesLocator.init(getIt: getIt);
+    await ForgetPasswordServicesLocator.init(getIt: getIt);
     await HomeServicesLocator.init(getIt: getIt);
     await LaundryDetailsServicesLocator.init(getIt: getIt);
     await CartServicesLocator.init(getIt: getIt);

@@ -9,6 +9,7 @@ import 'package:maghsalati/core/bloc/base_bloc.dart';
 import 'package:maghsalati/core/common_widget/label.dart';
 import 'package:maghsalati/core/extensions/context_extension.dart';
 import 'package:maghsalati/core/helpers/validators.dart';
+import 'package:maghsalati/core/http/failure.dart';
 import 'package:maghsalati/core/router/app_router.dart';
 import 'package:maghsalati/core/service_locator/service_locator.dart';
 import 'package:maghsalati/core/style/assets.dart';
@@ -20,6 +21,7 @@ import 'package:maghsalati/core/widget/flexiable_image.dart';
 import 'package:maghsalati/features/auth/login/presentation/logic/login_bloc.dart';
 import 'package:maghsalati/features/auth/login/presentation/logic/login_event.dart';
 import 'package:maghsalati/features/auth/models/auth_model.dart';
+import 'package:maghsalati/features/auth/otp/models/otp_args.dart';
 
 import '../../../../../core/style/app_colors.dart';
 
@@ -76,6 +78,21 @@ class _LoginScreenState extends State<LoginScreen> {
             }
             if (state.isFailure) {
               context.showErrorMessage(state.errorMessage ?? '');
+
+              // 409 معناه إن الرقم مش متفعل والباك بعت كود تحقق جديد،
+              // فبنوديه الـ OTP وبعد التفعيل بيدخل على الناف بار على طول
+              final failure = state.failure;
+              if (failure is VerifyOTPFailure && failure.statusCode == 409) {
+                context.push(
+                  AppRouter.verifyOtp,
+                  extra: OtpArgs(
+                    phoneNumber:
+                        failure.data?['phoneNumber']?.toString() ??
+                        completePhone,
+                    purpose: OtpPurpose.register,
+                  ),
+                );
+              }
             }
           },
           builder: (context, state) {

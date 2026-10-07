@@ -69,7 +69,10 @@ class SyncAppFailure extends Failure {
 }
 
 class VerifyOTPFailure extends Failure {
-  VerifyOTPFailure({required String message, int? statusCode})
+  /// الـ data اللي راجعة مع الـ 409، زي { phoneNumber } في لوجين برقم مش متفعل
+  final Map<String, dynamic>? data;
+
+  VerifyOTPFailure({required String message, int? statusCode, this.data})
       : super(message, statusCode: statusCode);
 }
 

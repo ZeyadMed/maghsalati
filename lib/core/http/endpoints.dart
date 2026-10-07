@@ -13,8 +13,13 @@ abstract interface class Endpoints {
   static const String cities = 'api/auth/cities';
   static const String verifyOtp = 'verify-otp';
   static const String login = 'api/auth/customer/login';
-  static const String forgetPassword = 'forgot/password';
-  static const String resetPasssword = 'forgot/reset-password';
+
+  /// بتاخد { phoneNumber, accountType } وبتبعت كود الاستعادة على الرقم
+  static const String forgotPassword = 'api/auth/forgot-password';
+
+  /// بتاخد { phoneNumber, accountType, code, newPassword }، والكود هو اللي
+  /// اتبعت من forgot-password ومفيش خطوة تحقق منه لوحده قبلها
+  static const String resetPassword = 'api/auth/reset-password';
   static const String confirmPassword = '';
   static const String resentOtp = 'resend-otp';
   static const String forgetResendOtp = 'forgot/resend-otp';
@@ -89,6 +94,9 @@ abstract interface class Endpoints {
   /// PUT: بتاخد { name, address, cityId, latitude, longitude } وبتعدلهم
   static const String customerProfile = 'api/customer/profile';
 
+  /// DELETE من غير body: بتحذف حساب العميل
+  static const String customerAccount = 'api/customer/account';
+
   // ****************************** Notifications ********************************
   /// GET: بتاخد PageIndex و PageSize في الـ query وبترجع الإشعارات
   /// جوه data.data ومعاها pageIndex و totalPages
@@ -136,6 +144,8 @@ abstract interface class Endpoints {
     return path.contains(login) ||
         path.contains(verifyPhone) ||
         path.contains(register) ||
-        path.contains(cities);
+        path.contains(cities) ||
+        path.contains(forgotPassword) ||
+        path.contains(resetPassword);
   }
 }

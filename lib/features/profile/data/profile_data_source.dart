@@ -9,6 +9,8 @@ abstract interface class ProfileDataSource {
 
   /// بتبعت الاسم والعنوان والمدينة والإحداثيات بس، التليفون مابيتعدلش من هنا
   Future<Either<Failure, void>> updateProfile(UserModel user);
+
+  Future<Either<Failure, void>> deleteAccount();
 }
 
 class ProfileDataSourceImpl implements ProfileDataSource {
@@ -28,6 +30,14 @@ class ProfileDataSourceImpl implements ProfileDataSource {
     final result = await _genericDataSource.updateData<Null>(
       endpoint: Endpoints.customerProfile,
       data: user.toUpdateJson(),
+    );
+    return result.fold((failure) => Left(failure), (_) => const Right(null));
+  }
+
+  @override
+  Future<Either<Failure, void>> deleteAccount() async {
+    final result = await _genericDataSource.deleteData<Null>(
+      endpoint: Endpoints.customerAccount,
     );
     return result.fold((failure) => Left(failure), (_) => const Right(null));
   }

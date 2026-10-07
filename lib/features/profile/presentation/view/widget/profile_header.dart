@@ -1,4 +1,5 @@
 import 'package:easy_localization/easy_localization.dart';
+
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -115,9 +116,10 @@ class ProfileHeader extends StatelessWidget {
   Widget _buildSubtitle(String text) {
     return Text(
       text,
-      style: TextStyles.whiteText(13, weight: FontWeight.w300).copyWith(
-        color: AppColors.whiteColor.withValues(alpha: 0.85),
-      ),
+      style: TextStyles.whiteText(
+        13,
+        weight: FontWeight.w300,
+      ).copyWith(color: AppColors.whiteColor.withValues(alpha: 0.85)),
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
     );

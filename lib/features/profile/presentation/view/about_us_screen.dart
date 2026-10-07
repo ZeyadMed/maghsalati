@@ -113,17 +113,13 @@ class AboutUsScreen extends StatelessWidget {
         Text(
           '${'app_version'.tr()} $_version',
           textAlign: TextAlign.center,
-          style: TextStyles.darkRegular12.copyWith(
-            color: AppColors.greyColor3,
-          ),
+          style: TextStyles.darkRegular12.copyWith(color: AppColors.greyColor3),
         ),
         SizedBox(height: 6.h),
         Text(
           'all_rights_reserved'.tr(),
           textAlign: TextAlign.center,
-          style: TextStyles.darkRegular12.copyWith(
-            color: AppColors.greyColor5,
-          ),
+          style: TextStyles.darkRegular12.copyWith(color: AppColors.greyColor5),
         ),
       ],
     );

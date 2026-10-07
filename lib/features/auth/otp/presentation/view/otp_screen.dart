@@ -87,16 +87,6 @@ class _OtpScreenState extends State<OtpScreen> {
       return;
     }
 
-    // في نسيت كلمة المرور الكود بيتبعت مع كلمة المرور الجديدة في reset-password
-    // فمش بنفعل الرقم هنا، بس بنوديه شاشة التغيير ومعاه الرقم والكود
-    if (widget.purpose == OtpPurpose.forgetPassword) {
-      context.pushReplacement(
-        AppRouter.changePassword,
-        extra: ResetPasswordArgs(phoneNumber: widget.phoneNumber, code: code),
-      );
-      return;
-    }
-
     if (context.read<VerifyPhoneBloc>().state.isLoading) return;
 
     context.read<VerifyPhoneBloc>().add(

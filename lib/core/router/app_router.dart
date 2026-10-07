@@ -97,7 +97,7 @@ abstract class AppRouter {
         path: forgetPassword,
         builder: (context, state) => const ForgetPasswordScreen(),
       ),
-      // OtpArgs بيتبعت في state.extra جاي من التسجيل أو نسيت كلمة المرور،
+      // OtpArgs بيتبعت في state.extra جاي من التسجيل،
       // فيه الرقم اللي بيتبعت مع الكود والـ purpose اللي بيحدد نروح فين بعد التحقق
       GoRoute(
         path: verifyOtp,
@@ -109,11 +109,11 @@ abstract class AppRouter {
           );
         },
       ),
-      // ResetPasswordArgs بيتبعت في state.extra جاي من شاشة الـ OTP
+      // الرقم بيتبعت في state.extra جاي من نسيت كلمة المرور بعد ما الكود يتبعت
       GoRoute(
         path: changePassword,
         builder: (context, state) =>
-            ChangePasswordScreen(args: state.extra as ResetPasswordArgs?),
+            ChangePasswordScreen(phoneNumber: state.extra as String? ?? ''),
       ),
       GoRoute(
         path: homeScreen,
