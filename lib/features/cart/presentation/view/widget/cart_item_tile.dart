@@ -47,6 +47,16 @@ class CartItemTile extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
+              // الصنف الأب لو القطعة نوع منه (قميص كتان ← قميص)
+              if (item.parentItemName.isNotEmpty)
+                Text(
+                  item.parentItemName,
+                  style: TextStyles.greyColor2Regular14.copyWith(
+                    fontSize: 11.sp,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               SizedBox(height: 2.h),
               Text(
                 '${formatCartPrice(item.unitPrice)} ${'currency'.tr()} × '

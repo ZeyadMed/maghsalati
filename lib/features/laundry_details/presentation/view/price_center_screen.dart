@@ -61,9 +61,9 @@ class _PriceCenterScreenState extends State<PriceCenterScreen> {
             );
           }
 
-          // الخدمة اللي مالهاش قطع مالهاش أسعار تتعرض فمالهاش تاب
+          // الخدمة اللي مالهاش قطع متسعّرة مالهاش أسعار تتعرض فمالهاش تاب
           final categories = state.items
-              .where((category) => category.items.isNotEmpty)
+              .where((category) => category.addableItems.isNotEmpty)
               .toList();
           if (categories.isEmpty) {
             return Center(
@@ -128,22 +128,26 @@ class _PriceCenterScreenState extends State<PriceCenterScreen> {
 
   /// جدول لكل قسم فرعي فيه قطع، والقطع اللي مش تبع قسم فرعي بتتجمع
   /// في جدول باسم الخدمة نفسها. ولو الـ endpoint مارجعش أقسام فرعية
-  /// الخدمة كلها بتبقى جدول واحد
+  /// الخدمة كلها بتبقى جدول واحد. والـ group بيتفرد لأنواعه لأن أسماءها
+  /// جاية كاملة (قميص كتان) فبتتقري لوحدها
   List<(String, List<ServiceItemModel>)> _groupsOf(
     ServiceCategoryModel category,
   ) {
     final subIds = category.subCategories.map((sub) => sub.id).toSet();
     return [
       for (final sub in category.subCategories)
-        (sub.name, category.itemsOf(sub.id)),
+        (sub.name, _priced(category.itemsOf(sub.id))),
       (
         category.name,
-        category.items
-            .where((item) => !subIds.contains(item.subCategoryId))
-            .toList(),
+        _priced(
+          category.items.where((item) => !subIds.contains(item.subCategoryId)),
+        ),
       ),
     ].where((group) => group.$2.isNotEmpty).toList();
   }
+
+  List<ServiceItemModel> _priced(Iterable<ServiceItemModel> items) =>
+      items.expand((item) => item.addableItems).toList();
 
   /// زي الديزاين: صف عناوين أزرق فيه اسم القسم والسعر، وتحته صف لكل قطعة
   /// والخانات كلها بينها خطوط رفيعة
@@ -191,7 +195,8 @@ class _PriceCenterScreenState extends State<PriceCenterScreen> {
     );
   }
 
-  String _priceLabel(num price) {
+  String _priceLabel(num? price) {
+    if (price == null) return '-';
     final value = price % 1 == 0 ? price.toInt().toString() : price.toString();
     return '$value ${'currency'.tr()}';
   }

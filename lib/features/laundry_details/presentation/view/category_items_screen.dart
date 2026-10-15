@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
+import 'package:go_router/go_router.dart';
 import 'package:maghsalati/core/bloc/base_bloc.dart';
 import 'package:maghsalati/core/extensions/context_extension.dart';
+import 'package:maghsalati/core/router/app_router.dart';
 import 'package:maghsalati/core/service_locator/service_locator.dart';
 import 'package:maghsalati/core/style/app_colors.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
@@ -19,9 +21,10 @@ import 'package:maghsalati/features/laundry_details/presentation/view/widget/ser
 import 'package:maghsalati/features/laundry_details/presentation/view/widget/sub_category_filter_chips.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view_model/add_to_cart_cubit.dart';
 
-/// شاشة القطع: تابات لكل الأقسام الرئيسية فوق، وتحتها شيبس الأقسام الفرعية
-/// والقطع في جريد 3 في الصف. الدوسة على القطعة بتزود منها واحدة في سلة السيرفر،
-/// والسلة اللي تحت بتفتح الشيت اللي فيه تعديل الكميات والمسح
+/// شاشة القطع زي الديزاين: تابات للأقسام الرئيسية فوق (غسيل الملابس)، وتحتها
+/// بانر، وبعده شيبس الفروع (قمصان - بناطيل)، وأنواع الفرع المختار في جريد
+/// 3 في الصف (قميص كتان - قميص قطن). الدوسة على النوع بتزود منه واحدة في
+/// سلة السيرفر، والسلة اللي تحت بتفتح الشيت اللي فيه تعديل الكميات والمسح
 class CategoryItemsScreen extends StatefulWidget {
   final List<ServiceCategoryModel> categories;
 
@@ -52,9 +55,9 @@ class _CategoryItemsScreenState extends State<CategoryItemsScreen>
 
   late final TabController _tabController;
 
-  /// الفلتر المختار لكل قسم (categoryId -> subCategoryId)
-  /// محفوظ لكل قسم لوحده عشان لما ترجع للتاب تلاقي فلترك زي ما سيبته
-  final Map<int, int?> _selectedSubCategories = {};
+  /// الفرع المختار لكل قسم (categoryId -> مكان الشيب)، وأول فرع لو مفيش
+  /// محفوظ لكل قسم لوحده عشان لما ترجع للتاب تلاقي الفرع زي ما سيبته
+  final Map<int, int> _selectedBranches = {};
 
   /// كل دوسة على قطعة بتزود منها واحدة في سلة العميل
   final AddToCartCubit _addToCartCubit = getIt<AddToCartCubit>();
@@ -62,11 +65,12 @@ class _CategoryItemsScreenState extends State<CategoryItemsScreen>
   /// singleton ومشترك مع تاب السلة، فمش بيتعمله close هنا
   final CartCubit _cartCubit = getIt<CartCubit>();
 
-  /// سعر كل قطعة (itemId -> السعر) عشان السعر التقديري يزيد مع الدوسة
-  /// قبل ما السلة الجديدة توصل من السيرفر
+  /// سعر كل قطعة (laundryServiceItemId -> السعر) عشان السعر التقديري يزيد
+  /// مع الدوسة قبل ما السلة الجديدة توصل من السيرفر، وأنواع الـ groups معاهم
   late final Map<int, num> _prices = {
     for (final category in widget.categories)
-      for (final ServiceItemModel item in category.items) item.id: item.price,
+      for (final ServiceItemModel item in category.addableItems)
+        ?item.laundryServiceItemId: ?item.price,
   };
 
   @override
@@ -108,8 +112,13 @@ class _CategoryItemsScreenState extends State<CategoryItemsScreen>
   @override
   Widget build(BuildContext context) {
     final category = _currentCategory;
-    final selectedSub = _selectedSubCategories[category.id];
-    final items = category.itemsOf(selectedSub);
+    final branches = category.branches;
+    final selected = _selectedBranches[category.id] ?? 0;
+    final items = selected < branches.length
+        ? branches[selected].items
+        : const <ServiceItemModel>[];
+    // القسم اللي كله أصناف عادية مالهوش فروع، فالجريد بيبان على طول
+    final showChips = branches.any((branch) => branch.name != null);
 
     return BlocListener<AddToCartCubit, BaseState<Map<int, int>>>(
       bloc: _addToCartCubit,
@@ -123,17 +132,31 @@ class _CategoryItemsScreenState extends State<CategoryItemsScreen>
         bottomNavigationBar: _withCart(_buildBottomBar),
         body: Column(
           children: [
-            // ServicesPromoBanner(title: 'promo_banner_title'.tr()),
-            Gap(12.h),
-            SubCategoryFilterChips(
-              subCategories: category.subCategories,
-              selectedId: selectedSub,
-              onSelected: (id) => setState(() {
-                _selectedSubCategories[category.id] = id;
-              }),
+            Gap(6.h),
+            ServicesPromoBanner(
+              title: 'service_mechanism'.tr(),
+              onTap: () => context.push(AppRouter.serviceMechanism),
             ),
-            if (category.subCategories.isNotEmpty) Gap(12.h),
-            Expanded(child: _buildItemsGrid(items)),
+            if (showChips) ...[
+              Gap(18.h),
+              SubCategoryFilterChips(
+                labels: [
+                  for (final branch in branches) branch.name ?? 'others'.tr(),
+                ],
+                selectedIndex: selected,
+                onSelected: (index) => setState(() {
+                  _selectedBranches[category.id] = index;
+                }),
+              ),
+            ],
+            Gap(14.h),
+            Expanded(
+              // key لكل فرع عشان الجريد يبدأ من فوق لما الفرع يتغير
+              child: _buildItemsGrid(
+                items,
+                key: ValueKey((category.id, selected)),
+              ),
+            ),
           ],
         ),
       ),
@@ -161,12 +184,12 @@ class _CategoryItemsScreenState extends State<CategoryItemsScreen>
           controller: _tabController,
           isScrollable: true,
           tabAlignment: TabAlignment.start,
-          indicatorColor: AppColors.primaryColor,
-          indicatorSize: TabBarIndicatorSize.label,
+          // زي الديزاين: التاب المختار بيتلوّن أزرق بس من غير خط تحته
+          indicator: const BoxDecoration(),
           labelColor: AppColors.primaryColor,
-          unselectedLabelColor: AppColors.greyColor3,
-          labelStyle: TextStyles.blackBold14,
-          unselectedLabelStyle: TextStyles.blackRegular14,
+          unselectedLabelColor: AppColors.darkTextColor,
+          labelStyle: TextStyles.blackBold16,
+          unselectedLabelStyle: TextStyles.blackRegular16,
           dividerColor: AppColors.borderColor,
           tabs: widget.categories
               .map((category) => Tab(text: category.name))
@@ -195,7 +218,7 @@ class _CategoryItemsScreenState extends State<CategoryItemsScreen>
 
   /// خانات لازقة في بعض من غير مسافات، وخط فوق أول صف
   /// والباقي كل خانة بترسم الخط اللي تحتها واللي على جنبها
-  Widget _buildItemsGrid(List<ServiceItemModel> items) {
+  Widget _buildItemsGrid(List<ServiceItemModel> items, {Key? key}) {
     if (items.isEmpty) {
       return Center(
         child: Text('no_items'.tr(), style: TextStyles.greyColor2Regular14),
@@ -208,6 +231,7 @@ class _CategoryItemsScreenState extends State<CategoryItemsScreen>
       ),
       child: _withCart(
         (cart, pending) => GridView.builder(
+          key: key,
           padding: EdgeInsets.zero,
           itemCount: items.length,
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -216,13 +240,19 @@ class _CategoryItemsScreenState extends State<CategoryItemsScreen>
           ),
           itemBuilder: (context, index) {
             final item = items[index];
+            final id = item.laundryServiceItemId;
             return ServiceItemCard(
-              key: ValueKey(item.id),
+              key: ValueKey(item.serviceItemId),
               item: item,
-              quantity:
-                  (cart?.piecesOf([item.id]) ?? 0) + (pending[item.id] ?? 0),
+              // القطعة دي في سلة السيرفر + الدوسات اللي لسه بتتبعت عليها
+              quantity: id == null
+                  ? 0
+                  : (cart?.piecesOf([id]) ?? 0) + (pending[id] ?? 0),
               showEndBorder: index % _columns != _columns - 1,
-              onTap: () => _addToCartCubit.addOne(item.id),
+              // الفروع فيها أصناف متسعّرة بس، والشرط عشان null مايتبعتش أبداً
+              onTap: () {
+                if (id != null) _addToCartCubit.addOne(id);
+              },
             );
           },
         ),

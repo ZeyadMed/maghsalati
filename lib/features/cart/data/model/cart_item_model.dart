@@ -1,3 +1,5 @@
+import 'package:maghsalati/core/helpers/json_reader.dart';
+
 /// سطر في سلة العميل جاي من api/customer/cart
 class CartItemModel {
   /// الـ id بتاع السطر نفسه في السلة
@@ -14,6 +16,12 @@ class CartItemModel {
   final int quantity;
   final num lineTotal;
 
+  /// الصنف الأب لو القطعة نوع منه (قميص ← قميص كتان)، و null لو صنف عادي
+  final int? parentItemId;
+
+  /// اسم الصنف الأب بيتعرض سطر صغير تحت [name]، وفاضي لو صنف عادي
+  final String parentItemName;
+
   const CartItemModel({
     required this.id,
     required this.laundryServiceItemId,
@@ -22,6 +30,8 @@ class CartItemModel {
     required this.unitPrice,
     required this.quantity,
     required this.lineTotal,
+    this.parentItemId,
+    this.parentItemName = '',
   });
 
   factory CartItemModel.fromJson(Map<String, dynamic> json) {
@@ -37,6 +47,8 @@ class CartItemModel {
       unitPrice: json['unitPrice'] as num? ?? 0,
       quantity: (json['quantity'] as num?)?.toInt() ?? 0,
       lineTotal: json['lineTotal'] as num? ?? 0,
+      parentItemId: asInt(json['parentItemId']),
+      parentItemName: json['parentItemName']?.toString() ?? '',
     );
   }
 }

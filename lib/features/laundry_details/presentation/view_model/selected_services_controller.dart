@@ -47,8 +47,10 @@ class SelectedServicesController extends ChangeNotifier {
     _categories = categories;
     _prices.clear();
     for (final category in categories) {
-      for (final ServiceItemModel item in category.items) {
-        _prices[item.id] = item.price;
+      for (final ServiceItemModel item in category.addableItems) {
+        final id = item.laundryServiceItemId;
+        final price = item.price;
+        if (id != null && price != null) _prices[id] = price;
       }
     }
   }
@@ -121,8 +123,10 @@ class SelectedServicesController extends ChangeNotifier {
   ) {
     final selected = <SelectedService>[];
     for (final category in categories) {
-      for (final ServiceItemModel item in category.items) {
-        final quantity = quantityOf(item.id);
+      for (final ServiceItemModel item in category.addableItems) {
+        final id = item.laundryServiceItemId;
+        if (id == null) continue;
+        final quantity = quantityOf(id);
         if (quantity <= 0) continue;
         selected.add(SelectedService(item: item, quantity: quantity));
       }

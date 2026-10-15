@@ -123,7 +123,7 @@ class ServicesSection extends StatelessWidget {
     return CategoryGridCard(
       key: ValueKey(category.id),
       category: category,
-      selectedPieces: cart?.piecesOf(category.items.map((e) => e.id)) ?? 0,
+      selectedPieces: cart?.piecesOf(category.laundryServiceItemIds) ?? 0,
       showEndBorder: showEndBorder,
       horizontalLayout: horizontalLayout,
       onTap: () => onCategoryTap(index),

@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:maghsalati/core/style/app_colors.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
 import 'package:maghsalati/core/widget/flexiable_image.dart';
+import 'package:maghsalati/features/cart/presentation/view/widget/cart_price.dart';
 import 'package:maghsalati/features/laundry_details/data/model/service_item_model.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view/widget/count_badge.dart';
 
@@ -50,7 +51,7 @@ class ServiceItemCard extends StatelessWidget {
               SizedBox(height: 8.h),
               Text(
                 item.name,
-                style: TextStyles.darkRegular14.copyWith(fontSize: 13.sp),
+                style: TextStyles.darkRegular14,
                 textAlign: TextAlign.center,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -58,7 +59,11 @@ class ServiceItemCard extends StatelessWidget {
               SizedBox(height: 4.h),
               Text(
                 _priceLabel(),
-                style: TextStyles.boldStyle(14, color: AppColors.redColor2),
+                style: TextStyles.boldStyle(
+                  14,
+                  color: AppColors.redColor2,
+                  weight: FontWeight.w500,
+                ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -101,12 +106,10 @@ class ServiceItemCard extends StatelessWidget {
     );
   }
 
-  /// السعر + العملة الجاية من الترجمة
-  /// الرقم الصحيح بيتعرض من غير كسور يعني 15 مش 15.0
+  /// السعر + العملة الجاية من الترجمة، والرقم الصحيح من غير كسور
   String _priceLabel() {
-    final value = item.price % 1 == 0
-        ? item.price.toInt().toString()
-        : item.price.toString();
-    return '$value ${'currency'.tr()}';
+    final price = item.price;
+    if (price == null) return '';
+    return '${formatCartPrice(price)} ${'currency'.tr()}';
   }
 }
