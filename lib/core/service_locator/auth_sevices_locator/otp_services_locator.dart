@@ -1,5 +1,6 @@
 import 'package:get_it/get_it.dart';
 import 'package:maghsalati/features/auth/otp/data/verify_phone_data_source.dart';
+import 'package:maghsalati/features/auth/otp/presentation/logic/resend_code_cubit.dart';
 import 'package:maghsalati/features/auth/otp/presentation/logic/verify_phone_bloc.dart';
 
 class OtpServicesLocator {
@@ -8,5 +9,8 @@ class OtpServicesLocator {
       () => VerifyPhoneDataSourceImpl(getIt()),
     );
     getIt.registerFactory<VerifyPhoneBloc>(() => VerifyPhoneBloc(getIt()));
+    getIt.registerFactory<ResendCodeCubit>(
+      () => ResendCodeCubit(getIt(), getIt()),
+    );
   }
 }

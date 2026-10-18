@@ -12,6 +12,9 @@ abstract interface class VerifyPhoneDataSource {
     required String deviceInfo,
     required String deviceId,
   });
+
+  /// بتبعت كود جديد على الرقم وبترجع رسالة الباك
+  Future<Either<Failure, String>> resendCode({required String phoneNumber});
 }
 
 class VerifyPhoneDataSourceImpl implements VerifyPhoneDataSource {
@@ -37,6 +40,19 @@ class VerifyPhoneDataSourceImpl implements VerifyPhoneDataSource {
       },
       headers: {'Authorization': null},
       fromJson: (json) => AuthModel.fromJson(json),
+    );
+    return result;
+  }
+
+  @override
+  Future<Either<Failure, String>> resendCode({
+    required String phoneNumber,
+  }) async {
+    final result = await _genericDataSource.postData<String>(
+      endpoint: Endpoints.resendCode,
+      data: {'phoneNumber': phoneNumber},
+      headers: {'Authorization': null},
+      fromJson: (json) => json['message']?.toString() ?? '',
     );
     return result;
   }

@@ -131,6 +131,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         onTap: _openUpdateProfile,
       ),
       ProfileMenuTile(
+        icon: Icons.location_on_outlined,
+        iconColor: AppColors.redColor2,
+        titleKey: 'saved_addresses',
+        onTap: () => context.push(AppRouter.savedAddresses),
+      ),
+      ProfileMenuTile(
         icon: Icons.notifications_none_rounded,
         iconColor: AppColors.orangeColor,
         titleKey: 'notifications',

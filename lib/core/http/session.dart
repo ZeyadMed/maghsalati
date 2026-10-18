@@ -1,7 +1,9 @@
 import 'package:maghsalati/core/cache_manager/cache_manager.dart';
 import 'package:maghsalati/core/realtime/realtime_service.dart';
 import 'package:maghsalati/core/service_locator/service_locator.dart';
+import 'package:maghsalati/features/home/presentation/view_model/location_controller.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view_model/selected_services_controller.dart';
+import 'package:maghsalati/features/saved_addresses/presentation/view_model/saved_addresses_cubit.dart';
 
 /// مكان واحد لكل حاجة تخص جلسة المستخدم: مسح بياناته عند الخروج
 /// أو انتهاء الجلسة، ومنع التحويل للوجين أكتر من مرة.
@@ -19,6 +21,13 @@ abstract final class Session {
     await CacheManager.clearUserData();
     if (getIt.isRegistered<SelectedServicesController>()) {
       getIt<SelectedServicesController>().clear();
+    }
+    // العناوين والعنوان الافتراضي بتوع الحساب ده، فاللي بعده يجيب بتوعه هو
+    if (getIt.isRegistered<SavedAddressesCubit>()) {
+      getIt<SavedAddressesCubit>().reset();
+    }
+    if (getIt.isRegistered<LocationController>()) {
+      getIt<LocationController>().reset();
     }
   }
 

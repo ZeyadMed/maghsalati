@@ -8,10 +8,17 @@ abstract interface class Endpoints {
   /// بتاخد { phoneNumber, code, deviceInfo, deviceId } وبترجع التوكنز
   static const String verifyPhone = 'api/auth/customer/verify-phone';
 
+  /// بتاخد { phoneNumber } وبتبعت كود تحقق جديد على الرقم،
+  /// بنستخدمها في إعادة الإرسال بعد التسجيل
+  static const String resendCode = 'api/auth/customer/resend-code';
+
   /// المدن اللي بتتعرض في الدروب داون بتاعة التسجيل،
   /// بترجع list فيها { id, name } والـ id هو اللي بيتبعت في cityId
   static const String cities = 'api/auth/cities';
   static const String verifyOtp = 'verify-otp';
+
+  /// بتاخد { phoneNumber, rememberMe, deviceToken } من غير باسورد
+  /// وبتبعت كود على الرقم، والتوكنز بتيجي بعد كده من verify-phone
   static const String login = 'api/auth/customer/login';
 
   /// بتاخد { phoneNumber, accountType } وبتبعت كود الاستعادة على الرقم
@@ -97,6 +104,20 @@ abstract interface class Endpoints {
   /// DELETE من غير body: بتحذف حساب العميل
   static const String customerAccount = 'api/customer/account';
 
+  // ****************************** Saved Addresses ********************************
+  /// GET: بترجع عناوين العميل جوه data مترتبة جاهزة (الافتراضي الأول وبعده الأحدث تعديلًا)
+  /// POST: بتاخد { title, address, latitude, longitude, additionalDetails, isDefault }
+  /// وبترجع العنوان الجديد جوه data (201)، وأول عنوان بيبقى افتراضي حتى لو isDefault: false
+  static const String savedAddresses = 'api/saved-addresses';
+
+  /// PUT: نفس body الإضافة. isDefault: true بتخليه الافتراضي، و false مابتشيلهوش
+  /// DELETE: مفيش data، ولو كان الافتراضي السيرفر بيخلي أحدث عنوان متعدّل هو الافتراضي
+  static String savedAddress(int addressId) => 'api/saved-addresses/$addressId';
+
+  /// POST من غير body: بتخلي العنوان ده الافتراضي وبتشيله من اللي قبله
+  static String defaultSavedAddress(int addressId) =>
+      'api/saved-addresses/$addressId/default';
+
   // ****************************** Notifications ********************************
   /// GET: بتاخد PageIndex و PageSize في الـ query وبترجع الإشعارات
   /// جوه data.data ومعاها pageIndex و totalPages
@@ -143,6 +164,7 @@ abstract interface class Endpoints {
   static bool isPublicAuth(String path) {
     return path.contains(login) ||
         path.contains(verifyPhone) ||
+        path.contains(resendCode) ||
         path.contains(register) ||
         path.contains(cities) ||
         path.contains(forgotPassword) ||

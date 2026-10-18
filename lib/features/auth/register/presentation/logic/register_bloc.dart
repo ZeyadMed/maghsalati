@@ -20,13 +20,11 @@ class RegisterBloc extends Bloc<RegisterEvent, BaseState<RegisterModel>> {
     final result = await _registerDataSource.register(
       name: event.name,
       phoneNumber: event.phoneNumber,
-      password: event.password,
       address: event.address,
       cityId: event.cityId,
       latitude: event.latitude,
       longitude: event.longitude,
-      deviceInfo: event.deviceInfo,
-      deviceId: event.deviceId,
+      image: event.image,
     );
 
     result.fold(

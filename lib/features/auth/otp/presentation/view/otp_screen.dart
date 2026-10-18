@@ -18,11 +18,11 @@ import 'package:maghsalati/core/theme/text_styles.dart';
 import 'package:maghsalati/core/widget/custom_button.dart';
 import 'package:maghsalati/features/auth/models/auth_model.dart';
 import 'package:maghsalati/features/auth/otp/models/otp_args.dart';
+import 'package:maghsalati/features/auth/otp/presentation/logic/resend_code_cubit.dart';
 import 'package:maghsalati/features/auth/otp/presentation/logic/verify_phone_bloc.dart';
 import 'package:maghsalati/features/auth/otp/presentation/logic/verify_phone_event.dart';
 
 class OtpScreen extends StatefulWidget {
-
   final String phoneNumber;
   final OtpPurpose purpose;
 
@@ -39,13 +39,19 @@ class OtpScreen extends StatefulWidget {
 class _OtpScreenState extends State<OtpScreen> {
   final TextEditingController _pinController = TextEditingController();
 
-  
   static const int _otpLength = 6;
 
   static const int _countdownSeconds = 60;
   int _secondsRemaining = 0;
   bool _canResend = true;
   Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    // الكود لسه متبعت من التسجيل أو الدخول، فإعادة الإرسال بتستنى العداد الأول
+    _startCountdown();
+  }
 
   @override
   void dispose() {
@@ -101,140 +107,158 @@ class _OtpScreenState extends State<OtpScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => getIt<VerifyPhoneBloc>(),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(create: (context) => getIt<VerifyPhoneBloc>()),
+        BlocProvider(create: (context) => getIt<ResendCodeCubit>()),
+      ],
       child: Scaffold(
         backgroundColor: AppColors.secondaryColor,
-        body: BlocConsumer<VerifyPhoneBloc, BaseState<AuthModel>>(
+        body: BlocListener<ResendCodeCubit, BaseState<String>>(
           listener: (context, state) {
             if (state.isSuccess) {
-              // التوكنز اتحفظت جوه authenticate فالمستخدم بقى داخل،
-              // بنوديه الناف بار على طول من غير ما يعيد تسجيل الدخول
-              context.showSuccessMessage(state.data?.message ?? '');
-              context.go(AppRouter.initialRoot);
+              if (state.data?.isNotEmpty ?? false) {
+                context.showSuccessMessage(state.data!);
+              }
+              _startCountdown();
             }
             if (state.isFailure) {
               context.showErrorMessage(state.errorMessage ?? '');
             }
           },
-          builder: (context, state) {
-            return Padding(
-              padding: const EdgeInsets.all(25.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // App Logo
-                  Image.asset(
-                    Assets.assetsImagesLogo,
-                    width: double.infinity,
-                    height: context.screenHeight * 0.2,
-                    color: AppColors.blackColor,
-                  ),
-                  // Header
-                  LocalizedLabel(
-                    text: "otp_title",
-                    style: TextStyles.blackBold20,
-                  ),
-
-                  Gap(10.h),
-
-                  // Description
-                  LocalizedLabel(
-                    text: "otp_desc",
-                    maxLines: 3,
-                    style: TextStyles.blackRegular16.copyWith(
-                      color: AppColors.lightTextColor,
+          child: BlocConsumer<VerifyPhoneBloc, BaseState<AuthModel>>(
+            listener: (context, state) {
+              if (state.isSuccess) {
+                // التوكنز اتحفظت جوه authenticate فالمستخدم بقى داخل،
+                // بنوديه الناف بار على طول من غير ما يعيد تسجيل الدخول
+                context.showSuccessMessage(state.data?.message ?? '');
+                context.go(AppRouter.initialRoot);
+              }
+              if (state.isFailure) {
+                context.showErrorMessage(state.errorMessage ?? '');
+              }
+            },
+            builder: (context, state) {
+              return Padding(
+                padding: const EdgeInsets.all(25.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // App Logo
+                    Image.asset(
+                      Assets.assetsImagesLogo,
+                      width: double.infinity,
+                      height: context.screenHeight * 0.2,
+                      color: AppColors.blackColor,
                     ),
-                  ),
+                    // Header
+                    LocalizedLabel(
+                      text: "otp_title",
+                      style: TextStyles.blackBold20,
+                    ),
 
-                  Gap(40.h),
+                    Gap(10.h),
 
-                  // OTP Field — الباك مثبت الكود على 6 خانات
-                  OtpTextField(
-                    pinController: _pinController,
-                    length: _otpLength,
-                    onCompleted: (_) => _onVerify(context),
-                  ),
-
-                  Gap(20.h),
-
-                  // Countdown / Resend row
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      LocalizedLabel(
-                        text: "didnt_receive_otp",
-                        style: TextStyles.blackRegular16,
+                    // Description
+                    LocalizedLabel(
+                      text: "otp_desc",
+                      maxLines: 3,
+                      style: TextStyles.blackRegular16.copyWith(
+                        color: AppColors.lightTextColor,
                       ),
-                      Gap(6.w),
-                      _canResend
-                          ? GestureDetector(
-                              onTap: _startCountdown,
-                              child: LocalizedLabel(
-                                text: "resend_otp",
+                    ),
+
+                    Gap(40.h),
+
+                    // OTP Field — الباك مثبت الكود على 6 خانات
+                    OtpTextField(
+                      pinController: _pinController,
+                      length: _otpLength,
+                      onCompleted: (_) => _onVerify(context),
+                    ),
+
+                    Gap(20.h),
+
+                    // Countdown / Resend row
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        LocalizedLabel(
+                          text: "didnt_receive_otp",
+                          style: TextStyles.blackRegular16,
+                        ),
+                        Gap(6.w),
+                        _canResend
+                            ? GestureDetector(
+                                onTap: () => context
+                                    .read<ResendCodeCubit>()
+                                    .resend(widget.phoneNumber, widget.purpose),
+                                child: LocalizedLabel(
+                                  text: "resend_otp",
+                                  style: TextStyles.blackBold14.copyWith(
+                                    color: AppColors.primaryColor,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              )
+                            : Text(
+                                _formattedTime,
                                 style: TextStyles.blackBold14.copyWith(
                                   color: AppColors.primaryColor,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
-                            )
-                          : Text(
-                              _formattedTime,
-                              style: TextStyles.blackBold14.copyWith(
-                                color: AppColors.primaryColor,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                    ],
-                  ),
+                      ],
+                    ),
 
-                  Gap(30.h),
+                    Gap(30.h),
 
-                  // Verify Button
-                  state.isLoading
-                      ? const Center(
-                          child: CircularProgressIndicator(
-                            color: AppColors.primaryColor,
-                          ),
-                        )
-                      : CustomButton(
-                          onPressed: () => _onVerify(context),
-                          title: "verify_otp".tr(),
-                        ),
-
-                  Gap(20.h),
-
-                  // Back to previous screen
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      GestureDetector(
-                        onTap: () => context.pop(),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.arrow_back_ios_new_rounded,
-                              size: 14.sp,
+                    // Verify Button
+                    state.isLoading
+                        ? const Center(
+                            child: CircularProgressIndicator(
                               color: AppColors.primaryColor,
                             ),
-                            Gap(4.w),
-                            LocalizedLabel(
-                              text: "back",
-                              style: TextStyles.blackBold14.copyWith(
+                          )
+                        : CustomButton(
+                            onPressed: () => _onVerify(context),
+                            title: "verify_otp".tr(),
+                          ),
+
+                    Gap(20.h),
+
+                    // Back to previous screen
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        GestureDetector(
+                          onTap: () => context.pop(),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.arrow_back_ios_new_rounded,
+                                size: 14.sp,
                                 color: AppColors.primaryColor,
-                                fontWeight: FontWeight.w500,
                               ),
-                            ),
-                          ],
+                              Gap(4.w),
+                              LocalizedLabel(
+                                text: "back",
+                                style: TextStyles.blackBold14.copyWith(
+                                  color: AppColors.primaryColor,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            );
-          },
+                      ],
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
         ),
       ),
     );

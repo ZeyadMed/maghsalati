@@ -16,7 +16,9 @@ class CustomButton extends StatelessWidget {
   final EdgeInsetsGeometry padding;
   final double? width; // ← Now properly used
   final double? height;
-  final VoidCallback onPressed;
+
+  /// لو null الزرار بيبقى متعطل وباهت ومابيستجيبش للضغط
+  final VoidCallback? onPressed;
   final bool isIcon;
   final double? fontSize;
   final FontWeight? fontWeight;
@@ -50,7 +52,9 @@ class CustomButton extends StatelessWidget {
           height: height,
           padding: padding,
           decoration: BoxDecoration(
-            color: backgroundColor,
+            color: onPressed == null
+                ? backgroundColor.withValues(alpha: 0.4)
+                : backgroundColor,
             borderRadius: BorderRadius.circular(borderRadius),
             border: borderColor != null
                 ? Border.all(color: borderColor!)

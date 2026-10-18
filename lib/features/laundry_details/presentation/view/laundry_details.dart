@@ -347,6 +347,8 @@ class _LaundryDetailsState extends State<LaundryDetails> {
       extendBodyBehindAppBar: true,
       // ثابت تحت الصفحة، والأرقام جواه بتتحدث مع سلة السيرفر
       bottomNavigationBar: _buildBottomBar(),
+      // الخدمات أول حاجة بعد الهيدر عشان اليوزر يختار ويطلب على طول،
+      // وبعدها مواعيد العمل والتقييمات، وفي الآخر نطاق الخدمة ومقدم الخدمة
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -357,14 +359,29 @@ class _LaundryDetailsState extends State<LaundryDetails> {
               rating: widget.rating,
               ratingCount: widget.ratingCount,
             ),
+            // بوكسات "استلام اليوم / تسليم غدًا" اتشالت لأن مفيش مواعيد
+            // في السايكل، الاستلام بيبدأ لما مندوب يتعيّن على الرحلة
+            Gap(16.h),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16.w),
+              child: LocalizedLabel(
+                text: 'choose_services',
+                style: TextStyles.blackBold16.copyWith(
+                  fontSize: 18.sp,
+                  fontWeight: FontWeight.bold,
+                  height: 1.2,
+                ),
+              ),
+            ),
+            Gap(12.h),
+            // برة الـ padding عشان الجريد يوصل لحرف الشاشة زي الديزاين
+            _buildServices(),
+            Gap(16.h),
             Padding(
               padding: EdgeInsets.symmetric(horizontal: 16.w),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // بوكسات "استلام اليوم / تسليم غدًا" اتشالت لأن مفيش مواعيد
-                  // في السايكل، الاستلام بيبدأ لما مندوب يتعيّن على الرحلة
-                  Gap(16.h),
                   WorkingHoursButton(
                     laundryId: widget.laundryId,
                     laundryName: widget.name,
@@ -376,21 +393,9 @@ class _LaundryDetailsState extends State<LaundryDetails> {
                     rating: widget.rating,
                     ratingCount: widget.ratingCount,
                   ),
-                  Gap(16.h),
-                  LocalizedLabel(
-                    text: 'choose_services',
-                    style: TextStyles.blackBold16.copyWith(
-                      fontSize: 18.sp,
-                      fontWeight: FontWeight.bold,
-                      height: 1.2,
-                    ),
-                  ),
-                  Gap(12.h),
                 ],
               ),
             ),
-            // برة الـ padding عشان الجريد يوصل لحرف الشاشة زي الديزاين
-            _buildServices(),
             Gap(16.h),
             LaundryShortcutsSection(onTap: _onShortcutTap),
             Gap(16.h),

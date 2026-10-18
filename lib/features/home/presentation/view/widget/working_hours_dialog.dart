@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -72,7 +74,7 @@ class _WorkingHoursDialogState extends State<WorkingHoursDialog> {
             if (state.isFailure || state.data == null) {
               return _buildFailure(state.errorMessage);
             }
-            return _buildContent(context, state.data!);
+            return _buildContent(state.data!);
           },
         ),
       ),
@@ -90,8 +92,7 @@ class _WorkingHoursDialogState extends State<WorkingHoursDialog> {
     );
   }
 
-  Widget _buildContent(BuildContext context, WorkingHoursModel hours) {
-    final locale = context.locale.toString();
+  Widget _buildContent(WorkingHoursModel hours) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -110,8 +111,22 @@ class _WorkingHoursDialogState extends State<WorkingHoursDialog> {
               textAlign: TextAlign.center,
             ),
           ),
-        for (final day in hours.days) _buildDayRow(day, locale),
+        if (hours.days.isNotEmpty) _buildDaysTable(hours.days),
       ],
+    );
+  }
+
+  /// كل سطر بالشكل: اليوم — 9:00 AM to 10:00 PM
+  /// عمود اليوم بياخد عرض أطول اسم عشان الشرط والمواعيد ييجوا تحت بعض
+  Widget _buildDaysTable(List<WorkingDayModel> days) {
+    return Table(
+      columnWidths: const {
+        0: IntrinsicColumnWidth(),
+        1: IntrinsicColumnWidth(),
+        2: FlexColumnWidth(),
+      },
+      defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+      children: [for (final day in days) _buildDayRow(day)],
     );
   }
 
@@ -213,29 +228,44 @@ class _WorkingHoursDialogState extends State<WorkingHoursDialog> {
     );
   }
 
-  Widget _buildDayRow(WorkingDayModel day, String locale) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: 10.h),
-      child: Row(
-        children: [
-          Expanded(
+  TableRow _buildDayRow(WorkingDayModel day) {
+    return TableRow(
+      children: [
+        Padding(
+          padding: EdgeInsets.only(bottom: 10.h),
+          child: Text(
+            day.dayKey.tr(),
+            style: TextStyles.darkRegular14.copyWith(
+              color: AppColors.darkTextColor,
+            ),
+          ),
+        ),
+        // Padding(
+        //   padding: EdgeInsets.fromLTRB(10.w, 0, 10.w, 10.h),
+        //   child: Text(
+        //     '—',
+        //     style: TextStyles.darkRegular14.copyWith(
+        //       color: AppColors.greyColor2,
+        //     ),
+        //   ),
+        // ),
+        Padding(
+          padding: EdgeInsets.only(bottom: 10.h),
+          child: Align(
+            alignment: AlignmentDirectional.centerEnd,
             child: Text(
-              day.dayKey.tr(),
-              style: TextStyles.darkRegular14.copyWith(
-                color: AppColors.darkTextColor,
+              day.isOff ? 'Closed' : day.formattedRange,
+              // الميعاد إنجليزي، فلازم LTR وإلا الـ AM بتتنقل أول السطر في العربي
+              textDirection: day.isOff ? null : ui.TextDirection.ltr,
+              style: TextStyles.boldStyle(
+                13,
+                color: day.isOff ? AppColors.redColor2 : AppColors.primaryColor,
+                weight: FontWeight.w600,
               ),
             ),
           ),
-          Text(
-            day.isOff ? 'closed'.tr() : day.formattedRange(locale),
-            style: TextStyles.boldStyle(
-              13,
-              color: day.isOff ? AppColors.redColor2 : AppColors.primaryColor,
-              weight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

@@ -1,28 +1,12 @@
 import 'package:equatable/equatable.dart';
 
+/// تسجيل الدخول بالرقم بس: بنبعت الكود وبعدين التحقق بيكمل في شاشة الـ OTP
 class LoginEvent extends Equatable {
+  /// الرقم كامل بكود الدولة (+218911234567)
   final String phoneNumber;
-  final String password;
 
-  /// لما تبقى true الباك بيطول عمر الجلسة
-  final bool rememberMe;
-  final String deviceInfo;
-  final String deviceId;
-
-  const LoginEvent({
-    required this.phoneNumber,
-    required this.password,
-    this.rememberMe = true,
-    this.deviceInfo = '',
-    this.deviceId = '',
-  });
+  const LoginEvent({required this.phoneNumber});
 
   @override
-  List<Object?> get props => [
-    phoneNumber,
-    password,
-    rememberMe,
-    deviceInfo,
-    deviceId,
-  ];
+  List<Object?> get props => [phoneNumber];
 }

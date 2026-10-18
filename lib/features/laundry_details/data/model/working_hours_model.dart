@@ -10,10 +10,13 @@ class WorkingHoursModel {
   factory WorkingHoursModel.fromJson(Map<String, dynamic> json) {
     return WorkingHoursModel(
       isAvailableNow: json['isAvailableNow'] == true,
-      days: (json['workingHours'] as List? ?? const [])
-          .whereType<Map<String, dynamic>>()
-          .map(WorkingDayModel.fromJson)
-          .toList(),
+      days:
+          (json['workingHours'] as List? ?? const [])
+              .whereType<Map<String, dynamic>>()
+              .map(WorkingDayModel.fromJson)
+              .toList()
+            // بنرتب الأيام من السبت للجمعة مهما كان الترتيب الراجع من الباك
+            ..sort((a, b) => a.weekIndex.compareTo(b.weekIndex)),
     );
   }
 }
@@ -48,22 +51,41 @@ class WorkingDayModel {
     );
   }
 
+  /// الأسبوع بيبدأ من السبت
+  static const _weekOrder = [
+    'saturday',
+    'sunday',
+    'monday',
+    'tuesday',
+    'wednesday',
+    'thursday',
+    'friday',
+  ];
+
   /// مفتاح الترجمة لاسم اليوم زي 'sunday'
   String get dayKey => dayOfWeek.toLowerCase();
+
+  /// ترتيب اليوم في الأسبوع، واليوم اللي مش معروف بيروح في الآخر
+  int get weekIndex {
+    final index = _weekOrder.indexOf(dayKey);
+    return index == -1 ? _weekOrder.length : index;
+  }
 
   /// لو الباك قال مفتوح بس نسي يبعت المواعيد بنعتبره مقفول بدل ما نعرض null
   bool get isOff => isClosed || openTime == null || closeTime == null;
 
-  /// الميعاد بصيغة 12 ساعة حسب لغة التطبيق زي '12:00 م - 11:00 م'
-  String formattedRange(String locale) =>
-      '${_formatTime(openTime!, locale)} - ${_formatTime(closeTime!, locale)}';
+  /// الميعاد دايماً بالإنجليزي وبصيغة 12 ساعة زي '9:00 AM to 10:00 PM'
+  /// حتى لو التطبيق عربي
+  String get formattedRange =>
+      '${_formatTime(openTime!)} to ${_formatTime(closeTime!)}';
 
-  static String _formatTime(String time, String locale) {
+  static String _formatTime(String time) {
     try {
+      // en_US مدمجة في intl فمش محتاجة initializeDateFormatting
       return DateFormat(
         'h:mm a',
-        locale,
-      ).format(DateFormat('HH:mm:ss').parse(time));
+        'en_US',
+      ).format(DateFormat('HH:mm:ss', 'en_US').parse(time));
     } catch (_) {
       // لو الشكل جه مختلف نعرضه زي ما هو أحسن ما الديالوج يقع
       return time;

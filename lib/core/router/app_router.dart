@@ -29,6 +29,10 @@ import 'package:maghsalati/features/profile/presentation/view/contact_us_screen.
 import 'package:maghsalati/features/profile/presentation/view/privacy_policy_screen.dart';
 import 'package:maghsalati/features/profile/presentation/view/profile_screen.dart';
 import 'package:maghsalati/features/profile/presentation/view/update_profile_screen.dart';
+import 'package:maghsalati/features/saved_addresses/data/model/saved_address_model.dart';
+import 'package:maghsalati/features/saved_addresses/presentation/view/address_form_screen.dart';
+import 'package:maghsalati/features/saved_addresses/presentation/view/map_picker_screen.dart';
+import 'package:maghsalati/features/saved_addresses/presentation/view/saved_addresses_screen.dart';
 import 'package:maghsalati/features/splash/presentation/view/splash_screen.dart';
 import 'package:maghsalati/main.dart';
 
@@ -61,6 +65,9 @@ abstract class AppRouter {
   static const String aboutUs = '/aboutUs';
   static const String updateProfileScreen = '/updateProfileScreen';
   static const String privacyPolicy = '/privacyPolicy';
+  static const String savedAddresses = '/savedAddresses';
+  static const String addressForm = '/addressForm';
+  static const String mapPicker = '/mapPicker';
   static const String serviceArea = '/serviceArea';
   static const String serviceProvider = '/serviceProvider';
   static const String serviceMechanism = '/serviceMechanism';
@@ -97,7 +104,7 @@ abstract class AppRouter {
         path: forgetPassword,
         builder: (context, state) => const ForgetPasswordScreen(),
       ),
-      // OtpArgs بيتبعت في state.extra جاي من التسجيل،
+      // OtpArgs بيتبعت في state.extra جاي من التسجيل أو تسجيل الدخول،
       // فيه الرقم اللي بيتبعت مع الكود والـ purpose اللي بيحدد نروح فين بعد التحقق
       GoRoute(
         path: verifyOtp,
@@ -190,6 +197,31 @@ abstract class AppRouter {
       GoRoute(
         path: privacyPolicy,
         builder: (context, state) => const PrivacyPolicyScreen(),
+      ),
+      GoRoute(
+        path: savedAddresses,
+        builder: (context, state) => const SavedAddressesScreen(),
+      ),
+
+      // العنوان بيتبعت في state.extra لو تعديل، ومن غيره يبقى إضافة
+      // والشاشة بترجع العنوان بعد الحفظ
+      GoRoute(
+        path: addressForm,
+        builder: (context, state) =>
+            AddressFormScreen(address: state.extra as SavedAddressModel?),
+      ),
+
+      // الموقع اللي الخريطة تفتح عليه بييجي في state.extra (اختياري)
+      // والشاشة بترجع PickedLocation لما يأكد الدبوس
+      GoRoute(
+        path: mapPicker,
+        builder: (context, state) {
+          final initial = state.extra as PickedLocation?;
+          return MapPickerScreen(
+            initialLatitude: initial?.latitude,
+            initialLongitude: initial?.longitude,
+          );
+        },
       ),
       GoRoute(
         path: contactUsScreen,

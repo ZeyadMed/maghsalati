@@ -17,6 +17,7 @@ import 'package:maghsalati/core/service_locator/laundry_details_services_locator
 import 'package:maghsalati/core/service_locator/notifications_services_locator/notifications_services_locator.dart';
 import 'package:maghsalati/core/service_locator/orders_services_locator/orders_services_locator.dart';
 import 'package:maghsalati/core/service_locator/profile_services_locator/profile_services_locator.dart';
+import 'package:maghsalati/core/service_locator/saved_addresses_services_locator/saved_addresses_services_locator.dart';
 import 'package:maghsalati/core/http/api_consumer.dart';
 import 'package:maghsalati/core/http/auth_interceptor.dart';
 import 'package:maghsalati/core/http/endpoints.dart';
@@ -25,6 +26,7 @@ import 'package:maghsalati/core/realtime/realtime_service.dart';
 import 'package:maghsalati/features/home/presentation/view_model/location_controller.dart';
 import 'package:maghsalati/features/orders/presentation/view_model/order_updates.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view_model/selected_services_controller.dart';
+import 'package:maghsalati/features/saved_addresses/presentation/view_model/saved_addresses_cubit.dart';
 
 class SharedServiceLocator {
   static Future<void> execute({required GetIt getIt}) async {
@@ -72,6 +74,7 @@ class SharedServiceLocator {
     await OrdersServicesLocator.init(getIt: getIt);
     await NotificationsServicesLocator.init(getIt: getIt);
     await ProfileServicesLocator.init(getIt: getIt);
+    await SavedAddressesServicesLocator.init(getIt: getIt);
 
     // اتصال SignalR واحد للتطبيق كله، بيبعت أحداث الطلبات في OrderUpdates
     getIt.registerLazySingleton<RealtimeService>(
@@ -81,9 +84,13 @@ class SharedServiceLocator {
 
     getIt.registerLazySingleton<LocationService>(() => LocationService());
 
-    // فأي شاشة تانية (زي تأكيد الطلب) تقرا نفس العنوان منغير ما تجيبه تاني
+    // فأي شاشة تانية تقرا نفس العنوان منغير ما تجيبه تاني،
+    // وبيمشي على العنوان الافتراضي من العناوين المحفوظة لو موجود
     getIt.registerLazySingleton<LocationController>(
-      () => LocationController(service: getIt<LocationService>()),
+      () => LocationController(
+        service: getIt<LocationService>(),
+        savedAddresses: getIt<SavedAddressesCubit>(),
+      ),
     );
 
     // السلة singleton عشان تفضل عايشة بعد ما تخرج من شاشة تفاصيل المغسلة

@@ -260,6 +260,7 @@ class GenericDataSource {
     Map<String, dynamic>? data,
     Map<String, dynamic>? queryParameters,
     Map<String, dynamic>? headers,
+    T Function(Map<String, dynamic>)? fromJson,
   }) async {
     // Process the data to handle lists properly
     final processedData = _processFormData(data ?? {});
@@ -277,6 +278,10 @@ class GenericDataSource {
       (left) => Left(left),
       (right) {
         try {
+          // زي postData، الموديل بياخد الريسبونس كامل ويفكه بنفسه
+          if (fromJson != null) {
+            return Right(fromJson(right));
+          }
           if (T == Null) {
             return Right(null as T);
           } else if (T == int) {

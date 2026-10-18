@@ -4,22 +4,28 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:maghsalati/core/bloc/base_bloc.dart';
 import 'package:maghsalati/core/cache_manager/cache_manager.dart';
+import 'package:go_router/go_router.dart';
 import 'package:maghsalati/core/extensions/context_extension.dart';
+import 'package:maghsalati/core/router/app_router.dart';
 import 'package:maghsalati/core/service_locator/service_locator.dart';
 import 'package:maghsalati/core/style/app_colors.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
 import 'package:maghsalati/core/widget/custom_phone_field.dart';
 import 'package:maghsalati/core/widget/custom_text_field.dart';
-import 'package:maghsalati/features/auth/register/presentation/view/widget/location_picker_field.dart';
 import 'package:maghsalati/features/cart/data/model/confirm_cart_request.dart';
 import 'package:maghsalati/features/cart/presentation/view_model/cart_cubit.dart';
 import 'package:maghsalati/features/cart/presentation/view_model/confirm_cart_cubit.dart';
-import 'package:maghsalati/features/home/presentation/view_model/location_controller.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view_model/selected_services_controller.dart';
 import 'package:maghsalati/features/orders/presentation/view_model/order_updates.dart';
+import 'package:maghsalati/features/saved_addresses/data/model/saved_address_model.dart';
+import 'package:maghsalati/features/saved_addresses/presentation/view/widget/address_type_icon.dart';
+import 'package:maghsalati/features/saved_addresses/presentation/view/widget/default_address_badge.dart';
+import 'package:maghsalati/features/saved_addresses/presentation/view/widget/saved_address_picker_sheet.dart';
+import 'package:maghsalati/features/saved_addresses/presentation/view_model/saved_addresses_cubit.dart';
 
-/// شيت بيانات الاستلام: العنوان والموقع واسم ورقم اللي هيسلم الهدوم،
-/// وبيبعتهم على api/customer/cart/confirm قبل ما الطلب يتأكد
+/// شيت بيانات الاستلام: عنوان من العناوين المحفوظة (الافتراضي مختار من الأول)
+/// واسم ورقم اللي هيسلم الهدوم، وبيبعتهم على api/customer/cart/confirm
+/// قبل ما الطلب يتأكد
 class ConfirmCartBottomSheet extends StatefulWidget {
   const ConfirmCartBottomSheet({super.key});
 
@@ -40,57 +46,91 @@ class ConfirmCartBottomSheet extends StatefulWidget {
 
 class _ConfirmCartBottomSheetState extends State<ConfirmCartBottomSheet> {
   final ConfirmCartCubit _cubit = getIt<ConfirmCartCubit>();
+
+  /// singleton في get_it فمش بيتعمله close هنا
+  final SavedAddressesCubit _addresses = getIt<SavedAddressesCubit>();
   final _formKey = GlobalKey<FormState>();
-  final _addressController = TextEditingController();
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
 
-  double? _latitude;
-  double? _longitude;
+  /// العنوان اللي الطلب هيروح عليه، الافتراضي من الأول ويقدر يغيره
+  /// لعنوان محفوظ تاني للطلب ده بس (من غير ما الافتراضي يتغير)
+  SavedAddressModel? _selectedAddress;
 
   /// الرقم كامل بكود الدولة، بيتحدث من [CustomPhoneField] مع كل كتابة
   String _completePhone = '';
 
-  /// خطأ من الشيت نفسه قبل ما الريكوست يتبعت، زي إن الموقع مش متحدد
+  /// خطأ من الشيت نفسه قبل ما الريكوست يتبعت، زي إن العنوان مش متحدد
   String? _localError;
 
   @override
   void initState() {
     super.initState();
-    // الموقع اللي الهوم جابته والاسم المحفوظ بيتحطوا جاهزين، ويقدر يعدلهم
-    final location = getIt<LocationController>();
-    if (location.hasAddress) {
-      _addressController.text = location.address;
-      _latitude = location.latitude;
-      _longitude = location.longitude;
-    }
+    // الافتراضي والاسم المحفوظ بيتحطوا جاهزين، ويقدر يغيرهم
+    _selectedAddress = _addresses.defaultAddress;
     _nameController.text = CacheManager.getUserName() ?? '';
+    // الليستة بتتحدث في الخلفية، و _syncSelectedAddress بيمسك الجديد
+    _addresses.load();
   }
 
   @override
   void dispose() {
     _cubit.close();
-    _addressController.dispose();
     _nameController.dispose();
     _phoneController.dispose();
     super.dispose();
   }
 
+  /// بعد ما الليستة تتحدث: العنوان المختار بياخد نسخته الجديدة، ولو اتمسح
+  /// (أو لسه مفيش اختيار) بنرجع للافتراضي
+  void _syncSelectedAddress(BaseState<SavedAddressModel> state) {
+    final selectedId = _selectedAddress?.id;
+    final refreshed = state.items.where((a) => a.id == selectedId).firstOrNull;
+    setState(() {
+      _selectedAddress = refreshed ?? _addresses.defaultAddress;
+      if (_selectedAddress != null) _localError = null;
+    });
+  }
+
+  Future<void> _changeAddress() async {
+    final pick = await SavedAddressPickerSheet.show(
+      context,
+      selectedId: _selectedAddress?.id,
+      pickAddedAddress: true,
+    );
+    final address = pick?.address;
+    if (address == null || !mounted) return;
+    setState(() {
+      _selectedAddress = address;
+      _localError = null;
+    });
+  }
+
+  /// مفيش عناوين خالص، فبيضيف واحد وبيتختار للطلب على طول
+  Future<void> _addAddress() async {
+    final added = await context.push<SavedAddressModel>(AppRouter.addressForm);
+    if (added == null || !mounted) return;
+    setState(() {
+      _selectedAddress = added;
+      _localError = null;
+    });
+  }
+
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
 
-    // الإحداثيات بتيجي من الـ GPS بس، فلو العنوان اتكتب بإيده لازم يحدد موقعه
-    final missingLocation = _latitude == null || _longitude == null;
+    final address = _selectedAddress;
     setState(() {
-      _localError = missingLocation ? 'pickup_location_required'.tr() : null;
+      _localError = address == null ? 'pickup_address_required'.tr() : null;
     });
-    if (missingLocation) return;
+    if (address == null) return;
 
+    // الـ endpoint لسه بياخد العنوان والإحداثيات، فبنبعت قيم العنوان المختار
     _cubit.confirm(
       ConfirmCartRequest(
-        deliveryAddress: _addressController.text.trim(),
-        latitude: _latitude!,
-        longitude: _longitude!,
+        deliveryAddress: address.address,
+        latitude: address.latitude,
+        longitude: address.longitude,
         pickupContactName: _nameController.text.trim(),
         pickupContactPhoneNumber: _completePhone,
       ),
@@ -109,10 +149,19 @@ class _ConfirmCartBottomSheetState extends State<ConfirmCartBottomSheet> {
   @override
   Widget build(BuildContext context) {
     // الخطأ بيتعرض جوه الشيت فوق الزرار، لأن السناك بار بيطلع تحت الشيت ومابيبانش
-    return BlocListener<ConfirmCartCubit, BaseState<int>>(
-      bloc: _cubit,
-      listenWhen: (previous, current) => current.isSuccess,
-      listener: (context, state) => _onConfirmed(state.data ?? 0),
+    return MultiBlocListener(
+      listeners: [
+        BlocListener<ConfirmCartCubit, BaseState<int>>(
+          bloc: _cubit,
+          listenWhen: (previous, current) => current.isSuccess,
+          listener: (context, state) => _onConfirmed(state.data ?? 0),
+        ),
+        BlocListener<SavedAddressesCubit, BaseState<SavedAddressModel>>(
+          bloc: _addresses,
+          listenWhen: (previous, current) => current.isSuccess,
+          listener: (context, state) => _syncSelectedAddress(state),
+        ),
+      ],
       child: Padding(
         // الشيت بيطلع فوق الكيبورد عشان الخانات ماتستخباش
         padding: EdgeInsets.only(bottom: context.keyboardHeight),
@@ -182,15 +231,9 @@ class _ConfirmCartBottomSheetState extends State<ConfirmCartBottomSheet> {
         shrinkWrap: true,
         padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
         children: [
-          Text('address'.tr(), style: TextStyles.darkBold14),
-          SizedBox(height: 4.h),
-          LocationPickerField(
-            controller: _addressController,
-            onLocationPicked: (latitude, longitude) {
-              _latitude = latitude;
-              _longitude = longitude;
-            },
-          ),
+          Text('pickup_address'.tr(), style: TextStyles.darkBold14),
+          SizedBox(height: 8.h),
+          _buildAddressSection(),
           SizedBox(height: 12.h),
           Customtextfield(
             labelText: 'pickup_contact_name',
@@ -220,6 +263,125 @@ class _ConfirmCartBottomSheetState extends State<ConfirmCartBottomSheet> {
           SizedBox(height: 12.h),
           _buildFinalPriceNote(),
         ],
+      ),
+    );
+  }
+
+  /// العنوان المختار ومعاه زرار تغيير، ولو مفيش عناوين زرار إضافة عنوان
+  Widget _buildAddressSection() {
+    final address = _selectedAddress;
+    if (address != null) return _buildSelectedAddress(address);
+
+    return BlocBuilder<SavedAddressesCubit, BaseState<SavedAddressModel>>(
+      bloc: _addresses,
+      builder: (context, state) {
+        // لسه بنجيب العناوين أول مرة، فمانقولش إن مفيش عناوين
+        if (state.isLoading && !_addresses.hasLoaded) {
+          return Padding(
+            padding: EdgeInsets.symmetric(vertical: 12.h),
+            child: const Center(
+              child: CircularProgressIndicator(color: AppColors.primaryColor),
+            ),
+          );
+        }
+        return OutlinedButton.icon(
+          onPressed: _addAddress,
+          icon: Icon(
+            Icons.add_location_alt_outlined,
+            size: 19.r,
+            color: AppColors.primaryColor,
+          ),
+          label: Text(
+            'add_pickup_address'.tr(),
+            style: TextStyles.darkBold14.copyWith(
+              color: AppColors.primaryColor,
+            ),
+          ),
+          style: OutlinedButton.styleFrom(
+            padding: EdgeInsets.symmetric(vertical: 14.h),
+            side: const BorderSide(color: AppColors.primaryColor),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12.r),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSelectedAddress(SavedAddressModel address) {
+    return Material(
+      color: AppColors.secondaryColor,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12.r),
+        side: BorderSide(color: AppColors.borderColor),
+      ),
+      child: InkWell(
+        onTap: _changeAddress,
+        borderRadius: BorderRadius.circular(12.r),
+        child: Padding(
+          padding: EdgeInsetsDirectional.fromSTEB(12.w, 12.h, 4.w, 12.h),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              AddressTypeIcon(address: address, highlighted: true),
+              SizedBox(width: 10.w),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            address.displayTitle,
+                            style: TextStyles.darkBold14,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (address.isDefault) ...[
+                          SizedBox(width: 8.w),
+                          const DefaultAddressBadge(),
+                        ],
+                      ],
+                    ),
+                    SizedBox(height: 2.h),
+                    Text(
+                      address.address,
+                      style: TextStyles.darkRegular12.copyWith(
+                        color: AppColors.greyColor2,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (address.hasDetails) ...[
+                      SizedBox(height: 2.h),
+                      Text(
+                        address.additionalDetails!.trim(),
+                        style: TextStyles.darkRegular12.copyWith(
+                          color: AppColors.greyColor3,
+                          fontSize: 11.sp,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              TextButton(
+                onPressed: _changeAddress,
+                child: Text(
+                  'change'.tr(),
+                  style: TextStyles.darkBold14.copyWith(
+                    color: AppColors.primaryColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

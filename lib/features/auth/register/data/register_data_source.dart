@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:maghsalati/core/helpers/generic_data_source.dart';
 import 'package:maghsalati/core/http/either.dart';
 import 'package:maghsalati/core/http/endpoints.dart';
@@ -8,13 +10,11 @@ abstract interface class RegisterDataSource {
   Future<Either<Failure, RegisterModel>> register({
     required String name,
     required String phoneNumber,
-    required String password,
     required String address,
     required int cityId,
     required double latitude,
     required double longitude,
-    required String deviceInfo,
-    required String deviceId,
+    File? image,
   });
 }
 
@@ -25,26 +25,23 @@ class RegiterDataSourceImpl implements RegisterDataSource {
   Future<Either<Failure, RegisterModel>> register({
     required String name,
     required String phoneNumber,
-    required String password,
     required String address,
     required int cityId,
     required double latitude,
     required double longitude,
-    required String deviceInfo,
-    required String deviceId,
+    File? image,
   }) async {
-    final result = await _genericDataSource.postData<RegisterModel>(
+    // الاند بوينت بقت multipart/form-data من غير باسورد، والصورة اختيارية
+    final result = await _genericDataSource.postFormData<RegisterModel>(
       endpoint: Endpoints.register,
       data: {
-        'name': name,
-        'phoneNumber': phoneNumber,
-        'password': password,
-        'address': address,
-        'cityId': cityId,
-        'latitude': latitude,
-        'longitude': longitude,
-        'deviceInfo': deviceInfo,
-        'deviceId': deviceId,
+        'Name': name,
+        'PhoneNumber': phoneNumber,
+        'Address': address,
+        'CityId': cityId,
+        'Latitude': latitude,
+        'Longitude': longitude,
+        'Image': ?image,
       },
 
       headers: {'Authorization': null},

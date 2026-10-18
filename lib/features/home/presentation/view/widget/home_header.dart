@@ -2,12 +2,15 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:maghsalati/core/extensions/context_extension.dart';
+import 'package:maghsalati/core/service_locator/service_locator.dart';
 import 'package:maghsalati/core/style/app_colors.dart';
 import 'package:maghsalati/core/style/assets.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
 import 'package:maghsalati/core/widget/custom_text_field.dart';
 import 'package:maghsalati/core/widget/flexiable_image.dart';
 import 'package:maghsalati/features/home/presentation/view_model/location_controller.dart';
+import 'package:maghsalati/features/saved_addresses/presentation/view/widget/saved_address_picker_sheet.dart';
+import 'package:maghsalati/features/saved_addresses/presentation/view_model/saved_addresses_cubit.dart';
 
 class HomeHeader extends StatelessWidget {
   final TextEditingController searchController;
@@ -19,7 +22,7 @@ class HomeHeader extends StatelessWidget {
   /// بيتبعت من تاب البحث عشان الكيبورد يفتح على الخانة أول ما التاب يتفتح
   final FocusNode? searchFocusNode;
 
-  /// بيتنفذ لما يدوس على العنوان وهو متجاب بالفعل (اختيار موقع تاني بعدين)
+  /// بيتنفذ لما يدوس على العنوان، ولو مش متبعت بيفتح شيت العناوين المحفوظة
   final VoidCallback? onLocationTap;
   final VoidCallback? onLogoTap;
 
@@ -54,7 +57,7 @@ class HomeHeader extends StatelessWidget {
         children: [
           _buildTopRow(context),
           SizedBox(height: 18.h),
-          _buildSearchField(),
+          _buildSearchField(context),
         ],
       ),
     );
@@ -78,6 +81,32 @@ class HomeHeader extends StatelessWidget {
     );
   }
 
+  /// شيت العناوين: اختيار عنوان محفوظ بيخليه الافتراضي والمغاسل بتتجاب بيه،
+  /// و"موقعي الحالي" بيرجع للـ GPS
+  Future<void> _openAddressSwitcher(BuildContext context) async {
+    final current = locationController.savedAddress;
+    final pick = await SavedAddressPickerSheet.show(
+      context,
+      selectedId: current?.id,
+      showCurrentLocation: true,
+      currentLocationSelected: current == null,
+      showManageLink: true,
+    );
+    if (pick == null) return;
+
+    final address = pick.address;
+    if (address == null) {
+      locationController.useCurrentLocation();
+      return;
+    }
+
+    // الهيدر والمغاسل بيتحدثوا على طول، والسيرفر بيتبلغ بعدها. ولو فشل
+    // الكيوبت بيجيب الليستة تاني والكنترولر بيرجع للافتراضي الحقيقي
+    locationController.useSavedAddress(address);
+    final error = await getIt<SavedAddressesCubit>().setDefault(address);
+    if (error != null && context.mounted) context.showErrorMessage(error);
+  }
+
   /// "موقع الاستلام" وتحتها العنوان الحالي مع سهم
   /// بيسمع على الكنترولر فالعنوان بيتحدث لوحده أول ما يوصل
   Widget _buildLocationBlock() {
@@ -85,9 +114,9 @@ class HomeHeader extends StatelessWidget {
       animation: locationController,
       builder: (context, _) {
         return GestureDetector(
-          onTap: locationController.hasAddress
-              ? onLocationTap
-              : locationController.retry,
+          // حتى لو الموقع ماتجابش، الشيت فيه "موقعي الحالي" (بيحاول تاني
+          // أو يفتح الإعدادات) والعناوين المحفوظة وإضافة عنوان من الخريطة
+          onTap: onLocationTap ?? () => _openAddressSwitcher(context),
           behavior: HitTestBehavior.opaque,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -133,21 +162,38 @@ class HomeHeader extends StatelessWidget {
     }
 
     final hasAddress = locationController.hasAddress;
+    final savedAddress = locationController.savedAddress;
+    final style = TextStyles.whiteText(14, weight: FontWeight.w600);
 
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Flexible(
-          child: Text(
-            hasAddress ? locationController.address : 'set_location'.tr(),
-            style: TextStyles.whiteText(14, weight: FontWeight.w600),
+          child: Text.rich(
+            // العنوان المحفوظ بيتعرض باسمه الأول (المنزل · العنوان)
+            savedAddress != null
+                ? TextSpan(
+                    children: [
+                      TextSpan(
+                        text: '${savedAddress.displayTitle} · ',
+                        style: style.copyWith(fontWeight: FontWeight.w800),
+                      ),
+                      TextSpan(text: savedAddress.address),
+                    ],
+                  )
+                : TextSpan(
+                    text: hasAddress
+                        ? locationController.address
+                        : 'set_location'.tr(),
+                  ),
+            style: style,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
         ),
         SizedBox(width: 4.w),
         Icon(
-          hasAddress ? Icons.keyboard_arrow_down : Icons.refresh,
+          Icons.keyboard_arrow_down,
           size: 16.r,
           color: AppColors.whiteColor,
         ),
@@ -156,7 +202,7 @@ class HomeHeader extends StatelessWidget {
   }
 
   /// خانة البحث + زرار الموقع
-  Widget _buildSearchField() {
+  Widget _buildSearchField(BuildContext context) {
     return Customtextfield(
       hintText: 'search_hint',
       textEditingController: searchController,
@@ -166,7 +212,7 @@ class HomeHeader extends StatelessWidget {
       prefix: Padding(
         padding: EdgeInsetsDirectional.only(start: 8.w, end: 4.w),
         child: GestureDetector(
-          onTap: onLocationTap,
+          onTap: onLocationTap ?? () => _openAddressSwitcher(context),
           child: SizedBox(
             width: 36.r,
             height: 36.r,

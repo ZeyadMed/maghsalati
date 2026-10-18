@@ -2,9 +2,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:maghsalati/core/bloc/base_bloc.dart';
 import 'package:maghsalati/features/auth/login/data/login_data_source.dart';
 import 'package:maghsalati/features/auth/login/presentation/logic/login_event.dart';
-import 'package:maghsalati/features/auth/models/auth_model.dart';
 
-class LoginBloc extends Bloc<LoginEvent, BaseState<AuthModel>> {
+/// بيبعت كود الدخول على الرقم، والـ data في النجاح هي رسالة الباك
+class LoginBloc extends Bloc<LoginEvent, BaseState<String>> {
   final LoginDataSource _loginDataSource;
 
   LoginBloc(this._loginDataSource) : super(BaseState()) {
@@ -13,29 +13,19 @@ class LoginBloc extends Bloc<LoginEvent, BaseState<AuthModel>> {
 
   Future<void> _onLoginEvent(
     LoginEvent event,
-    Emitter<BaseState<AuthModel>> emit,
+    Emitter<BaseState<String>> emit,
   ) async {
     emit(BaseState(status: Status.loading));
 
-    final result = await _loginDataSource.login(
+    final result = await _loginDataSource.sendLoginCode(
       phoneNumber: event.phoneNumber,
-      password: event.password,
-      rememberMe: event.rememberMe,
-      deviceInfo: event.deviceInfo,
-      deviceId: event.deviceId,
     );
 
     result.fold(
-      // الـ failure نفسه بيتبعت عشان الشاشة تعرف الـ 409 (رقم مش متفعل)
-      // وتاخد منه الرقم وتحوّل على الـ OTP
       (failure) => emit(
-        BaseState(
-          status: Status.failure,
-          errorMessage: failure.message,
-          failure: failure,
-        ),
+        BaseState(status: Status.failure, errorMessage: failure.message),
       ),
-      (data) => emit(BaseState(status: Status.success, data: data)),
+      (message) => emit(BaseState(status: Status.success, data: message)),
     );
   }
 }

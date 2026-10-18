@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -26,6 +28,7 @@ import 'package:maghsalati/features/auth/register/presentation/logic/city_cubit.
 import 'package:maghsalati/features/auth/register/presentation/logic/register_bloc.dart';
 import 'package:maghsalati/features/auth/register/presentation/logic/register_event.dart';
 import 'package:maghsalati/features/auth/register/presentation/view/widget/location_picker_field.dart';
+import 'package:maghsalati/features/auth/register/presentation/view/widget/profile_image_picker.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -36,13 +39,10 @@ class RegisterScreen extends StatefulWidget {
 
 class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController nameController = TextEditingController();
-  final TextEditingController passwordController = TextEditingController();
-  final TextEditingController confirmPasswordController =
-      TextEditingController();
   final TextEditingController addressController = TextEditingController();
 
-  bool obscurePassword = true;
-  bool obscureConfirmPassword = true;
+  /// صورة البروفايل المختارة، اختيارية
+  File? profileImage;
 
   /// الرقم كامل بكود الدولة (+218911234567)، بيتحدث مع كل تغيير في الحقل
   /// وده اللي بيتبعت للباك اند مش نص الكنترولر
@@ -60,8 +60,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   void dispose() {
     nameController.dispose();
-    passwordController.dispose();
-    confirmPasswordController.dispose();
     addressController.dispose();
     super.dispose();
   }
@@ -79,13 +77,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
       RegisterEvent(
         name: nameController.text.trim(),
         phoneNumber: completePhone,
-        password: passwordController.text,
         address: addressController.text.trim(),
         cityId: selectedCity!.id,
         latitude: latitude,
         longitude: longitude,
-        deviceInfo: '',
-        deviceId: '',
+        image: profileImage,
       ),
     );
   }
@@ -138,7 +134,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       text: "sign_up_to_zawaya",
                       style: TextStyles.blackRegular16,
                     ),
-                    Gap(40.h),
+                    Gap(30.h),
+
+                    // Profile Image
+                    Center(
+                      child: ProfileImagePicker(
+                        image: profileImage,
+                        onImagePicked: (image) =>
+                            setState(() => profileImage = image),
+                      ),
+                    ),
+                    Gap(20.h),
 
                     // Name Field
                     Customtextfield(
@@ -191,54 +197,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         latitude = lat;
                         longitude = lng;
                       },
-                    ),
-                    Gap(10.h),
-
-                    // Password Field
-                    Customtextfield(
-                      hintText: 'password'.tr(),
-                      keyboardType: TextInputType.visiblePassword,
-                      prefix: const Icon(Icons.lock_outlined),
-                      validator: Validators.passwordValidator,
-                      textEditingController: passwordController,
-                      obscureText: obscurePassword,
-                      suffix: IconButton(
-                        onPressed: () {
-                          setState(() => obscurePassword = !obscurePassword);
-                        },
-                        icon: Icon(
-                          obscurePassword
-                              ? Icons.visibility_off
-                              : Icons.visibility,
-                        ),
-                      ),
-                    ),
-                    Gap(10.h),
-
-                    // Confirm Password Field
-                    Customtextfield(
-                      hintText: 'confirm_password'.tr(),
-                      keyboardType: TextInputType.visiblePassword,
-                      prefix: const Icon(Icons.lock_outlined),
-                      validator: (value) => Validators.repeatPasswordValidator(
-                        value: value,
-                        Password: passwordController.text,
-                      ),
-                      textEditingController: confirmPasswordController,
-                      obscureText: obscureConfirmPassword,
-                      suffix: IconButton(
-                        onPressed: () {
-                          setState(
-                            () => obscureConfirmPassword =
-                                !obscureConfirmPassword,
-                          );
-                        },
-                        icon: Icon(
-                          obscureConfirmPassword
-                              ? Icons.visibility_off
-                              : Icons.visibility,
-                        ),
-                      ),
                     ),
 
                     Gap(30.h),
