@@ -1,5 +1,5 @@
 /// بيانات العميل جاية من api/customer/profile
-/// بتتعرض في شاشة حسابي، والاسم والمدينة والعنوان بيتعدلوا من شاشة تعديل الملف
+/// بتتعرض في شاشة حسابي، والاسم والمدينة والعنوان والصورة بيتعدلوا من شاشة تعديل الملف
 class UserModel {
   final int id;
   final String name;
@@ -12,6 +12,9 @@ class UserModel {
   final bool phoneNumberConfirmed;
   final DateTime? createdAt;
 
+  /// لينك كامل للصورة، وفاضي لو العميل ماحطش صورة
+  final String imageUrl;
+
   const UserModel({
     required this.id,
     required this.name,
@@ -23,6 +26,7 @@ class UserModel {
     required this.longitude,
     required this.phoneNumberConfirmed,
     required this.createdAt,
+    this.imageUrl = '',
   });
 
   /// أول حرف من الاسم، بيتعرض جوا الدايرة مكان الصورة
@@ -43,16 +47,18 @@ class UserModel {
       longitude: (json['longitude'] as num?)?.toDouble() ?? 0,
       phoneNumberConfirmed: json['phoneNumberConfirmed'] as bool? ?? false,
       createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? ''),
+      imageUrl: json['imageUrl']?.toString().trim() ?? '',
     );
   }
 
-  /// الـ body اللي بيتبعت في PUT api/customer/profile
-  Map<String, dynamic> toUpdateJson() => {
-    'name': name,
-    'address': address,
-    'cityId': cityId,
-    'latitude': latitude,
-    'longitude': longitude,
+  /// حقول الـ multipart اللي بتتبعت في PUT api/customer/profile
+  /// الصورة مش هنا، بتتضاف بس لو المستخدم اختار صورة جديدة
+  Map<String, dynamic> toUpdateFields() => {
+    'Name': name,
+    'Address': address,
+    'CityId': cityId,
+    'Latitude': latitude,
+    'Longitude': longitude,
   };
 
   /// بترجع نسخة معدلة، بنستخدمها لما المستخدم يحفظ تعديلات الملف الشخصي
@@ -75,6 +81,7 @@ class UserModel {
       longitude: longitude ?? this.longitude,
       phoneNumberConfirmed: phoneNumberConfirmed,
       createdAt: createdAt,
+      imageUrl: imageUrl,
     );
   }
 }

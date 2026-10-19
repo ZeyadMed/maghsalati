@@ -4,7 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:maghsalati/core/style/app_colors.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
 
-/// سطر من سطور القايمة في شاشة حسابي
+/// سطر من سطور القايمة في شاشة حسابي وإعدادات الحساب
 /// الأيقونة جوا مربع ملون، والاسم جنبها، والسهم في آخر السطر
 class ProfileMenuTile extends StatelessWidget {
   final IconData icon;
@@ -14,6 +14,15 @@ class ProfileMenuTile extends StatelessWidget {
 
   /// مفتاح الترجمة بتاع اسم السطر
   final String titleKey;
+
+  /// لون الاسم، والافتراضي الغامق (الأحمر للإجراءات الخطيرة زي حذف الحساب)
+  final Color? titleColor;
+
+  /// قيمة صغيرة قبل السهم زي اللغة الحالية
+  final String? value;
+
+  /// بيظهر مكان السهم، زي اللودينج وقت الطلب
+  final Widget? trailing;
   final VoidCallback? onTap;
 
   const ProfileMenuTile({
@@ -21,6 +30,9 @@ class ProfileMenuTile extends StatelessWidget {
     required this.icon,
     required this.iconColor,
     required this.titleKey,
+    this.titleColor,
+    this.value,
+    this.trailing,
     this.onTap,
   });
 
@@ -43,17 +55,28 @@ class ProfileMenuTile extends StatelessWidget {
                   titleKey.tr(),
                   style: TextStyles.darkBold14.copyWith(
                     fontWeight: FontWeight.w600,
+                    color: titleColor,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
+              if (value != null) ...[
+                SizedBox(width: 8.w),
+                Text(
+                  value!,
+                  style: TextStyles.darkRegular12.copyWith(
+                    color: AppColors.greyColor3,
+                  ),
+                ),
+              ],
               SizedBox(width: 8.w),
-              Icon(
-                Icons.arrow_forward_ios_rounded,
-                size: 14.r,
-                color: AppColors.greyColor5,
-              ),
+              trailing ??
+                  Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    size: 14.r,
+                    color: AppColors.greyColor5,
+                  ),
             ],
           ),
         ),

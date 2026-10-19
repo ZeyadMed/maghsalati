@@ -8,28 +8,32 @@ import 'package:maghsalati/core/common_widget/custom_app_bar.dart';
 import 'package:maghsalati/core/service_locator/service_locator.dart';
 import 'package:maghsalati/core/style/app_colors.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
-import 'package:maghsalati/features/profile/data/model/privacy_policy_model.dart';
+import 'package:maghsalati/features/profile/data/model/page_content_model.dart';
 import 'package:maghsalati/features/profile/presentation/view/widget/retry_error_view.dart';
-import 'package:maghsalati/features/profile/presentation/view_model/privacy_policy_cubit.dart';
+import 'package:maghsalati/features/profile/presentation/view_model/page_content_cubit.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-/// شاشة سياسة الخصوصية: المحتوى HTML جاي من api/auth/privacy-policy
-/// وبيتعرض في كارت واحد وتحته تاريخ آخر تحديث
-class PrivacyPolicyScreen extends StatefulWidget {
-  const PrivacyPolicyScreen({super.key});
+/// شاشة صفحة محتوى زي سياسة الخصوصية أو نطاق الخدمة أو مقدم الخدمة
+/// المحتوى HTML جاي من اند بوينت [page]، وبيتعرض في كارت واحد وتحته تاريخ آخر تحديث
+class PageContentScreen extends StatefulWidget {
+  final ContentPage page;
+
+  const PageContentScreen({super.key, required this.page});
 
   @override
-  State<PrivacyPolicyScreen> createState() => _PrivacyPolicyScreenState();
+  State<PageContentScreen> createState() => _PageContentScreenState();
 }
 
-class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
-  final PrivacyPolicyCubit _cubit = getIt<PrivacyPolicyCubit>();
+class _PageContentScreenState extends State<PageContentScreen> {
+  final PageContentCubit _cubit = getIt<PageContentCubit>();
 
   @override
   void initState() {
     super.initState();
-    _cubit.getPrivacyPolicy();
+    _load();
   }
+
+  void _load() => _cubit.load(widget.page);
 
   @override
   void dispose() {
@@ -42,31 +46,28 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
     return Scaffold(
       backgroundColor: AppColors.secondaryColor,
       appBar: CustomAppBar(
-        title: 'privacy_policy',
+        title: widget.page.titleKey,
         backgroundColor: AppColors.secondaryColor,
       ),
-      body: BlocBuilder<PrivacyPolicyCubit, BaseState<PrivacyPolicyModel>>(
+      body: BlocBuilder<PageContentCubit, BaseState<PageContentModel>>(
         bloc: _cubit,
         builder: (context, state) {
-          final policy = state.data;
+          final page = state.data;
           if (state.isFailure) {
-            return RetryErrorView(
-              message: state.errorMessage,
-              onRetry: _cubit.getPrivacyPolicy,
-            );
+            return RetryErrorView(message: state.errorMessage, onRetry: _load);
           }
-          if (policy == null) {
+          if (page == null) {
             return const Center(
               child: CircularProgressIndicator(color: AppColors.primaryColor),
             );
           }
-          return _buildContent(policy);
+          return _buildContent(page);
         },
       ),
     );
   }
 
-  Widget _buildContent(PrivacyPolicyModel policy) {
+  Widget _buildContent(PageContentModel page) {
     return SingleChildScrollView(
       padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 24.h),
       child: Column(
@@ -79,7 +80,7 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
               borderRadius: BorderRadius.circular(16.r),
             ),
             child: HtmlWidget(
-              policy.content,
+              page.content,
               textStyle: TextStyles.darkRegular14.copyWith(
                 color: AppColors.greyColor2,
                 height: 1.7,
@@ -87,10 +88,10 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
               onTapUrl: _openLink,
             ),
           ),
-          if (policy.updatedAt != null) ...[
+          if (page.updatedAt != null) ...[
             SizedBox(height: 12.h),
             Text(
-              '${'last_updated'.tr()} ${DateFormat('d MMMM yyyy', context.locale.toString()).format(policy.updatedAt!)}',
+              '${'last_updated'.tr()} ${DateFormat('d MMMM yyyy', context.locale.toString()).format(page.updatedAt!)}',
               style: TextStyles.darkRegular12.copyWith(
                 color: AppColors.greyColor4,
               ),
@@ -102,7 +103,7 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
     );
   }
 
-  /// اللينكات اللي جوه السياسة بتفتح في المتصفح
+  /// اللينكات اللي جوه المحتوى بتفتح في المتصفح
   Future<bool> _openLink(String url) {
     return launchUrl(
       Uri.parse(url),

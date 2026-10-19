@@ -8,8 +8,8 @@ import 'package:maghsalati/core/common_widget/label.dart';
 import 'package:maghsalati/core/service_locator/service_locator.dart';
 import 'package:maghsalati/core/style/app_colors.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
-import 'package:maghsalati/features/profile/data/model/privacy_policy_model.dart';
-import 'package:maghsalati/features/profile/presentation/view_model/privacy_policy_cubit.dart';
+import 'package:maghsalati/features/profile/data/model/page_content_model.dart';
+import 'package:maghsalati/features/profile/presentation/view_model/page_content_cubit.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// ديالوج الشروط والأحكام في شاشة الدخول، المحتوى HTML جاي من
@@ -31,13 +31,15 @@ class TermsDialog extends StatefulWidget {
 }
 
 class _TermsDialogState extends State<TermsDialog> {
-  final PrivacyPolicyCubit _cubit = getIt<PrivacyPolicyCubit>();
+  final PageContentCubit _cubit = getIt<PageContentCubit>();
 
   @override
   void initState() {
     super.initState();
-    _cubit.getPrivacyPolicy();
+    _load();
   }
+
+  void _load() => _cubit.load(ContentPage.privacyPolicy);
 
   @override
   void dispose() {
@@ -47,7 +49,7 @@ class _TermsDialogState extends State<TermsDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<PrivacyPolicyCubit, BaseState<PrivacyPolicyModel>>(
+    return BlocBuilder<PageContentCubit, BaseState<PageContentModel>>(
       bloc: _cubit,
       builder: (context, state) {
         final policy = state.isSuccess ? state.data : null;
@@ -99,7 +101,7 @@ class _TermsDialogState extends State<TermsDialog> {
     );
   }
 
-  Widget _buildContent(PrivacyPolicyModel policy) {
+  Widget _buildContent(PageContentModel policy) {
     return SingleChildScrollView(
       child: HtmlWidget(
         policy.content,
@@ -133,7 +135,7 @@ class _TermsDialogState extends State<TermsDialog> {
           textAlign: TextAlign.center,
         ),
         TextButton(
-          onPressed: _cubit.getPrivacyPolicy,
+          onPressed: _load,
           child: LocalizedLabel(
             text: 'try_again',
             style: TextStyles.boldStyle(14, color: AppColors.primaryColor),

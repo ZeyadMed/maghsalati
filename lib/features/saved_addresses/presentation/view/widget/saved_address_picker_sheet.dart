@@ -32,16 +32,11 @@ class SavedAddressPickerSheet extends StatefulWidget {
   /// العنوان المختار دلوقتي وعليه العلامة
   final int? selectedId;
 
-  /// الهيدر بيعرض "موقعي الحالي" فوق العناوين، وتأكيد الطلب لأ
-  /// لأن الطلب لازم يروح على عنوان محفوظ
+  /// الهيدر بيعرض "موقعي الحالي" فوق العناوين
   final bool showCurrentLocation;
 
   /// "موقعي الحالي" هو المختار دلوقتي (الهيدر شغال بالـ GPS)
   final bool currentLocationSelected;
-
-  /// تأكيد الطلب بيختار العنوان اللي لسه متضاف على طول، أما الهيدر فبيسيب
-  /// الافتراضي زي ما اليوزر حدده في الفورم
-  final bool pickAddedAddress;
 
   /// الهيدر بيعرض لينك لشاشة عناويني عشان التعديل والحذف
   final bool showManageLink;
@@ -51,7 +46,6 @@ class SavedAddressPickerSheet extends StatefulWidget {
     this.selectedId,
     this.showCurrentLocation = false,
     this.currentLocationSelected = false,
-    this.pickAddedAddress = false,
     this.showManageLink = false,
   });
 
@@ -61,7 +55,6 @@ class SavedAddressPickerSheet extends StatefulWidget {
     int? selectedId,
     bool showCurrentLocation = false,
     bool currentLocationSelected = false,
-    bool pickAddedAddress = false,
     bool showManageLink = false,
   }) {
     return showModalBottomSheet<AddressPick>(
@@ -72,7 +65,6 @@ class SavedAddressPickerSheet extends StatefulWidget {
         selectedId: selectedId,
         showCurrentLocation: showCurrentLocation,
         currentLocationSelected: currentLocationSelected,
-        pickAddedAddress: pickAddedAddress,
         showManageLink: showManageLink,
       ),
     );
@@ -95,14 +87,8 @@ class _SavedAddressPickerSheetState extends State<SavedAddressPickerSheet> {
     _cubit.load();
   }
 
-  Future<void> _addAddress() async {
-    final added = await context.push<SavedAddressModel>(AppRouter.addressForm);
-    if (added == null || !mounted) return;
-    // غير كده الشيت بيفضل مفتوح والعنوان الجديد بيظهر في الليستة
-    if (widget.pickAddedAddress) {
-      Navigator.of(context).pop(AddressPick.saved(added));
-    }
-  }
+  /// الشيت بيفضل مفتوح والعنوان الجديد بيظهر في الليستة
+  void _addAddress() => context.push<SavedAddressModel>(AppRouter.addressForm);
 
   void _openManage() {
     // الشيت بيتقفل الأول عشان لما يرجع من عناويني يلاقي الهوم مش شيت قديم

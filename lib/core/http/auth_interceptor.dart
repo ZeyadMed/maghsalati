@@ -111,6 +111,11 @@ class AuthInterceptor extends QueuedInterceptor {
     String accessToken,
     ErrorInterceptorHandler handler,
   ) async {
+    // الـ FormData بتتقفل بعد أول إرسال، فلازم نسخة جديدة عشان نعيد الطلب
+    // وإلا تعديل البروفايل بصورة بيفشل لو التوكن كان منتهي
+    final data = requestOptions.data;
+    if (data is FormData) requestOptions.data = data.clone();
+
     try {
       final response = await _retryDio.fetch(
         requestOptions

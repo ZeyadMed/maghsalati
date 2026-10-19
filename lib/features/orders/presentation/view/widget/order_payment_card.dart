@@ -4,12 +4,15 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:maghsalati/core/style/app_colors.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
+import 'package:maghsalati/features/orders/data/model/order_invoice.dart';
 import 'package:maghsalati/features/orders/data/model/order_model.dart';
+import 'package:maghsalati/features/orders/presentation/view/widget/order_section_card.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/order_sheet_frame.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/order_status_style.dart';
 
-/// كارت الدفع: بيبان من أول ما الدفع يتطلب (بعد المطابقة)، وفيه حالة الدفع
-/// وزرار الدفع لو لسه مادفعش. حالة الطلب مش مستنية الدفع، فده تذكير مش شرط
+/// كارت طريقة الدفع: الطريقة، وحالة الدفع من أول ما يتطلب (بعد المطابقة)،
+/// وزرار الدفع لو لسه مادفعش. قبل المطابقة بيقول إن الدفع بعد المراجعة.
+/// حالة الطلب مش مستنية الدفع، فده تذكير مش شرط
 class OrderPaymentCard extends StatelessWidget {
   final OrderModel order;
 
@@ -24,23 +27,25 @@ class OrderPaymentCard extends StatelessWidget {
     required this.onPay,
   });
 
+  /// المرفوض والملغي من غير أي دفع مالهمش طريقة دفع يتعرضوا بيها
+  static bool isShownFor(OrderModel order) =>
+      order.isCurrent ||
+      order.status.isPaymentPhase ||
+      order.paymentStatus != PaymentStatus.none;
+
   @override
   Widget build(BuildContext context) {
     final failed = order.paymentStatus == PaymentStatus.failed;
+    final methodKey = OrderInvoice.paymentMethodKeyOf(order.paymentMethod);
+    final showStatus =
+        order.status.isPaymentPhase ||
+        order.paymentStatus != PaymentStatus.none;
 
-    return Container(
-      padding: EdgeInsets.all(16.r),
-      decoration: BoxDecoration(
-        color: AppColors.whiteColor,
-        borderRadius: BorderRadius.circular(16.r),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.blackColor.withValues(alpha: 0.04),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+    return OrderSectionCard(
+      title: 'payment_method'.tr(),
+      trailing: showStatus
+          ? _PaymentStatusBadge(status: order.paymentStatus)
+          : null,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
@@ -48,19 +53,20 @@ class OrderPaymentCard extends StatelessWidget {
           Row(
             children: [
               Icon(
-                Icons.payments_outlined,
+                methodKey == 'payment_method_cash'
+                    ? Icons.payments_outlined
+                    : Icons.credit_card_rounded,
                 size: 22.r,
                 color: AppColors.primaryColor,
               ),
               Gap(10.w),
               Expanded(
-                child: Text('payment'.tr(), style: TextStyles.darkBold16),
+                child: Text(methodKey.tr(), style: TextStyles.darkBold14),
               ),
-              _PaymentStatusBadge(status: order.paymentStatus),
             ],
           ),
-          if (!order.isPaid) ...[
-            Gap(10.h),
+          if (order.needsPayment) ...[
+            Gap(12.h),
             Text(
               failed ? 'payment_failed_message'.tr() : 'payment_note'.tr(),
               style: TextStyles.greyColor2Regular14.copyWith(fontSize: 13.sp),
@@ -72,6 +78,12 @@ class OrderPaymentCard extends StatelessWidget {
                   '${formatOrderPrice(order.grandTotal)} ${'currency'.tr()}',
               isLoading: isLoading,
               onPressed: onPay,
+            ),
+          ] else if (!showStatus) ...[
+            Gap(12.h),
+            Text(
+              'payment_after_match_note'.tr(),
+              style: TextStyles.greyColor2Regular14.copyWith(fontSize: 13.sp),
             ),
           ],
         ],

@@ -1,5 +1,6 @@
 import 'dart:developer';
 
+import 'package:dio/dio.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -92,6 +93,10 @@ class MyApp extends StatelessWidget {
       splitScreenMode: true,
       useInheritedMediaQuery: true,
       builder: (context, child) {
+        // ردود الـ API (الرسايل والأسماء) بتيجي بلغة الأبلكيشن،
+        // والسطر ده بيتنفذ تاني مع كل تغيير لغة
+        getIt<Dio>().options.headers['Accept-Language'] =
+            context.locale.languageCode;
         return Directionality(
           textDirection: context.locale.languageCode == 'ar'
               ? ui.TextDirection.rtl

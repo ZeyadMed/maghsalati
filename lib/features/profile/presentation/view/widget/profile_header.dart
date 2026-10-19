@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 
 import 'dart:ui' as ui;
@@ -125,11 +126,16 @@ class ProfileHeader extends StatelessWidget {
     );
   }
 
-  /// دايرة فيها أول حرف من اسم المستخدم
+  /// دايرة فيها صورة المستخدم، ولو مفيش صورة أو اللينك باظ أول حرف من اسمه
   Widget _buildAvatar(UserModel user) {
+    final initial = Text(
+      user.initial,
+      style: TextStyles.whiteText(26, weight: FontWeight.w700),
+    );
     return Container(
       width: 64.r,
       height: 64.r,
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: AppColors.whiteColor.withValues(alpha: 0.22),
@@ -139,10 +145,16 @@ class ProfileHeader extends StatelessWidget {
         ),
       ),
       alignment: Alignment.center,
-      child: Text(
-        user.initial,
-        style: TextStyles.whiteText(26, weight: FontWeight.w700),
-      ),
+      child: user.imageUrl.isEmpty
+          ? initial
+          : CachedNetworkImage(
+              imageUrl: user.imageUrl,
+              width: 64.r,
+              height: 64.r,
+              fit: BoxFit.cover,
+              placeholder: (_, _) => initial,
+              errorWidget: (_, _, _) => initial,
+            ),
     );
   }
 }

@@ -10,6 +10,7 @@ class CacheManager {
   static const _userIdKey = 'userId';
   static const _userNameKey = 'userName';
   static const _userEmailKey = 'userEmail';
+  static const _userPhoneKey = 'userPhone';
   static const _userRoleKey = 'userRole';
   static const _isGuestModeKey = 'isGuestMode';
   static SharedPreferences? _sharedPreferences;
@@ -179,11 +180,29 @@ class CacheManager {
 
   static String? getUserRole() => sharedPreferences.getString(_userRoleKey);
 
+  /// الرقم مابيرجعش مع اللوجين، فبنحفظه هو والاسم لما بيانات الحساب تتجاب
+  /// عشان بيانات الاستلام تتعرض جاهزة من غير ما يستنى الريكوست
+  static Future<void> saveUserContact({
+    required String name,
+    required String phone,
+  }) async {
+    if (name.trim().isNotEmpty) {
+      await sharedPreferences.setString(_userNameKey, name);
+    }
+    if (phone.trim().isNotEmpty) {
+      await sharedPreferences.setString(_userPhoneKey, phone);
+    }
+  }
+
+  /// الرقم كامل بكود الدولة زي ما اتسجل (+218911234567)
+  static String? getUserPhone() => sharedPreferences.getString(_userPhoneKey);
+
   /// بنمسح بيانات المستخدم مع التوكنز عند تسجيل الخروج
   static Future<void> clearUserData() async {
     await sharedPreferences.remove(_userIdKey);
     await sharedPreferences.remove(_userNameKey);
     await sharedPreferences.remove(_userEmailKey);
+    await sharedPreferences.remove(_userPhoneKey);
     await sharedPreferences.remove(_userRoleKey);
     log('User data cleared');
   }

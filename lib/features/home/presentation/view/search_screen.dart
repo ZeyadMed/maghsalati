@@ -21,7 +21,8 @@ class SearchScreen extends StatefulWidget {
 }
 
 /// public عشان البوتوم ناف يقدر ينادي focusSearch أول ما التاب يتفتح
-class SearchScreenState extends State<SearchScreen> {
+class SearchScreenState extends State<SearchScreen>
+    with WidgetsBindingObserver {
   final TextEditingController _searchController = TextEditingController();
 
   /// عشان نفتح الكيبورد على الخانة أول ما التاب يتفتح
@@ -38,7 +39,20 @@ class SearchScreenState extends State<SearchScreen> {
   String _query = '';
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  /// نفس الهوم: حالة المغاسل ممكن تكون اتغيرت واليوزر بره التطبيق
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _laundriesCubit.refresh();
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _searchController.dispose();
     _searchFocusNode.dispose();
     _laundriesCubit.close();

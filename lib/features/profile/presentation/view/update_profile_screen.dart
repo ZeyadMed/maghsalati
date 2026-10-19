@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -16,12 +19,14 @@ import 'package:maghsalati/core/widget/custom_text_field.dart';
 import 'package:maghsalati/features/auth/register/models/city_model.dart';
 import 'package:maghsalati/features/auth/register/presentation/logic/city_cubit.dart';
 import 'package:maghsalati/features/auth/register/presentation/view/widget/location_picker_field.dart';
+import 'package:maghsalati/features/auth/register/presentation/view/widget/profile_image_picker.dart';
+import 'package:maghsalati/features/profile/data/model/profile_image_rules.dart';
 import 'package:maghsalati/features/profile/data/model/user_model.dart';
 import 'package:maghsalati/features/profile/presentation/view_model/update_profile_cubit.dart';
 
-/// شاشة تعديل الملف الشخصي: الاسم والمدينة والعنوان والموقع
+/// شاشة تعديل الملف الشخصي: الصورة والاسم والمدينة والعنوان والموقع
 /// بتبعتهم لـ PUT api/customer/profile، ولما ينجح بترجع الـ [UserModel]
-/// المعدل لشاشة حسابي عشان تتحدث
+/// اللي رجع من الباك لشاشة حسابي عشان تتحدث
 class UpdateProfileScreen extends StatefulWidget {
   final UserModel user;
 
@@ -42,9 +47,12 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
   /// بتتملى بمدينة المستخدم الحالية أول ما المدن توصل
   CityModel? _selectedCity;
 
-  /// بتفضل الإحداثيات القديمة لحد ما المستخدم يحدد موقعه الحالي
+  /// بتفضل الإحداثيات القديمة لحد ما المستخدم يحدد موقع جديد
   late double _latitude = widget.user.latitude;
   late double _longitude = widget.user.longitude;
+
+  /// الصورة الجديدة بس، ولو null الباك بيسيب الصورة الحالية زي ما هي
+  File? _newImage;
 
   @override
   void initState() {
@@ -61,6 +69,17 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
     _updateCubit.close();
     _cityCubit.close();
     super.dispose();
+  }
+
+  /// بنرفض الصورة هنا لو امتدادها أو حجمها مش مقبول في الباك
+  void _onImagePicked(File? image) {
+    if (image == null) return;
+    final error = ProfileImageRules.validate(image);
+    if (error != null) {
+      CustomErrorOverlay.show(context: context, text: error.tr());
+      return;
+    }
+    setState(() => _newImage = image);
   }
 
   void _onSave() {
@@ -81,11 +100,17 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
         latitude: _latitude,
         longitude: _longitude,
       ),
+      image: _newImage,
     );
   }
 
   void _onUpdateStateChanged(BuildContext context, BaseState<UserModel> state) {
     if (state.isSuccess) {
+      // لو الباك رجّع نفس اللينك بعد ما الصورة اتغيرت، الكاش هيعرض القديمة
+      final imageUrl = state.data?.imageUrl ?? '';
+      if (_newImage != null && imageUrl.isNotEmpty) {
+        CachedNetworkImage.evictFromCache(imageUrl);
+      }
       CustomSuccessOverlay.show(context: context, text: 'profile_updated'.tr());
       context.pop(state.data);
     } else if (state.isFailure) {
@@ -115,6 +140,14 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  Center(
+                    child: ProfileImagePicker(
+                      image: _newImage,
+                      imageUrl: widget.user.imageUrl,
+                      onImagePicked: _onImagePicked,
+                    ),
+                  ),
+                  SizedBox(height: 24.h),
                   _buildLabeled(
                     labelKey: 'full_name',
                     child: Customtextfield(
@@ -133,6 +166,8 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
                     labelKey: 'address',
                     child: LocationPickerField(
                       controller: _addressController,
+                      initialLatitude: widget.user.latitude,
+                      initialLongitude: widget.user.longitude,
                       onLocationPicked: (lat, lng) {
                         _latitude = lat;
                         _longitude = lng;

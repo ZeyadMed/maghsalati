@@ -11,6 +11,10 @@ class ContactInfoModel {
     required this.email,
   });
 
+  /// رقم خدمة العملاء اللي بيظهر في آخر شاشة حسابي: الأساسي، ولو فاضي البديل
+  String get customerServicePhone =>
+      phoneNumber1.isNotEmpty ? phoneNumber1 : phoneNumber2;
+
   factory ContactInfoModel.fromJson(Map<String, dynamic> json) {
     return ContactInfoModel(
       phoneNumber1: json['phoneNumber1']?.toString().trim() ?? '',

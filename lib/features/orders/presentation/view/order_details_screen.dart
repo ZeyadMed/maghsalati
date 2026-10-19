@@ -20,21 +20,29 @@ import 'package:maghsalati/features/orders/data/model/order_details_args.dart';
 import 'package:maghsalati/features/orders/data/model/order_model.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/adjustment_review_sheet.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/confirm_dropoff_sheet.dart';
-import 'package:maghsalati/features/orders/presentation/view/widget/order_driver_tile.dart';
+import 'package:maghsalati/features/orders/presentation/view/widget/order_completed_sheet.dart';
+import 'package:maghsalati/features/orders/presentation/view/widget/order_customer_card.dart';
+import 'package:maghsalati/features/orders/presentation/view/widget/order_help_card.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/order_item_row.dart';
+import 'package:maghsalati/features/orders/presentation/view/widget/order_laundry_card.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/order_next_step_card.dart';
+import 'package:maghsalati/features/orders/presentation/view/widget/order_notes_card.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/order_payment_card.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/order_progress_tracker.dart';
-import 'package:maghsalati/features/orders/presentation/view/widget/order_status_badge.dart';
+import 'package:maghsalati/features/orders/presentation/view/widget/order_section_card.dart';
+import 'package:maghsalati/features/orders/presentation/view/widget/order_sheet_frame.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/order_status_style.dart';
+import 'package:maghsalati/features/orders/presentation/view/widget/order_tracking_card.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/rate_laundry_sheet.dart';
 import 'package:maghsalati/features/orders/presentation/view_model/order_details_cubit.dart';
 import 'package:maghsalati/features/orders/presentation/view_model/order_updates.dart';
 import 'package:maghsalati/features/orders/presentation/view_model/payment_link_cubit.dart';
 
 /// شاشة تفاصيل الطلب: بتتفتح برقم الطلب وبتجيبه من api/customer/orders/{id}
-/// فوق حالة الطلب والخطوة الجاية (ولو فيه حاجة مطلوبة من العميل زرارها هنا)
-/// والدفع، وتحت القطع والحساب
+/// الترتيب من فوق لتحت: الحالة الحالية (ولو فيه حاجة مطلوبة من العميل زرارها
+/// هنا)، رقم الطلب وتاريخه وشريط المراحل، الخريطة والمندوب، المغسلة، بيانات
+/// العميل والعنوان، الصور والملاحظات، القطع، طريقة الدفع، الحساب والفاتورة،
+/// وفي الآخر التواصل والمساعدة
 /// بتتحدث بالسحب، ولما التطبيق يرجع من الخلفية، ولما ييجي تحديث للطلب ده
 /// والـ realtime بيبعت الطلب كله فبيتعرض على طول، ولو المغسلة بعتت تعديل
 /// شيت المراجعة بيتفتح لوحده، ولو نتيجة الدفع وصلت صفحة الدفع بتقفل
@@ -206,10 +214,13 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen>
     );
     _dropoffSheetOpen = false;
     if (!confirmed || !mounted) return;
-    context.showSuccessMessage('dropoff_confirmed'.tr());
     _notifyOrderChanged();
-    // التقييم اختياري، فبنعرضه مرة واحدة بعد التسليم على طول
-    if (order.laundryId > 0) _rateLaundry(order);
+    // رسالة التهنئة مرة واحدة بعد التسليم، ومنها العميل يختار يقيّم أو لأ
+    final wantsRating = await OrderCompletedSheet.show(
+      context,
+      canRate: order.laundryId > 0,
+    );
+    if (wantsRating && mounted) _rateLaundry(order);
   }
 
   Future<void> _rateLaundry(OrderModel order) async {
@@ -270,6 +281,8 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen>
     BaseState<OrderModel> state,
     OrderModel order,
   ) {
+    final driverTrip = order.driverTrip;
+
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 24.h),
@@ -278,8 +291,6 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen>
         children: [
           // التحديث وقع بس فيه نسخة قديمة معروضة، فبنقول ونسيبه يحاول تاني
           if (state.isFailure) ...[_buildRefreshFailed(state), Gap(8.h)],
-          _buildInfoCard(context, order),
-          Gap(14.h),
           OrderNextStepCard(
             order: order,
             onReviewAdjustment: () => _reviewAdjustment(order),
@@ -287,7 +298,25 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen>
             onRateLaundry: () => _rateLaundry(order),
             onChooseAnotherLaundry: () => context.go(AppRouter.initialRoot),
           ),
-          if (order.status.isPaymentPhase) ...[
+          Gap(14.h),
+          _buildSummaryCard(context, order),
+          if (driverTrip != null) ...[
+            Gap(14.h),
+            OrderTrackingCard(order: order, trip: driverTrip),
+          ],
+          if (order.laundryName.isNotEmpty) ...[
+            Gap(14.h),
+            OrderLaundryCard(order: order),
+          ],
+          Gap(14.h),
+          OrderCustomerCard(order: order),
+          if (order.hasNotesOrImages) ...[
+            Gap(14.h),
+            OrderNotesCard(order: order),
+          ],
+          Gap(14.h),
+          _buildItemsCard(order),
+          if (OrderPaymentCard.isShownFor(order)) ...[
             Gap(14.h),
             BlocBuilder<PaymentLinkCubit, BaseState<String>>(
               bloc: _paymentCubit,
@@ -299,9 +328,9 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen>
             ),
           ],
           Gap(14.h),
-          _buildItemsCard(order),
+          _buildTotalsCard(context, order),
           Gap(14.h),
-          _buildTotalsCard(order),
+          OrderHelpCard(order: order),
         ],
       ),
     );
@@ -359,47 +388,20 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen>
     );
   }
 
-  /// كارت فوق زي الديزاين: شريط الخطوات (لو الطلب لسه شغال) ورقم الطلب،
-  /// وتحتهم كارت المندوب لو اتعيّن مندوب، وكارت عنوان التوصيل وكارت المغسلة
-  Widget _buildInfoCard(BuildContext context, OrderModel order) {
-    final driverTrip = order.driverTrip;
-
-    return _buildCard(
+  /// رقم الطلب وتاريخه، وتحتهم مراحل الطلب كلها بأسمائها.
+  /// المرفوض والملغي مالهمش مراحل
+  Widget _buildSummaryCard(BuildContext context, OrderModel order) {
+    return OrderSectionCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (order.isCurrent) ...[
-            OrderProgressTracker(status: order.status),
-            Gap(18.h),
-          ],
           _buildOrderNumber(context, order),
-          if (!order.isCurrent) ...[
-            Gap(10.h),
-            Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: OrderStatusBadge(status: order.status),
-            ),
-          ],
-          if (driverTrip != null) ...[
-            Gap(12.h),
-            OrderDriverTile(trip: driverTrip),
-          ],
-          if (order.deliveryAddress.isNotEmpty) ...[
-            Gap(10.h),
-            _buildInfoTile(
-              icon: Icons.location_on_rounded,
-              label: 'delivery_address'.tr(),
-              value: order.deliveryAddress,
-            ),
-          ],
-          if (order.laundryName.isNotEmpty) ...[
-            Gap(10.h),
-            _buildInfoTile(
-              icon: Icons.storefront_rounded,
-              label: 'ordered_from'.tr(),
-              value: order.laundryName,
-            ),
+          if (order.currentStage != null) ...[
+            Gap(14.h),
+            Divider(height: 1.h, color: AppColors.lightGreyColor),
+            Gap(16.h),
+            OrderProgressTracker(order: order, showAllStages: true),
           ],
         ],
       ),
@@ -407,110 +409,72 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen>
   }
 
   Widget _buildOrderNumber(BuildContext context, OrderModel order) {
+    final date = DateFormat(
+      'd MMMM yyyy - h:mm a',
+      context.locale.toString(),
+    ).format(order.date.toLocal());
+
     return Row(
       children: [
-        Icon(
-          Icons.receipt_long_outlined,
-          size: 22.r,
-          color: AppColors.greyColor2,
+        Container(
+          width: 40.r,
+          height: 40.r,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: AppColors.primaryColor.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(12.r),
+          ),
+          child: Icon(
+            Icons.receipt_long_outlined,
+            size: 22.r,
+            color: AppColors.primaryColor,
+          ),
         ),
-        Gap(8.w),
+        Gap(12.w),
         Expanded(
-          child: Text(
-            '${'order_number'.tr()}: ${order.reference}',
-            style: TextStyles.darkBold16,
-          ),
-        ),
-        IconButton(
-          tooltip: 'copy'.tr(),
-          onPressed: () async {
-            await Clipboard.setData(ClipboardData(text: order.reference));
-            if (context.mounted) context.showSuccessMessage('copied'.tr());
-          },
-          icon: Icon(Icons.copy_outlined, size: 20.r),
-          color: AppColors.greyColor2,
-          visualDensity: VisualDensity.compact,
-        ),
-      ],
-    );
-  }
-
-  /// كارت أبيض بإطار رفيع: الأيقونة في مربع ملون وجنبها العنوان والقيمة
-  Widget _buildInfoTile({
-    required IconData icon,
-    required String label,
-    required String value,
-  }) {
-    return Container(
-      padding: EdgeInsets.all(12.r),
-      decoration: BoxDecoration(
-        color: AppColors.whiteColor,
-        borderRadius: BorderRadius.circular(14.r),
-        border: Border.all(color: AppColors.borderColor),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 44.r,
-            height: 44.r,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: AppColors.primaryColor.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12.r),
-            ),
-            child: Icon(icon, size: 24.r, color: AppColors.primaryColor),
-          ),
-          Gap(12.w),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  label,
-                  style: TextStyles.darkRegular12.copyWith(
-                    color: AppColors.greyColor3,
-                  ),
-                ),
-                Gap(2.h),
-                Text(value, style: TextStyles.darkBold14),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// كارت القطع: كل قطعة بصورتها واسمها وكميتها وسعرها
-  Widget _buildItemsCard(OrderModel order) {
-    return _buildCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Expanded(
-                child: Text(
-                  'order_items'.tr(),
-                  style: TextStyles.darkBold16.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              Gap(12.w),
               Text(
-                '${order.totalPieces} ${'piece'.tr()}',
+                '${'order_number'.tr()}: ${order.reference}',
+                style: TextStyles.darkBold16,
+              ),
+              Gap(2.h),
+              Text(
+                date,
                 style: TextStyles.darkRegular12.copyWith(
                   color: AppColors.greyColor3,
                 ),
               ),
             ],
           ),
-          Gap(14.h),
+        ),
+        Gap(8.w),
+        OrderCircleButton(
+          icon: Icons.copy_outlined,
+          tooltip: 'copy'.tr(),
+          onPressed: () async {
+            await Clipboard.setData(ClipboardData(text: order.reference));
+            if (context.mounted) context.showSuccessMessage('copied'.tr());
+          },
+        ),
+      ],
+    );
+  }
+
+  /// كارت القطع: كل قطعة بصورتها واسمها وخدمتها وكميتها وسعرها
+  Widget _buildItemsCard(OrderModel order) {
+    return OrderSectionCard(
+      title: 'order_items'.tr(),
+      trailing: Text(
+        '${order.totalPieces} ${'piece'.tr()}',
+        style: TextStyles.darkRegular12.copyWith(color: AppColors.greyColor3),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
           // الفاصل بيتحط بين القطع بس، مش تحت آخر واحدة
           for (int i = 0; i < order.items.length; i++) ...[
             if (i > 0) ...[
@@ -525,10 +489,12 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen>
     );
   }
 
-  /// كارت الحساب: مجموع القطع + رسوم الاستلام + رسوم التسليم
-  /// وتحتهم الإجمالي النهائي زي ما السيرفر حسبه
-  Widget _buildTotalsCard(OrderModel order) {
-    return _buildCard(
+  /// كارت الحساب: مجموع القطع + رسوم الاستلام + رسوم التسليم، ورسوم المنصة
+  /// والخصم لو موجودين، وتحتهم الإجمالي النهائي زي ما السيرفر حسبه.
+  /// الطلب المكتمل بيبان تحته زرار الفاتورة
+  Widget _buildTotalsCard(BuildContext context, OrderModel order) {
+    return OrderSectionCard(
+      title: 'invoice'.tr(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
@@ -538,17 +504,38 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen>
           _buildAmountRow('pickup_fee'.tr(), order.pickupFee),
           Gap(10.h),
           _buildAmountRow('dropoff_fee'.tr(), order.dropoffFee),
+          if (order.platformFee > 0) ...[
+            Gap(10.h),
+            _buildAmountRow('invoice_platform_fee'.tr(), order.platformFee),
+          ],
+          if (order.discount > 0) ...[
+            Gap(10.h),
+            _buildAmountRow(
+              'invoice_discount'.tr(),
+              order.discount,
+              isDiscount: true,
+            ),
+          ],
           Gap(12.h),
           Divider(height: 1.h, color: AppColors.lightGreyColor),
           Gap(12.h),
           _buildGrandTotalRow(order),
+          if (order.hasInvoice) ...[
+            Gap(14.h),
+            SheetButton(
+              label: 'view_invoice'.tr(),
+              filled: false,
+              onPressed: () =>
+                  context.push(AppRouter.orderInvoice, extra: order),
+            ),
+          ],
         ],
       ),
     );
   }
 
-  /// سطر مبلغ عادي: اسمه على جنب وقيمته على التاني
-  Widget _buildAmountRow(String label, num amount) {
+  /// سطر مبلغ عادي: اسمه على جنب وقيمته على التاني، والخصم بالسالب وأحمر
+  Widget _buildAmountRow(String label, num amount, {bool isDiscount = false}) {
     return Row(
       children: [
         Expanded(
@@ -563,8 +550,11 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen>
         ),
         Gap(12.w),
         Text(
+          '${isDiscount ? '- ' : ''}'
           '${formatOrderPrice(amount)} ${'currency'.tr()}',
-          style: TextStyles.darkBold14,
+          style: isDiscount
+              ? TextStyles.darkBold14.copyWith(color: AppColors.redColor2)
+              : TextStyles.darkBold14,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
@@ -592,25 +582,6 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen>
           overflow: TextOverflow.ellipsis,
         ),
       ],
-    );
-  }
-
-  /// نفس شكل كروت الطلبات عشان الشاشتين يبقوا متسقين
-  Widget _buildCard({required Widget child}) {
-    return Container(
-      padding: EdgeInsets.all(16.r),
-      decoration: BoxDecoration(
-        color: AppColors.whiteColor,
-        borderRadius: BorderRadius.circular(16.r),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.blackColor.withValues(alpha: 0.04),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: child,
     );
   }
 }

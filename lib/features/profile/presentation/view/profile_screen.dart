@@ -4,21 +4,24 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:maghsalati/core/bloc/base_bloc.dart';
-import 'package:maghsalati/core/extensions/context_extension.dart';
 import 'package:maghsalati/core/router/app_router.dart';
 import 'package:maghsalati/core/service_locator/service_locator.dart';
 import 'package:maghsalati/core/style/app_colors.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
 import 'package:maghsalati/features/auth/logout/presentation/logic/logout_bloc.dart';
 import 'package:maghsalati/features/auth/logout/presentation/logic/logout_event.dart';
+import 'package:maghsalati/features/profile/data/model/contact_info_model.dart';
+import 'package:maghsalati/features/profile/data/model/page_content_model.dart';
 import 'package:maghsalati/features/profile/data/model/user_model.dart';
+import 'package:maghsalati/features/profile/presentation/view/widget/confirm_action_dialog.dart';
+import 'package:maghsalati/features/profile/presentation/view/widget/customer_service_card.dart';
 import 'package:maghsalati/features/profile/presentation/view/widget/profile_header.dart';
 import 'package:maghsalati/features/profile/presentation/view/widget/profile_menu_tile.dart';
-import 'package:maghsalati/features/profile/presentation/view_model/delete_account_cubit.dart';
+import 'package:maghsalati/features/profile/presentation/view_model/contact_us_cubit.dart';
 import 'package:maghsalati/features/profile/presentation/view_model/profile_cubit.dart';
 
 /// شاشة حسابي: هيدر أزرق فيه بيانات المستخدم وتحته قايمة الصفحات
-/// بيانات المستخدم جاية من api/customer/profile
+/// وفي الآخر رقم خدمة العملاء. بيانات المستخدم جاية من api/customer/profile
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -29,15 +32,20 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   final ProfileCubit _profileCubit = getIt<ProfileCubit>();
 
+  /// رقم خدمة العملاء بييجي من نفس اند بوينت شاشة الدعم
+  final ContactUsCubit _contactsCubit = getIt<ContactUsCubit>();
+
   @override
   void initState() {
     super.initState();
     _profileCubit.getProfile();
+    _contactsCubit.getContacts();
   }
 
   @override
   void dispose() {
     _profileCubit.close();
+    _contactsCubit.close();
     super.dispose();
   }
 
@@ -58,31 +66,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return MultiBlocProvider(
-      providers: [
-        BlocProvider(create: (context) => getIt<LogoutBloc>()),
-        BlocProvider(create: (context) => getIt<DeleteAccountCubit>()),
-      ],
-      child: MultiBlocListener(
-        listeners: [
-          BlocListener<LogoutBloc, BaseState<void>>(
-            listener: (context, state) {
-              if (state.isSuccess) context.go(AppRouter.login);
-            },
-          ),
-          // الكيوبت بيمسح الجلسة قبل ما يبعت success، فبنروح اللوجين على طول
-          BlocListener<DeleteAccountCubit, BaseState<void>>(
-            listener: (context, state) {
-              if (state.isSuccess) {
-                context.showSuccessMessage('delete_account_success'.tr());
-                context.go(AppRouter.login);
-              }
-              if (state.isFailure) {
-                context.showErrorMessage(state.errorMessage ?? '');
-              }
-            },
-          ),
-        ],
+    return BlocProvider(
+      create: (context) => getIt<LogoutBloc>(),
+      child: BlocListener<LogoutBloc, BaseState<void>>(
+        listener: (context, state) {
+          if (state.isSuccess) context.go(AppRouter.login);
+        },
         child: _buildBody(),
       ),
     );
@@ -110,8 +99,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ..._buildMenuTiles(),
                   SizedBox(height: 24.h),
                   _buildLogoutButton(),
-                  SizedBox(height: 8.h),
-                  _buildDeleteAccountButton(),
+                  _buildCustomerService(),
                 ],
               ),
             ),
@@ -122,19 +110,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   /// سطور القايمة، بينهم مسافة ثابتة من غير ما تتحط تحت آخر واحد
+  /// نطاق الخدمة ومقدم الخدمة بيتفتحوا من اختصارات صفحة المغسلة
   List<Widget> _buildMenuTiles() {
     final tiles = <Widget>[
-      ProfileMenuTile(
-        icon: Icons.edit_outlined,
-        iconColor: AppColors.primaryColor,
-        titleKey: 'edit_profile',
-        onTap: _openUpdateProfile,
-      ),
       ProfileMenuTile(
         icon: Icons.location_on_outlined,
         iconColor: AppColors.redColor2,
         titleKey: 'saved_addresses',
         onTap: () => context.push(AppRouter.savedAddresses),
+      ),
+      ProfileMenuTile(
+        icon: Icons.edit_outlined,
+        iconColor: AppColors.primaryColor,
+        titleKey: 'edit_profile',
+        onTap: _openUpdateProfile,
       ),
       ProfileMenuTile(
         icon: Icons.notifications_none_rounded,
@@ -143,15 +132,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
         onTap: () => context.push(AppRouter.notificationScreen),
       ),
       ProfileMenuTile(
+        icon: Icons.manage_accounts_outlined,
+        iconColor: AppColors.darkGreenColor,
+        titleKey: 'account_settings',
+        onTap: () => context.push(AppRouter.accountSettings),
+      ),
+      // نفس المحتوى اللي بيظهر في ديالوج الشروط وقت تسجيل الدخول
+      ProfileMenuTile(
         icon: Icons.lock_outline_rounded,
         iconColor: AppColors.greenColor,
-        titleKey: 'privacy_policy',
-        onTap: () => context.push(AppRouter.privacyPolicy),
+        titleKey: ContentPage.privacyPolicy.titleKey,
+        onTap: () => context.push(
+          AppRouter.contentPage,
+          extra: ContentPage.privacyPolicy,
+        ),
       ),
       ProfileMenuTile(
         icon: Icons.chat_bubble_outline_rounded,
         iconColor: AppColors.lightBlueColor,
-        titleKey: 'contact_us',
+        titleKey: 'support_help',
         onTap: () => context.push(AppRouter.contactUsScreen),
       ),
       // ProfileMenuTile(
@@ -219,44 +218,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  /// حذف الحساب أقل بروزاً من الخروج عشان مايتداسش عليه بالغلط،
-  /// ومن غير خلفية بس بنفس اللون الأحمر عشان يبان إنه إجراء خطير
-  Widget _buildDeleteAccountButton() {
-    return BlocBuilder<DeleteAccountCubit, BaseState<void>>(
+  /// رقم خدمة العملاء تحت الخروج، ولو لسه بيحمل أو الطلب وقع مابيظهرش
+  /// والأرقام كلها موجودة في شاشة الدعم والمساعدة
+  Widget _buildCustomerService() {
+    return BlocBuilder<ContactUsCubit, BaseState<ContactInfoModel>>(
+      bloc: _contactsCubit,
       builder: (context, state) {
-        return TextButton(
-          onPressed: state.isLoading
-              ? null
-              : () => _confirmDeleteAccount(context),
-          style: TextButton.styleFrom(
-            padding: EdgeInsets.symmetric(vertical: 12.h),
-          ),
-          child: state.isLoading
-              ? SizedBox(
-                  width: 20.r,
-                  height: 20.r,
-                  child: const CircularProgressIndicator(
-                    strokeWidth: 2.5,
-                    color: AppColors.redColor2,
-                  ),
-                )
-              : Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.delete_outline_rounded,
-                      size: 18.r,
-                      color: AppColors.redColor2,
-                    ),
-                    SizedBox(width: 6.w),
-                    Text(
-                      'delete_account'.tr(),
-                      style: TextStyles.darkRegular14.copyWith(
-                        color: AppColors.redColor2,
-                      ),
-                    ),
-                  ],
-                ),
+        final phone = state.data?.customerServicePhone ?? '';
+        if (phone.isEmpty) return const SizedBox.shrink();
+
+        return Padding(
+          padding: EdgeInsets.only(top: 20.h),
+          child: CustomerServiceCard(phoneNumber: phone),
         );
       },
     );
@@ -264,7 +237,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   /// بنأكد قبل الخروج عشان مايخرجش بالغلط
   Future<void> _confirmLogout(BuildContext blocContext) async {
-    final shouldLogout = await _showConfirmDialog(
+    final shouldLogout = await showConfirmActionDialog(
+      blocContext,
       titleKey: 'logout',
       messageKey: 'logout_confirm',
       confirmKey: 'logout',
@@ -275,66 +249,5 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (shouldLogout && blocContext.mounted) {
       blocContext.read<LogoutBloc>().add(const LogoutEvent());
     }
-  }
-
-  /// الحذف مابيترجعش فلازم تأكيد صريح قبل ما نبعت الريكوست
-  Future<void> _confirmDeleteAccount(BuildContext blocContext) async {
-    final shouldDelete = await _showConfirmDialog(
-      titleKey: 'delete_account',
-      messageKey: 'delete_account_confirm',
-      confirmKey: 'delete_account_btn',
-    );
-
-    if (shouldDelete && blocContext.mounted) {
-      blocContext.read<DeleteAccountCubit>().deleteAccount();
-    }
-  }
-
-  /// ديالوج تأكيد بزرارين، بيرجع true لو المستخدم أكد بس
-  /// (الإلغاء أو القفل من بره الديالوج بيرجعوا false)
-  Future<bool> _showConfirmDialog({
-    required String titleKey,
-    required String messageKey,
-    required String confirmKey,
-  }) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: AppColors.whiteColor,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16.r),
-        ),
-        title: Text(
-          titleKey.tr(),
-          style: TextStyles.darkBold16.copyWith(fontWeight: FontWeight.w700),
-        ),
-        content: Text(
-          messageKey.tr(),
-          style: TextStyles.darkRegular14.copyWith(
-            color: AppColors.greyColor2,
-            height: 1.6,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => dialogContext.pop(false),
-            child: Text(
-              'cancel'.tr(),
-              style: TextStyles.darkBold14.copyWith(
-                color: AppColors.greyColor2,
-              ),
-            ),
-          ),
-          TextButton(
-            onPressed: () => dialogContext.pop(true),
-            child: Text(
-              confirmKey.tr(),
-              style: TextStyles.darkBold14.copyWith(color: AppColors.redColor2),
-            ),
-          ),
-        ],
-      ),
-    );
-    return confirmed ?? false;
   }
 }

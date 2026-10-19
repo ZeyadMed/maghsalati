@@ -106,6 +106,13 @@ class OrderNextStepCard extends StatelessWidget {
       titleKey: 'next_step_new_title',
       body: 'order_pending_note'.tr(),
     ),
+    // العميل ممكن يودّي الهدوم المغسلة بنفسه بدل المندوب ([OrderModel.customerDropsOff])
+    OrderStatus.awaitingPickup when order.customerDropsOff => _NextStep(
+      icon: Icons.storefront_outlined,
+      color: AppColors.primaryColor,
+      titleKey: 'next_step_awaiting_dropoff_title',
+      body: 'next_step_awaiting_dropoff_body'.tr(),
+    ),
     OrderStatus.awaitingPickup => _NextStep(
       icon: Icons.local_shipping_outlined,
       color: AppColors.primaryColor,
@@ -137,7 +144,12 @@ class OrderNextStepCard extends StatelessWidget {
       icon: Icons.inventory_2_outlined,
       color: AppColors.greenColor,
       titleKey: 'next_step_ready_title',
-      body: 'next_step_ready_body'.tr(),
+      // العميل هيستلم من المغسلة بنفسه ([OrderModel.customerCollects])
+      body:
+          (order.customerCollects
+                  ? 'next_step_ready_pickup_body'
+                  : 'next_step_ready_body')
+              .tr(),
     ),
     OrderStatus.awaitingDropoffCollection => _NextStep(
       icon: Icons.storefront_outlined,
@@ -165,7 +177,8 @@ class OrderNextStepCard extends StatelessWidget {
       icon: Icons.check_circle_outline_rounded,
       color: AppColors.greenColor,
       titleKey: 'next_step_delivered_title',
-      body: 'next_step_delivered_body'.tr(),
+      // نفس رسالة الشكر اللي بتظهر في شيت التهنئة بعد تأكيد الاستلام
+      body: 'order_completed_message'.tr(args: ['app_name'.tr()]),
       // التقييم محتاج رقم المغسلة، فمن غيره الزرار مابيظهرش
       actionKey: order.laundryId > 0 ? 'rate_laundry' : null,
       onAction: onRateLaundry,

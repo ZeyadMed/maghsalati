@@ -301,6 +301,41 @@ class GenericDataSource {
     );
   }
 
+  /// زي [postFormData] بس PUT، للتعديلات اللي بتبعت ملف زي صورة البروفايل
+  Future<Either<Failure, T>> putFormData<T>({
+    required String endpoint,
+    Map<String, dynamic>? data,
+    Map<String, dynamic>? queryParameters,
+    Map<String, dynamic>? headers,
+    T Function(Map<String, dynamic>)? fromJson,
+  }) async {
+    final processedData = await _processFormData(data ?? {});
+
+    final result = await _apiConsumer.put(
+      endpoint,
+      data: FormData.fromMap(processedData),
+      queryParameters: queryParameters,
+      headers: headers,
+    );
+
+    return result.fold(
+      (left) => Left(left),
+      (right) {
+        try {
+          // الموديل بياخد الريسبونس كامل ويفكه بنفسه
+          if (fromJson != null) {
+            return Right(fromJson(right));
+          }
+          return Right(null as T);
+        } catch (e, stackTrace) {
+          loggerError(stackTrace);
+          loggerWarn(e.toString());
+          return Left(ParsingFailure(message: e.toString()));
+        }
+      },
+    );
+  }
+
   Future<Map<String, dynamic>> _processFormData(
       Map<String, dynamic> data) async {
     final processed = <String, dynamic>{};

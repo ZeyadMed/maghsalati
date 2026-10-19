@@ -188,7 +188,7 @@ class RealtimeService {
         order.paymentStatus != PaymentStatus.none;
     final label = paymentChanged
         ? order.paymentStatus.labelKey.tr()
-        : order.status.labelKey.tr();
+        : order.statusLabelKey.tr();
     _showBanner(
       'realtime_order_updated'.tr(args: [order.reference, label]),
       actionKey: 'view_details',

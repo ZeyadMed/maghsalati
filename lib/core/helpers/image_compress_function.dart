@@ -15,8 +15,12 @@ class ImageCompressHelper {
       final filename = file.uri.pathSegments.isNotEmpty
           ? file.uri.pathSegments.last
           : 'image_${DateTime.now().millisecondsSinceEpoch}';
+      // الضغط بيطلع JPEG دايماً، والمكتبة بترمي لو الامتداد مش jpg، فكانت
+      // صور HEIC و PNG بترجع زي ما هي من غير ضغط والباك بيرفض HEIC
+      final dot = filename.lastIndexOf('.');
+      final baseName = dot > 0 ? filename.substring(0, dot) : filename;
       final targetPath =
-          '${Directory.systemTemp.path}/${DateTime.now().millisecondsSinceEpoch}_$filename';
+          '${Directory.systemTemp.path}/${DateTime.now().millisecondsSinceEpoch}_$baseName.jpg';
 
       final result = await FlutterImageCompress.compressAndGetFile(
         inputPath,

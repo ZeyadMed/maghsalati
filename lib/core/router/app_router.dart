@@ -1,3 +1,5 @@
+import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:maghsalati/core/helpers/web_view_container.dart';
 import 'package:maghsalati/core/router/bottom_nav_app.dart';
@@ -11,9 +13,7 @@ import 'package:maghsalati/features/auth/register/presentation/view/register_scr
 import 'package:maghsalati/features/home/data/model/nearby_laundry_model.dart';
 import 'package:maghsalati/features/home/presentation/view/home_screen.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view/laundry_details.dart';
-import 'package:maghsalati/features/laundry_details/presentation/view/service_area_screen.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view/service_mechanism_screen.dart';
-import 'package:maghsalati/features/laundry_details/presentation/view/service_provider_screen.dart';
 import 'package:maghsalati/features/notifications/presentation/view/notifications_screen.dart';
 import 'package:maghsalati/features/on_boarding/presentation/views/on_boarding_screen.dart';
 import 'package:maghsalati/features/order_pending/data/model/pending_order_model.dart';
@@ -21,12 +21,16 @@ import 'package:maghsalati/features/order_pending/presentation/view/confirm_orde
 import 'package:maghsalati/features/order_pending/presentation/view/oreder_pending.dart';
 import 'package:maghsalati/features/order_pending/presentation/view/reject_order.dart';
 import 'package:maghsalati/features/orders/data/model/order_details_args.dart';
+import 'package:maghsalati/features/orders/data/model/order_model.dart';
 import 'package:maghsalati/features/orders/presentation/view/order_details_screen.dart';
+import 'package:maghsalati/features/orders/presentation/view/order_invoice_screen.dart';
 import 'package:maghsalati/features/orders/presentation/view/orders_screen.dart';
+import 'package:maghsalati/features/profile/data/model/page_content_model.dart';
 import 'package:maghsalati/features/profile/data/model/user_model.dart';
 import 'package:maghsalati/features/profile/presentation/view/about_us_screen.dart';
+import 'package:maghsalati/features/profile/presentation/view/account_settings_screen.dart';
 import 'package:maghsalati/features/profile/presentation/view/contact_us_screen.dart';
-import 'package:maghsalati/features/profile/presentation/view/privacy_policy_screen.dart';
+import 'package:maghsalati/features/profile/presentation/view/page_content_screen.dart';
 import 'package:maghsalati/features/profile/presentation/view/profile_screen.dart';
 import 'package:maghsalati/features/profile/presentation/view/update_profile_screen.dart';
 import 'package:maghsalati/features/saved_addresses/data/model/saved_address_model.dart';
@@ -58,18 +62,18 @@ abstract class AppRouter {
   // ************* PROFILE *************
   static const String orderScreen = '/orderScreen';
   static const String orderDetails = '/orderDetails';
+  static const String orderInvoice = '/orderInvoice';
   static const String profileScreen = '/profileScreen';
   static const String contactUsScreen = '/contactUsScreen';
   static const String notificationScreen = '/notificationScreen';
   static const String customerServiceScreen = '/customerServiceScreen';
   static const String aboutUs = '/aboutUs';
   static const String updateProfileScreen = '/updateProfileScreen';
-  static const String privacyPolicy = '/privacyPolicy';
+  static const String accountSettings = '/accountSettings';
+  static const String contentPage = '/contentPage';
   static const String savedAddresses = '/savedAddresses';
   static const String addressForm = '/addressForm';
   static const String mapPicker = '/mapPicker';
-  static const String serviceArea = '/serviceArea';
-  static const String serviceProvider = '/serviceProvider';
   static const String serviceMechanism = '/serviceMechanism';
   static const String comingSoonScreen = '/CommingSoonScreen';
 
@@ -86,9 +90,12 @@ abstract class AppRouter {
         builder: (context, state) =>
             WebViewContainer(args: state.extra as WebViewArgs),
       ),
+      // مربوط بمفتاح اللغة عشان لما تتغير، التابات المتخزنة جواه تتبني من الأول
+      // بالترجمة الجديدة بدل ما تفضل بالنصوص القديمة
       GoRoute(
         path: initialRoot,
-        builder: (context, state) => const BottomNavApp(),
+        builder: (context, state) =>
+            BottomNavApp(key: ValueKey(context.locale.languageCode)),
       ),
       GoRoute(
         path: onboarding,
@@ -182,6 +189,18 @@ abstract class AppRouter {
         builder: (context, state) =>
             OrderDetailsScreen(args: state.extra as OrderDetailsArgs),
       ),
+
+      // الطلب نفسه بييجي في state.extra من تفاصيل الطلب،
+      // والفاتورة للطلبات المكتملة بس فأي حاجة تانية بترجع للرئيسية
+      GoRoute(
+        path: orderInvoice,
+        redirect: (context, state) {
+          final order = state.extra;
+          return order is OrderModel && order.hasInvoice ? null : initialRoot;
+        },
+        builder: (context, state) =>
+            OrderInvoiceScreen(order: state.extra as OrderModel),
+      ),
       GoRoute(
         path: profileScreen,
         builder: (context, state) => const ProfileScreen(),
@@ -195,8 +214,14 @@ abstract class AppRouter {
             UpdateProfileScreen(user: state.extra as UserModel),
       ),
       GoRoute(
-        path: privacyPolicy,
-        builder: (context, state) => const PrivacyPolicyScreen(),
+        path: accountSettings,
+        builder: (context, state) => const AccountSettingsScreen(),
+      ),
+      // الصفحة (سياسة الخصوصية، نطاق الخدمة، مقدم الخدمة) بتتبعت في state.extra
+      GoRoute(
+        path: contentPage,
+        builder: (context, state) =>
+            PageContentScreen(page: state.extra as ContentPage),
       ),
       GoRoute(
         path: savedAddresses,
@@ -230,14 +255,6 @@ abstract class AppRouter {
       GoRoute(
         path: aboutUs,
         builder: (context, state) => const AboutUsScreen(),
-      ),
-      GoRoute(
-        path: serviceArea,
-        builder: (context, state) => const ServiceAreaScreen(),
-      ),
-      GoRoute(
-        path: serviceProvider,
-        builder: (context, state) => const ServiceProviderScreen(),
       ),
       GoRoute(
         path: serviceMechanism,

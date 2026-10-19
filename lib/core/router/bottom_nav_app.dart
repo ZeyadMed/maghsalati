@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 import 'package:maghsalati/core/common_widget/custom_error_message.dart';
 import 'package:maghsalati/core/notification/messaging_config.dart';
 import 'package:maghsalati/core/realtime/realtime_service.dart';
@@ -70,7 +69,6 @@ class _BottomNavAppState extends State<BottomNavApp>
 
   @override
   void initState() {
-    getIt<Dio>().options.headers['Accept-Language'] = 'ar';
     super.initState();
     // Only load home page initially
     _getPage(0);

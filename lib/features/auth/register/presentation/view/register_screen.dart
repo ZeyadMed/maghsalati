@@ -51,7 +51,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   /// المدينة المختارة، بنبعت الـ id بتاعها في cityId
   CityModel? selectedCity;
 
-  /// الإحداثيات اللي جات من تحديد الموقع، بتفضل 0 لو المستخدم ماحددش
+  /// الإحداثيات اللي جات من الخريطة أو الموقع الحالي
+  /// الموقع إجباري فالفورم مابيعديش وهي لسه 0
   double latitude = 0;
   double longitude = 0;
 
@@ -67,7 +68,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   void _onSubmit(BuildContext context) {
     if (!_formKey.currentState!.validate()) return;
 
-     
     if (selectedCity == null) {
       context.showErrorMessage('select_city_first'.tr());
       return;
@@ -160,10 +160,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     CustomPhoneField(
                       onChanged: (phone) =>
                           completePhone = phone.completeNumber,
-                      validator: (phone) =>
-                          (phone == null || phone.isEmpty)
-                              ? 'phoneNumberEmpty'.tr()
-                              : null,
+                      validator: (phone) => (phone == null || phone.isEmpty)
+                          ? 'phoneNumberEmpty'.tr()
+                          : null,
                     ),
                     Gap(10.h),
 
@@ -190,9 +189,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     Gap(10.h),
 
-                    // Address + current location
+                    // Address + map picker / current location
                     LocationPickerField(
                       controller: addressController,
+                      isRequired: true,
                       onLocationPicked: (lat, lng) {
                         latitude = lat;
                         longitude = lng;

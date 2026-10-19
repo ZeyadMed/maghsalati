@@ -91,6 +91,30 @@ class NearbyLaundriesCubit extends Cubit<BaseState<NearbyLaundryModel>> {
     );
   }
 
+  /// حالة "متاح / غير متاح" بتتحسب في الباك وقت الطلب، فلو المغسلة غيرت مواعيدها
+  /// أو عدى ميعاد الفتح أو القفل اللستة بتفضل قديمة لحد ما نجيب تاني
+  /// فبنجيب من غير لودينج عشان اللستة ماترمش، ولو فشل بتفضل القديمة زي ما هي
+  Future<void> refresh() async {
+    if (state.isFailure) return getLaundries();
+    if (!state.isSuccess) return;
+
+    final requestId = ++_requestId;
+    _fetchedFor = (_location.latitude, _location.longitude);
+
+    final result = await _dataSource.getNearbyLaundries(
+      lat: _location.latitude,
+      lng: _location.longitude,
+      search: _search,
+    );
+
+    if (isClosed || requestId != _requestId) return;
+
+    result.fold(
+      (_) {},
+      (data) => emit(state.copyWith(status: Status.success, items: data)),
+    );
+  }
+
   @override
   Future<void> close() {
     _searchThrottleTimer?.cancel();

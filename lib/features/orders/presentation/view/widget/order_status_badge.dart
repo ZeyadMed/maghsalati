@@ -5,30 +5,34 @@ import 'package:maghsalati/core/theme/text_styles.dart';
 import 'package:maghsalati/features/orders/data/model/order_model.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/order_status_style.dart';
 
-/// الشارة الملونة اللي فوق الكارت (قيد الغسيل - مكتمل - ملغي ...)
+/// الشارة الملونة اللي فوق الكارت باسم مرحلة الطلب ([OrderModel.statusLabelKey]).
+/// بعض الأسماء طويلة، فعرضها محدود والباقي بيتقطع
 class OrderStatusBadge extends StatelessWidget {
-  final OrderStatus status;
+  final OrderModel order;
 
-  const OrderStatusBadge({super.key, required this.status});
+  const OrderStatusBadge({super.key, required this.order});
 
   @override
   Widget build(BuildContext context) {
-    final color = OrderStatusStyle.foregroundOf(status);
+    final color = OrderStatusStyle.foregroundOf(order.status);
 
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
-      decoration: BoxDecoration(
-        color: OrderStatusStyle.backgroundOf(status),
-        borderRadius: BorderRadius.circular(20.r),
-      ),
-      child: Text(
-        status.labelKey.tr(),
-        style: TextStyles.darkBold12.copyWith(
-          color: color,
-          fontWeight: FontWeight.w600,
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxWidth: 170.w),
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+        decoration: BoxDecoration(
+          color: OrderStatusStyle.backgroundOf(order.status),
+          borderRadius: BorderRadius.circular(20.r),
         ),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
+        child: Text(
+          order.statusLabelKey.tr(),
+          style: TextStyles.darkBold12.copyWith(
+            color: color,
+            fontWeight: FontWeight.w600,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
       ),
     );
   }

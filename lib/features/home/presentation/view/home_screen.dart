@@ -11,6 +11,7 @@ import 'package:maghsalati/features/home/presentation/view/widget/home_header.da
 import 'package:maghsalati/features/home/presentation/view/widget/nearby_laundries_list.dart';
 import 'package:maghsalati/features/home/presentation/view_model/location_controller.dart';
 import 'package:maghsalati/features/home/presentation/view_model/nearby_laundries_cubit.dart';
+import 'package:maghsalati/features/orders/presentation/view/widget/active_order_bar.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -19,7 +20,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   final TextEditingController _searchController = TextEditingController();
 
   /// جاي من get_it فالعنوان متشارك مع باقي الشاشات ومابيتجابش كل مرة
@@ -36,10 +37,18 @@ class _HomeScreenState extends State<HomeScreen> {
     // و load بتشتغل مرة واحدة بس حتى لو الشاشة اتبنت تاني
     // والـ cubit بيستنى الموقع ده ويجيب بيه المغاسل القريبة
     _locationController.load();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  /// المغسلة ممكن تكون غيرت مواعيدها أو قفلت واليوزر بره التطبيق
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _laundriesCubit.refresh();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _searchController.dispose();
     _laundriesCubit.close();
     // الكنترولر مش بيتعمله dispose هنا لأنه singleton في get_it
@@ -72,28 +81,36 @@ class _HomeScreenState extends State<HomeScreen> {
           Expanded(
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: 16.w),
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Gap(16.h),
-                    // المسافة اللي تحته جواه عشان تختفي معاه لو مفيش إعلانات
-                    const HomeAdsCarousel(),
-                    LocalizedLabel(
-                      text: 'cleaner_near_you',
-                      style: TextStyles.blackBold16.copyWith(
-                        fontSize: 18.sp,
-                        fontWeight: FontWeight.bold,
-                        height: 1.2,
+              // السحب لتحت بيحدّث حالة المغاسل من غير ما اللستة ترمش
+              child: RefreshIndicator(
+                color: AppColors.primaryColor,
+                onRefresh: _laundriesCubit.refresh,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Gap(16.h),
+                      // المسافة اللي تحته جواه عشان تختفي معاه لو مفيش إعلانات
+                      const HomeAdsCarousel(),
+                      LocalizedLabel(
+                        text: 'cleaner_near_you',
+                        style: TextStyles.blackBold16.copyWith(
+                          fontSize: 18.sp,
+                          fontWeight: FontWeight.bold,
+                          height: 1.2,
+                        ),
                       ),
-                    ),
-                    Gap(12.h),
-                    const NearbyLaundriesList(),
-                  ],
+                      Gap(12.h),
+                      const NearbyLaundriesList(),
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
+          // متابعة الطلب الشغال، وبيختفي لو مفيش
+          const ActiveOrderBar(),
         ],
       ),
     );

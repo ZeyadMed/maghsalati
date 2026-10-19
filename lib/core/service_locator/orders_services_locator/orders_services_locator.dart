@@ -1,5 +1,6 @@
 import 'package:get_it/get_it.dart';
 import 'package:maghsalati/features/orders/data/orders_data_source.dart';
+import 'package:maghsalati/features/orders/presentation/view_model/active_orders_cubit.dart';
 import 'package:maghsalati/features/orders/presentation/view_model/add_review_cubit.dart';
 import 'package:maghsalati/features/orders/presentation/view_model/adjustment_response_cubit.dart';
 import 'package:maghsalati/features/orders/presentation/view_model/confirm_dropoff_cubit.dart';
@@ -14,6 +15,8 @@ class OrdersServicesLocator {
       () => OrdersDataSourceImpl(getIt()),
     );
     getIt.registerFactory<OrdersCubit>(() => OrdersCubit(getIt()));
+    // شريط متابعة الطلب في الرئيسية
+    getIt.registerFactory<ActiveOrdersCubit>(() => ActiveOrdersCubit(getIt()));
     // كلهم factory: واحد جديد لكل شاشة أو شيت وبيتقفل معاها
     getIt.registerFactory<OrderDetailsCubit>(() => OrderDetailsCubit(getIt()));
     getIt.registerFactory<AdjustmentResponseCubit>(

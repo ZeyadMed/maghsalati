@@ -151,6 +151,38 @@ extension PaymentStatusX on PaymentStatus {
       };
 }
 
+/// مراحل الطلب زي ما العميل بيشوفها، بالترتيب. مش نفس حالات الباك:
+/// كذا حالة بتتعرض على نفس المرحلة ([OrderModel.currentStage])، واسم المرحلة
+/// ممكن يتغير حسب طريقة التسليم ([OrderModel.stageLabelKey])
+enum OrderStage {
+  /// قيد الانتظار: المغسلة لسه ماقبلتش
+  pending,
+
+  /// تم قبول الطلب
+  accepted,
+
+  /// بانتظار استلام الملابس من العميل، أو بانتظار تسليمها للمغسلة
+  awaitingHandover,
+
+  /// تم استلام الملابس: وصلت المغسلة وبتتراجع
+  received,
+
+  /// قيد التنفيذ
+  inProgress,
+
+  /// جاهزة للتوصيل أو للاستلام
+  ready,
+
+  /// المندوب في الطريق، بس لو التوصيل بمندوب
+  onTheWay,
+
+  /// تم التسليم
+  delivered,
+
+  /// مكتمل: اتسلم واتدفع
+  completed,
+}
+
 /// نوع رحلة المندوب: الاستلام من بيت العميل للمغسلة، والتسليم من المغسلة للعميل
 enum DeliveryTripType { pickup, dropoff }
 
@@ -182,6 +214,10 @@ class OrderTripModel {
   /// المغسلة سلمت الهدوم للمندوب (في رحلة التسليم)
   final bool isHandedOver;
 
+  /// آخر موقع للمندوب، null لو السيرفر مابعتهوش (لسه مش في الـ API)
+  final double? driverLatitude;
+  final double? driverLongitude;
+
   const OrderTripModel({
     required this.id,
     required this.type,
@@ -192,9 +228,14 @@ class OrderTripModel {
     this.hasConfirmationInfo = false,
     this.isConfirmed = false,
     this.isHandedOver = false,
+    this.driverLatitude,
+    this.driverLongitude,
   });
 
   bool get hasDriver => driverName.isNotEmpty || driverPhone.isNotEmpty;
+
+  bool get hasDriverLocation =>
+      isValidCoordinate(driverLatitude, driverLongitude);
 
   /// المندوب وصل باب العميل وبقى معاه كود التسليم
   bool get hasArrived =>
@@ -232,6 +273,12 @@ class OrderTripModel {
           json.containsKey('isAwaitingConfirmation'),
       isConfirmed: json['isConfirmed'] == true,
       isHandedOver: json['isHandedOver'] == true,
+      driverLatitude: json
+          .pickNum(['driverLatitude', 'currentLatitude'], inside: ['driver'])
+          ?.toDouble(),
+      driverLongitude: json
+          .pickNum(['driverLongitude', 'currentLongitude'], inside: ['driver'])
+          ?.toDouble(),
     );
   }
 
@@ -403,6 +450,9 @@ class OrderAdjustmentModel {
 class OrderItemModel {
   final int id;
   final String name;
+
+  /// الخدمة المطلوبة للقطعة (غسيل وكي - كي فقط ...)، فاضية لو السيرفر مابعتهاش
+  final String serviceName;
   final int quantity;
   final num price;
 
@@ -422,20 +472,28 @@ class OrderItemModel {
     required this.quantity,
     required this.price,
     required this.total,
+    this.serviceName = '',
     this.isReturned = false,
     this.image = '',
   });
 
+  /// الخدمة والصورة مش في الريسبونس لسه، فبنقرا نفس أسماء السلة
   factory OrderItemModel.fromJson(Map<String, dynamic> json) {
     final price = (json['price'] as num?) ?? 0;
     final quantity = (json['quantity'] as num?)?.toInt() ?? 0;
     return OrderItemModel(
       id: (json['id'] as num?)?.toInt() ?? 0,
       name: json['serviceItemName']?.toString() ?? '',
+      serviceName: json.pickString(['serviceName', 'serviceTypeName']),
       quantity: quantity,
       price: price,
       total: (json['lineTotal'] as num?) ?? price * quantity,
       isReturned: json['isReturned'] == true,
+      image: json.pickString([
+        'serviceItemImageUrl',
+        'serviceImageUrl',
+        'imageUrl',
+      ]),
     );
   }
 }
@@ -448,15 +506,38 @@ class OrderModel {
   /// بيتبعت مع التقييم، و 0 لو السيرفر مابعتهوش
   final int laundryId;
   final String laundryName;
+
+  /// لوجو المغسلة ورقمها وموقعها، فاضيين لو السيرفر مابعتهومش (لسه مش في الـ API)
+  final String laundryLogo;
+  final String laundryPhone;
+  final double? laundryLatitude;
+  final double? laundryLongitude;
   final OrderStatus status;
 
   /// تاريخ إنشاء الطلب، بيتعرض تحت اسم المغسلة
   final DateTime date;
+
+  /// عنوان الاستلام والتوصيل (نفس العنوان للاتنين) وإحداثياته
   final String deliveryAddress;
+  final double? latitude;
+  final double? longitude;
+
+  /// صاحب الحساب زي ما أبلكيشن المغسلة بيقراه، والشاشة بتكمّل من البروفايل
+  final String customerName;
+  final String customerPhone;
 
   /// اللي هيسلّم الهدوم للمندوب لو مش العميل نفسه
   final String pickupContactName;
   final String pickupContactPhone;
+
+  /// ملاحظات وصور الطلب، فاضيين لحد ما السيرفر يبعتهم
+  final String notes;
+  final List<String> images;
+
+  /// طريقة التسليم: العميل بيودّي الهدوم المغسلة بنفسه بدل المندوب، و/أو
+  /// بيستلمها منها بنفسه. الباك لسه مافيهوش الاختيار ده فالاتنين false
+  final bool customerDropsOff;
+  final bool customerCollects;
 
   /// رسوم توصيل الاستلام (المندوب بياخد الهدوم من العميل)
   final num pickupFee;
@@ -466,6 +547,23 @@ class OrderModel {
 
   /// مجموع أسعار القطع من غير التوصيل
   final num itemsTotal;
+
+  /// رسوم خدمة المنصة، و 0 لو مفيش (الـ API لسه مابيبعتهاش)
+  final num platformFee;
+
+  /// الخصم أو قيمة الكوبون بالموجب، و 0 لو مفيش
+  final num discount;
+
+  /// كود الكوبون اللي اتخصم بيه، فاضي لو مفيش
+  final String couponCode;
+
+  /// اللي اتدفع فعلًا والباقي، null لو السيرفر مابعتهومش
+  /// والفاتورة بتحسبهم من حالة الدفع ([OrderInvoice])
+  final num? paidAmount;
+  final num? remainingAmount;
+
+  /// طريقة الدفع زي ما السيرفر بيبعتها، فاضية لو مابعتهاش
+  final String paymentMethod;
 
   /// الإجمالي زي ما السيرفر حسبه، ولو مابعتهوش بنحسبه
   final num? totalPrice;
@@ -497,8 +595,26 @@ class OrderModel {
     required this.itemsTotal,
     required this.items,
     this.laundryId = 0,
+    this.laundryLogo = '',
+    this.laundryPhone = '',
+    this.laundryLatitude,
+    this.laundryLongitude,
+    this.latitude,
+    this.longitude,
+    this.customerName = '',
+    this.customerPhone = '',
     this.pickupContactName = '',
     this.pickupContactPhone = '',
+    this.notes = '',
+    this.images = const [],
+    this.customerDropsOff = false,
+    this.customerCollects = false,
+    this.platformFee = 0,
+    this.discount = 0,
+    this.couponCode = '',
+    this.paidAmount,
+    this.remainingAmount,
+    this.paymentMethod = '',
     this.totalPrice,
     this.paymentStatus = PaymentStatus.none,
     this.paymentUrl,
@@ -511,14 +627,78 @@ class OrderModel {
   /// رقم الطلب اللي بيتعرض للمستخدم
   String get reference => '#$id';
 
-  /// الإجمالي النهائي من السيرفر، ولو مش موجود: القطع + رسوم الاستلام + التسليم
-  num get grandTotal => totalPrice ?? itemsTotal + pickupFee + dropoffFee;
+  /// الإجمالي النهائي من السيرفر، ولو مش موجود:
+  /// القطع + رسوم الاستلام + التسليم + رسوم المنصة - الخصم
+  num get grandTotal =>
+      totalPrice ??
+      itemsTotal + pickupFee + dropoffFee + platformFee - discount;
+
+  /// الفاتورة بتطلع للطلبات المكتملة بس (اتسلمت للعميل)
+  bool get hasInvoice => status == OrderStatus.delivered;
 
   /// عدد القطع كلها، بيتعرض في كروت التاب السابقة
   int get totalPieces => items.fold(0, (sum, item) => sum + item.quantity);
 
   /// الطلبات اللي لسه شغالة بتروح لتاب الحالية والباقي للسابقة
   bool get isCurrent => !status.isFinished;
+
+  /// المراحل اللي تنطبق على الطلب: "المندوب في الطريق" بس لو التوصيل بمندوب
+  List<OrderStage> get stages => [
+    for (final stage in OrderStage.values)
+      if (stage != OrderStage.onTheWay || !customerCollects) stage,
+  ];
+
+  /// المرحلة اللي الطلب واقف عندها، و null للمرفوض والملغي (مالهمش مراحل).
+  /// المطابقة والتعديل بيحصلوا بعد ما الهدوم توصل، والفشل بيفضل على المرحلة
+  /// اللي وقف عندها، والمسلّم بيبقى مكتمل لما يتدفع
+  OrderStage? get currentStage => switch (status) {
+    OrderStatus.newOrder => OrderStage.pending,
+    OrderStatus.awaitingPickup ||
+    OrderStatus.pickupFailed => OrderStage.awaitingHandover,
+    OrderStatus.atLaundryPendingMatch ||
+    OrderStatus.adjustmentPendingApproval => OrderStage.received,
+    OrderStatus.inProgress => OrderStage.inProgress,
+    OrderStatus.ready ||
+    OrderStatus.awaitingDropoffCollection => OrderStage.ready,
+    OrderStatus.outForDelivery || OrderStatus.deliveryFailed =>
+      customerCollects ? OrderStage.ready : OrderStage.onTheWay,
+    OrderStatus.delivered =>
+      isPaid ? OrderStage.completed : OrderStage.delivered,
+    OrderStatus.rejected || OrderStatus.cancelled => null,
+  };
+
+  /// الطلب وقف عند مرحلته (المندوب معرفش يستلم أو يسلّم)
+  bool get isStageFailed =>
+      status == OrderStatus.pickupFailed ||
+      status == OrderStatus.deliveryFailed;
+
+  /// اسم المرحلة، والمراحل اللي ليها علاقة بطريقة التسليم اسمها بيتغير
+  String stageLabelKey(OrderStage stage) => switch (stage) {
+    OrderStage.pending => 'stage_pending',
+    OrderStage.accepted => 'stage_accepted',
+    OrderStage.awaitingHandover =>
+      customerDropsOff
+          ? 'stage_awaiting_dropoff_at_laundry'
+          : 'stage_awaiting_pickup',
+    OrderStage.received => 'stage_received',
+    OrderStage.inProgress => 'stage_in_progress',
+    OrderStage.ready =>
+      customerCollects ? 'stage_ready_for_pickup' : 'stage_ready_for_delivery',
+    OrderStage.onTheWay => 'stage_driver_on_the_way',
+    OrderStage.delivered => 'stage_delivered',
+    OrderStage.completed => 'stage_completed',
+  };
+
+  /// النص اللي في شارة الحالة: اسم المرحلة، إلا الحالات اللي محتاجة تتقال
+  /// بنفسها (تعديل مستني العميل، رفض، فشل، إلغاء)
+  String get statusLabelKey => switch (status) {
+    OrderStatus.adjustmentPendingApproval ||
+    OrderStatus.rejected ||
+    OrderStatus.pickupFailed ||
+    OrderStatus.deliveryFailed ||
+    OrderStatus.cancelled => status.labelKey,
+    _ => stageLabelKey(currentStage!),
+  };
 
   bool get isPaid => paymentStatus == PaymentStatus.successful;
 
@@ -538,6 +718,13 @@ class OrderModel {
     return null;
   }
 
+  bool get hasLocation => isValidCoordinate(latitude, longitude);
+
+  bool get hasLaundryLocation =>
+      isValidCoordinate(laundryLatitude, laundryLongitude);
+
+  bool get hasNotesOrImages => notes.isNotEmpty || images.isNotEmpty;
+
   /// المندوب وصل والسيرفر قال صراحة إنه مستني كود العميل. مش بنعتمد هنا على
   /// fallback الريسبونس القديم عشان مانطلعش تنبيه "المندوب وصل" غلط
   bool get awaitsDropoffCode =>
@@ -550,14 +737,32 @@ class OrderModel {
     id: id,
     laundryId: laundryId,
     laundryName: laundryName,
+    laundryLogo: laundryLogo,
+    laundryPhone: laundryPhone,
+    laundryLatitude: laundryLatitude,
+    laundryLongitude: laundryLongitude,
     status: status,
     date: date,
     deliveryAddress: deliveryAddress,
+    latitude: latitude,
+    longitude: longitude,
+    customerName: customerName,
+    customerPhone: customerPhone,
     pickupContactName: pickupContactName,
     pickupContactPhone: pickupContactPhone,
+    notes: notes,
+    images: images,
+    customerDropsOff: customerDropsOff,
+    customerCollects: customerCollects,
     pickupFee: pickupFee,
     dropoffFee: dropoffFee,
     itemsTotal: itemsTotal,
+    platformFee: platformFee,
+    discount: discount,
+    couponCode: couponCode,
+    paidAmount: paidAmount,
+    remainingAmount: remainingAmount,
+    paymentMethod: paymentMethod,
     totalPrice: totalPrice,
     paymentStatus: paymentStatus,
     paymentUrl: url,
@@ -568,8 +773,13 @@ class OrderModel {
     adjustment: adjustment,
   );
 
+  /// حقول الفاتورة (رسوم المنصة والخصم والمدفوع وطريقة الدفع) مش في الـ API
+  /// لسه، فبنقرا الأسماء المتوقعة، والكوبون ممكن ييجي object جوه "coupon".
+  /// ونفس الكلام للوجو المغسلة ورقمها وموقعها، وموقع العميل والملاحظات والصور
   factory OrderModel.fromJson(Map<String, dynamic> json) {
     final laundry = json.pickMap(['laundry']) ?? const <String, dynamic>{};
+    final customer = json.pickMap(['customer']) ?? const <String, dynamic>{};
+    final coupon = json.pickMap(['coupon']) ?? const <String, dynamic>{};
     final paymentStatus = json['isPaid'] == true
         ? PaymentStatus.successful
         : PaymentStatusX.fromJson(json['paymentStatus']);
@@ -581,16 +791,85 @@ class OrderModel {
         json['laundryName']?.toString() ?? '',
         laundry.pickString(['name']),
       ]),
+      laundryLogo: _firstNotEmpty([
+        json.pickString(['laundryLogoUrl', 'laundryLogo', 'laundryImageUrl']),
+        laundry.pickString(['logoUrl', 'logo', 'imageUrl']),
+      ]),
+      laundryPhone: _firstNotEmpty([
+        json.pickString(['laundryPhoneNumber', 'laundryPhone']),
+        laundry.pickString(['phoneNumber', 'phone']),
+      ]),
+      laundryLatitude:
+          (json.pickNum(['laundryLatitude']) ?? laundry.pickNum(['latitude']))
+              ?.toDouble(),
+      laundryLongitude:
+          (json.pickNum(['laundryLongitude']) ?? laundry.pickNum(['longitude']))
+              ?.toDouble(),
       status: OrderStatusX.fromJson(json['status']),
       date:
           DateTime.tryParse(json['createdAt']?.toString() ?? '') ??
           DateTime.now(),
       deliveryAddress: json['deliveryAddress']?.toString() ?? '',
+      // نفس اللي بيتبعت مع تأكيد السلة (ConfirmOrderRequestDto)
+      latitude: json.pickNum([
+        'latitude',
+        'deliveryLatitude',
+        'lat',
+      ])?.toDouble(),
+      longitude: json.pickNum([
+        'longitude',
+        'deliveryLongitude',
+        'lng',
+      ])?.toDouble(),
+      customerName: _firstNotEmpty([
+        json.pickString(['customerName']),
+        customer.pickString(['fullName', 'name']),
+      ]),
+      customerPhone: _firstNotEmpty([
+        json.pickString(['customerPhoneNumber', 'customerPhone']),
+        customer.pickString(['phoneNumber', 'phone']),
+      ]),
       pickupContactName: json.pickString(['pickupContactName']),
       pickupContactPhone: json.pickString(['pickupContactPhoneNumber']),
+      notes: json.pickString([
+        'notes',
+        'note',
+        'customerNotes',
+        'specialInstructions',
+      ]).trim(),
+      images: _readImages(json),
+      // طريقة التسليم مش في الـ API لسه، فبنقرا الأسماء المتوقعة
+      customerDropsOff:
+          json['isSelfDropOff'] == true ||
+          _isSelfHandled(json.pick(['pickupMethod', 'pickupType'])),
+      customerCollects:
+          json['isSelfPickup'] == true ||
+          _isSelfHandled(
+            json.pick(['deliveryMethod', 'dropoffMethod', 'dropoffType']),
+          ),
       pickupFee: (json['pickupFee'] as num?) ?? 0,
       dropoffFee: (json['dropoffFee'] as num?) ?? 0,
       itemsTotal: (json['itemsTotal'] as num?) ?? 0,
+      platformFee:
+          json.pickNum(['platformFee', 'platformServiceFee', 'serviceFee']) ??
+          0,
+      // بالموجب دايمًا حتى لو السيرفر بعته بالسالب، عشان الطرح في الإجمالي
+      discount:
+          (json.pickNum(['discount', 'discountAmount', 'couponDiscount']) ??
+                  coupon.pickNum(['discount', 'amount']) ??
+                  0)
+              .abs(),
+      couponCode: _firstNotEmpty([
+        json.pickString(['couponCode', 'promoCode']),
+        coupon.pickString(['code']),
+      ]),
+      paidAmount: json.pickNum(['paidAmount', 'amountPaid', 'totalPaid']),
+      remainingAmount: json.pickNum([
+        'remainingAmount',
+        'amountDue',
+        'dueAmount',
+      ]),
+      paymentMethod: json.pickString(['paymentMethod', 'paymentMethodName']),
       totalPrice: json['totalPrice'] as num?,
       paymentStatus: paymentStatus,
       paymentUrl: json['paymentUrl']?.toString(),
@@ -635,11 +914,36 @@ class OrderModel {
     if (tripId != null) return OrderTripModel(id: tripId, type: type);
     return null;
   }
+
+  /// العميل هو اللي بيودّي أو بيستلم من المغسلة (SelfPickup / Customer / InStore)
+  /// مش المندوب. أي قيمة تانية أو مفيش قيمة يبقى مندوب
+  static bool _isSelfHandled(Object? value) {
+    final text = '${value ?? ''}'.toLowerCase();
+    return ['self', 'customer', 'walk', 'store', 'branch'].any(text.contains);
+  }
+
+  /// الصور ممكن تيجي لينكات على طول، أو objects فيها اللينك
+  static List<String> _readImages(Map<String, dynamic> json) {
+    final value = json.pick(['images', 'imageUrls', 'photos', 'attachments']);
+    if (value is! List) return const [];
+    return value
+        .map(
+          (image) => image is Map<String, dynamic>
+              ? image.pickString(['url', 'imageUrl', 'path'])
+              : '${image ?? ''}',
+        )
+        .where((url) => url.isNotEmpty)
+        .toList();
+  }
 }
 
 /// أول نص مش فاضي، ولو كلهم فاضيين بيرجع فاضي
 String _firstNotEmpty(List<String> values) =>
     values.firstWhere((value) => value.isNotEmpty, orElse: () => '');
+
+/// الإحداثيات موجودة ومش (0, 0) اللي السيرفر بيبعتها بدل null أحيانًا
+bool isValidCoordinate(double? latitude, double? longitude) =>
+    latitude != null && longitude != null && !(latitude == 0 && longitude == 0);
 
 /// صفحة من الطلبات، الـ API بيرجعها جوه data ومعاها بيانات الصفحات
 class OrdersPageModel {

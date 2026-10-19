@@ -155,6 +155,12 @@ abstract interface class Endpoints {
   /// GET: بترجع { content, updatedAt } جوه data، والـ content بيبقى HTML
   static const String privacyPolicy = 'api/auth/privacy-policy';
 
+  /// GET: نفس شكل سياسة الخصوصية { content, updatedAt } والـ content HTML
+  static const String scopeOfService = 'api/auth/scope-of-service';
+
+  /// GET: نفس شكل سياسة الخصوصية { content, updatedAt } والـ content HTML
+  static const String serviceProvider = 'api/auth/service-provider';
+
   /// GET: بتاخد targetType في الـ query (Customer عندنا) وبترجع list
   /// فيها { id, title, imageUrl, targetType } جوه data
   static const String advertisements = 'api/auth/advertisements';

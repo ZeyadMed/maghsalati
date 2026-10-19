@@ -6,137 +6,218 @@ import 'package:maghsalati/core/style/app_colors.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
 import 'package:maghsalati/features/orders/data/model/order_model.dart';
 
-/// شريط خطوات الطلب: الخطوات اللي الطلب وصلها أيقونتها زرقا واللي لسه رمادي،
-/// والخطوط بينها لازقة في الدواير. الترتيب من جديدة لحد قيد التوصيل،
-/// والاتجاه بيتظبط لوحده حسب اللغة
+/// مراحل الطلب اللي تنطبق على طريقة التسليم ([OrderModel.stages]).
+/// المراحل كتير على سطر واحد، فليها شكلين:
+/// - مختصر (كارت الطلب في الليستة): شريط مقسوم بعدد المراحل وتحته رقم المرحلة
+///   والمرحلة الجاية، واسم المرحلة الحالية في شارة الكارت
+/// - كامل ([showAllStages]، شاشة التفاصيل): المراحل تحت بعض بأسمائها
+/// المرفوض والملغي مالهمش مراحل فمش بيترسم حاجة
 class OrderProgressTracker extends StatelessWidget {
-  final OrderStatus status;
+  final OrderModel order;
+  final bool showAllStages;
 
-  /// الخطوات اللي بتتعرض في الشريط، مش كل الحالات عشان الشريط مايزحمش
-  /// والحالات اللي مش هنا بتتحسب على خطوة منهم في [_currentIndex]
-  static const List<OrderStatus> _steps = [
-    OrderStatus.newOrder,
-    OrderStatus.awaitingPickup,
-    OrderStatus.inProgress,
-    OrderStatus.ready,
-    OrderStatus.outForDelivery,
-  ];
-
-  const OrderProgressTracker({super.key, required this.status});
-
-  /// رقم الخطوة الحالية، و -1 للمرفوضة والملغية فالشريط بيبان كله رمادي
-  int get _currentIndex => switch (status) {
-    // المطابقة وموافقة التعديل بيحصلوا في المغسلة قبل الغسيل،
-    // فالاستلام خلص وخطوة قيد التنفيذ هي اللي شغالة
-    OrderStatus.atLaundryPendingMatch ||
-    OrderStatus.adjustmentPendingApproval => _steps.indexOf(
-      OrderStatus.inProgress,
-    ),
-    // الفشل بيفضل على الخطوة اللي وقف عندها، ومستني المندوب يعدي على المغسلة
-    // لسه جاهزة من ناحية العميل
-    OrderStatus.pickupFailed => _steps.indexOf(OrderStatus.awaitingPickup),
-    OrderStatus.awaitingDropoffCollection => _steps.indexOf(OrderStatus.ready),
-    OrderStatus.deliveryFailed => _steps.indexOf(OrderStatus.outForDelivery),
-    // اتسلم يبقى كل الخطوات خلصت
-    OrderStatus.delivered => _steps.length - 1,
-    _ => _steps.indexOf(status),
-  };
+  const OrderProgressTracker({
+    super.key,
+    required this.order,
+    this.showAllStages = false,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final currentIndex = _currentIndex;
+    final current = order.currentStage;
+    if (current == null) return const SizedBox.shrink();
 
-    // كل الخطوات نفس العرض، والاسم في نص الخطوة تحت الدايرة بالظبط
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        for (int i = 0; i < _steps.length; i++)
-          Expanded(child: _buildStep(i, currentIndex)),
-      ],
-    );
+    final stages = order.stages;
+    final currentIndex = stages.indexOf(current);
+    return showAllStages
+        ? _buildTimeline(stages, currentIndex)
+        : _buildBar(stages, currentIndex);
   }
 
-  /// الدايرة وعلى جنبيها نصين الخط، فالخط بيلزق فيها ويكمل في الخطوة اللي
-  /// جنبها من غير فراغ، واسم الخطوة تحتها
-  Widget _buildStep(int stepIndex, int currentIndex) {
-    final step = _steps[stepIndex];
-    final isDone = stepIndex <= currentIndex;
-    final isCurrent = stepIndex == currentIndex;
+  /// آخر مرحلة (مكتمل) لما الطلب يوصلها بتتحسب خلصت مش شغالة
+  bool _isDone(int index, int currentIndex, int count) =>
+      index < currentIndex || (index == currentIndex && index == count - 1);
+
+  Color get _activeColor =>
+      order.isStageFailed ? AppColors.redColor2 : AppColors.primaryColor;
+
+  // ---------- المختصر ----------
+
+  Widget _buildBar(List<OrderStage> stages, int currentIndex) {
+    final next = currentIndex + 1 < stages.length
+        ? stages[currentIndex + 1]
+        : null;
 
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
         Row(
           children: [
-            // نص الخط اللي جاي من الخطوة اللي قبلها، أزرق لو وصلنا الخطوة دي
-            Expanded(
-              child: stepIndex == 0
-                  ? const SizedBox.shrink()
-                  : _buildConnector(isDone),
-            ),
-            _buildCircle(stepIndex, isDone),
-            // نص الخط اللي رايح للخطوة اللي بعدها، أزرق لو وصلنا اللي بعدها
-            Expanded(
-              child: stepIndex == _steps.length - 1
-                  ? const SizedBox.shrink()
-                  : _buildConnector(stepIndex < currentIndex),
-            ),
+            for (int i = 0; i < stages.length; i++) ...[
+              if (i > 0) Gap(4.w),
+              Expanded(
+                child: Container(
+                  height: 6.h,
+                  decoration: BoxDecoration(
+                    color: i <= currentIndex
+                        ? (i == currentIndex
+                              ? _activeColor
+                              : AppColors.primaryColor)
+                        : AppColors.semiWhiteColor2,
+                    borderRadius: BorderRadius.circular(3.r),
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
-        Gap(6.h),
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: 2.w),
-          child: Text(
-            step.labelKey.tr(),
-            textAlign: TextAlign.center,
-            style: TextStyles.darkRegular12.copyWith(
-              fontSize: 10.sp,
-              // الخطوة الحالية بتبان أوضح من اللي حواليها
-              color: isCurrent ? AppColors.primaryColor : AppColors.greyColor3,
-              fontWeight: isCurrent ? FontWeight.w600 : FontWeight.w400,
+        Gap(8.h),
+        Row(
+          children: [
+            Text(
+              'stage_progress'.tr(
+                args: ['${currentIndex + 1}', '${stages.length}'],
+              ),
+              style: TextStyles.darkRegular12.copyWith(
+                color: AppColors.greyColor3,
+              ),
             ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
+            if (next != null) ...[
+              Gap(12.w),
+              Expanded(
+                child: Text(
+                  'stage_next'.tr(args: [order.stageLabelKey(next).tr()]),
+                  style: TextStyles.darkRegular12.copyWith(
+                    color: AppColors.greyColor3,
+                  ),
+                  textAlign: TextAlign.end,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ],
+    );
+  }
+
+  // ---------- الكامل ----------
+
+  /// كل مرحلة: دايرة وتحتها خط لحد اللي بعدها، واسمها جنبها
+  Widget _buildTimeline(List<OrderStage> stages, int currentIndex) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (int i = 0; i < stages.length; i++)
+          _buildTimelineRow(stages, i, currentIndex),
+      ],
+    );
+  }
+
+  Widget _buildTimelineRow(
+    List<OrderStage> stages,
+    int index,
+    int currentIndex,
+  ) {
+    final isDone = _isDone(index, currentIndex, stages.length);
+    final isCurrent = index == currentIndex && !isDone;
+    final isLast = index == stages.length - 1;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Column(
+          children: [
+            _buildCircle(stages[index], isDone: isDone, isCurrent: isCurrent),
+            if (!isLast)
+              Container(
+                width: 2,
+                height: 16.h,
+                color: index < currentIndex
+                    ? AppColors.primaryColor
+                    : AppColors.semiWhiteColor2,
+              ),
+          ],
+        ),
+        Gap(12.w),
+        Expanded(
+          child: Padding(
+            padding: EdgeInsets.only(top: 3.h),
+            child: Text(
+              order.stageLabelKey(stages[index]).tr(),
+              style: isCurrent
+                  ? TextStyles.darkBold14.copyWith(color: _activeColor)
+                  : TextStyles.darkRegular14.copyWith(
+                      color: isDone
+                          ? AppColors.greyColor2
+                          : AppColors.greyColor4,
+                    ),
+            ),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildConnector(bool isDone) {
-    return Container(
-      height: 2.h,
-      color: isDone ? AppColors.primaryColor : AppColors.semiWhiteColor2,
-    );
-  }
+  /// اللي خلصت: صح أبيض على أزرق، والحالية: أيقونتها بإطار، والجاية: رمادي
+  Widget _buildCircle(
+    OrderStage stage, {
+    required bool isDone,
+    required bool isCurrent,
+  }) {
+    final Color background;
+    final Color border;
+    final Color iconColor;
+    if (isDone) {
+      background = AppColors.primaryColor;
+      border = AppColors.primaryColor;
+      iconColor = AppColors.whiteColor;
+    } else if (isCurrent) {
+      background = _activeColor.withValues(alpha: 0.12);
+      border = _activeColor;
+      iconColor = _activeColor;
+    } else {
+      background = AppColors.whiteColor;
+      border = AppColors.semiWhiteColor2;
+      iconColor = AppColors.greyColor4;
+    }
 
-  /// دايرة بأيقونة الخطوة: زرقا للي الطلب وصلها ورمادية للي لسه
-  Widget _buildCircle(int stepIndex, bool isDone) {
-    final color = isDone ? AppColors.primaryColor : AppColors.greyColor3;
     return Container(
       width: 26.r,
       height: 26.r,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: isDone
-            ? AppColors.primaryColor.withValues(alpha: 0.12)
-            : AppColors.whiteColor,
+        color: background,
         shape: BoxShape.circle,
-        border: Border.all(
-          color: isDone ? AppColors.primaryColor : AppColors.semiWhiteColor2,
-          width: 1.5,
-        ),
+        border: Border.all(color: border, width: 1.5),
       ),
-      child: Icon(_iconFor(_steps[stepIndex]), size: 15.r, color: color),
+      child: Icon(
+        isDone
+            ? Icons.check_rounded
+            : (isCurrent && order.isStageFailed
+                  ? Icons.priority_high_rounded
+                  : _iconFor(stage)),
+        size: 15.r,
+        color: iconColor,
+      ),
     );
   }
 
-  IconData _iconFor(OrderStatus step) => switch (step) {
-    OrderStatus.newOrder => Icons.receipt_long_outlined,
-    OrderStatus.awaitingPickup => Icons.local_shipping_outlined,
-    OrderStatus.inProgress => Icons.local_laundry_service_outlined,
-    OrderStatus.ready => Icons.inventory_2_outlined,
-    OrderStatus.outForDelivery => Icons.delivery_dining_outlined,
-    _ => Icons.circle_outlined,
+  IconData _iconFor(OrderStage stage) => switch (stage) {
+    OrderStage.pending => Icons.hourglass_top_rounded,
+    OrderStage.accepted => Icons.thumb_up_alt_outlined,
+    OrderStage.awaitingHandover =>
+      order.customerDropsOff
+          ? Icons.storefront_outlined
+          : Icons.local_shipping_outlined,
+    OrderStage.received => Icons.fact_check_outlined,
+    OrderStage.inProgress => Icons.local_laundry_service_outlined,
+    OrderStage.ready => Icons.inventory_2_outlined,
+    OrderStage.onTheWay => Icons.delivery_dining_outlined,
+    OrderStage.delivered => Icons.home_outlined,
+    OrderStage.completed => Icons.verified_outlined,
   };
 }

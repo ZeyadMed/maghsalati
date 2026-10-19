@@ -28,6 +28,7 @@ import 'package:maghsalati/features/laundry_details/presentation/view/widget/ser
 import 'package:maghsalati/features/laundry_details/presentation/view/widget/working_hours_button.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view_model/laundry_services_cubit.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view_model/selected_services_controller.dart';
+import 'package:maghsalati/features/profile/data/model/page_content_model.dart';
 
 class LaundryDetails extends StatefulWidget {
   /// الأقسام والقطع بتتجاب بيه من api/customer/laundries/{laundryId}/services
@@ -219,10 +220,11 @@ class _LaundryDetailsState extends State<LaundryDetails> {
   /// الاختصارات اللي تحت الأقسام، واللي لسه مالهاش شاشة بتعرض "قريباً"
   void _onShortcutTap(LaundryShortcut shortcut) {
     switch (shortcut) {
+      // نفس صفحات المحتوى اللي في حسابي، والنص بيتكتب من لوحة التحكم
       case LaundryShortcut.serviceArea:
-        context.push(AppRouter.serviceArea);
+        context.push(AppRouter.contentPage, extra: ContentPage.scopeOfService);
       case LaundryShortcut.serviceProvider:
-        context.push(AppRouter.serviceProvider);
+        context.push(AppRouter.contentPage, extra: ContentPage.serviceProvider);
       case LaundryShortcut.priceCenter:
         Navigator.of(context).push(
           MaterialPageRoute(

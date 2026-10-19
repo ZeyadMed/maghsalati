@@ -43,7 +43,7 @@ class CurrentOrderCard extends StatelessWidget {
         children: [
           _buildHeader(context),
           Gap(16.h),
-          OrderProgressTracker(status: order.status),
+          OrderProgressTracker(order: order),
           Gap(16.h),
           Divider(height: 1.h, color: AppColors.lightGreyColor),
           Gap(10.h),
@@ -87,7 +87,7 @@ class CurrentOrderCard extends StatelessWidget {
           ),
         ),
         Gap(12.w),
-        OrderStatusBadge(status: order.status),
+        OrderStatusBadge(order: order),
       ],
     );
   }

@@ -1,5 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:maghsalati/core/bloc/base_bloc.dart';
+import 'package:maghsalati/core/cache_manager/cache_manager.dart';
 import 'package:maghsalati/features/profile/data/model/user_model.dart';
 import 'package:maghsalati/features/profile/data/profile_data_source.dart';
 
@@ -19,12 +20,14 @@ class ProfileCubit extends Cubit<BaseState<UserModel>> {
       (failure) => emit(
         state.copyWith(status: Status.failure, errorMessage: failure.message),
       ),
-      (user) => emit(state.copyWith(status: Status.success, data: user)),
+      (user) => setUser(user),
     );
   }
 
   /// بعد ما التعديل يتحفظ بنحط النسخة الجديدة على طول من غير طلب تاني
+  /// والاسم والرقم بيتحفظوا عشان بيانات الاستلام في تأكيد الطلب
   void setUser(UserModel user) {
+    CacheManager.saveUserContact(name: user.name, phone: user.phoneNumber);
     emit(state.copyWith(status: Status.success, data: user));
   }
 }

@@ -59,7 +59,7 @@ class OrderItemRow extends StatelessWidget {
     );
   }
 
-  /// اسم القطعة وتحته الكمية × سعر القطعة
+  /// اسم القطعة وتحته الخدمة (لو موجودة) والكمية × سعر القطعة
   /// ولو العميل رفض التعديل عليها بيبان جنب اسمها إنها راجعة من غير غسيل
   Widget _buildNameAndQuantity() {
     return Column(
@@ -83,11 +83,10 @@ class OrderItemRow extends StatelessWidget {
         ),
         Gap(4.h),
         Text(
+          '${item.serviceName.isNotEmpty ? '${item.serviceName} • ' : ''}'
           '${item.quantity} ${'piece'.tr()} × '
           '${formatOrderPrice(item.price)} ${'currency'.tr()}',
-          style: TextStyles.darkRegular12.copyWith(
-            color: AppColors.greyColor3,
-          ),
+          style: TextStyles.darkRegular12.copyWith(color: AppColors.greyColor3),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),

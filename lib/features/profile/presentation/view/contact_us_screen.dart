@@ -42,7 +42,7 @@ class _ContactUsScreenState extends State<ContactUsScreen> {
     return Scaffold(
       backgroundColor: AppColors.secondaryColor,
       appBar: CustomAppBar(
-        title: 'contact_us',
+        title: 'support_help',
         backgroundColor: AppColors.secondaryColor,
       ),
       body: BlocBuilder<ContactUsCubit, BaseState<ContactInfoModel>>(

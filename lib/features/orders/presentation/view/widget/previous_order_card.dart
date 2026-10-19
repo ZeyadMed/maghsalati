@@ -104,7 +104,7 @@ class PreviousOrderCard extends StatelessWidget {
           ),
         ),
         Gap(12.w),
-        OrderStatusBadge(status: order.status),
+        OrderStatusBadge(order: order),
       ],
     );
   }
