@@ -274,7 +274,6 @@ class _CategoryItemsScreenState extends State<CategoryItemsScreen>
     return CartBottomBar(
       pieces: (cart?.totalPieces ?? 0) + pendingPieces,
       estimatedPrice: (cart?.itemsTotal ?? 0) + pendingPrice,
-      deliveryFees: cart?.deliveryFees ?? 0,
       isBusy: isSyncing,
       onBasketTap: isSyncing ? null : _openCart,
       onConfirm: cart == null || onConfirm == null

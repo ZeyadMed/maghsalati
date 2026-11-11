@@ -160,7 +160,7 @@ class RealtimeService {
     final current = (
       order.status,
       order.paymentStatus,
-      order.awaitsDropoffCode,
+      order.isDriverAtDoor,
     );
     _lastSeen[order.id] = current;
 
@@ -173,7 +173,7 @@ class RealtimeService {
       return;
     }
     // المندوب وصل باب العميل: الحالة بتفضل OutForDelivery فبننبه بنص مخصوص
-    if (order.awaitsDropoffCode && !(previous?.$3 ?? false)) {
+    if (order.isDriverAtDoor && !(previous?.$3 ?? false)) {
       _showBanner(
         'realtime_driver_arrived'.tr(args: [order.reference]),
         actionKey: 'view_details',

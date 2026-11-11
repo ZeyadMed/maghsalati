@@ -6,7 +6,7 @@ import 'package:maghsalati/core/theme/text_styles.dart';
 import 'package:maghsalati/features/cart/data/model/cart_model.dart';
 import 'package:maghsalati/features/cart/presentation/view/widget/cart_price.dart';
 
-/// فوتر السلة: إجمالي القطع ورسوم الاستلام والتسليم والإجمالي من السيرفر،
+/// فوتر السلة: إجمالي القطع ورسوم التوصيل (استلام + تسليم) والإجمالي من السيرفر،
 /// وتحتهم زرار تأكيد الطلب
 class CartSummary extends StatelessWidget {
   final CartModel cart;
@@ -28,13 +28,10 @@ class CartSummary extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             _buildRow('items_total'.tr(), cart.itemsTotal),
-            if (cart.pickupFee > 0) ...[
+            // رسوم الاستلام + التسليم في سطر واحد "رسوم التوصيل"
+            if (cart.deliveryFees > 0) ...[
               SizedBox(height: 6.h),
-              _buildRow('pickup_fee'.tr(), cart.pickupFee),
-            ],
-            if (cart.dropoffFee > 0) ...[
-              SizedBox(height: 6.h),
-              _buildRow('dropoff_fee'.tr(), cart.dropoffFee),
+              _buildRow('delivery_fee'.tr(), cart.deliveryFees),
             ],
             SizedBox(height: 8.h),
             Divider(height: 1, color: AppColors.borderColor),

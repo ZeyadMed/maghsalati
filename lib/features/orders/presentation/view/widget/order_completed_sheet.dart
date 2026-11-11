@@ -6,23 +6,35 @@ import 'package:maghsalati/core/style/app_colors.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/order_sheet_frame.dart';
 
-/// شيت التهنئة بعد ما العميل يأكد الاستلام بالكود: علامة صح ورسالة شكر،
-/// وزرار التقييم لو [canRate] (التقييم محتاج رقم المغسلة).
-/// بيرجع true لو العميل عايز يقيّم، والشاشة هي اللي بتفتح شيت التقييم
+/// اللي العميل اختاره من شيت التهنئة
+enum OrderCompletedChoice { rateLaundry, rateDriver }
+
+/// شيت التهنئة لما المندوب يأكد التسليم والطلب يبقى Delivered: علامة صح ورسالة شكر،
+/// وزرار تقييم المغسلة لو [canRateLaundry] (محتاج رقم المغسلة)، وزرار تقييم
+/// المندوب لو [canRateDriver] (محتاج رقم رحلة التسليم).
+/// بيرجع اختيار العميل أو null لو قفل، والشاشة هي اللي بتفتح التقييم
 class OrderCompletedSheet extends StatelessWidget {
-  final bool canRate;
+  final bool canRateLaundry;
+  final bool canRateDriver;
 
-  const OrderCompletedSheet({super.key, required this.canRate});
+  const OrderCompletedSheet({
+    super.key,
+    required this.canRateLaundry,
+    required this.canRateDriver,
+  });
 
-  static Future<bool> show(
+  static Future<OrderCompletedChoice?> show(
     BuildContext context, {
-    required bool canRate,
-  }) async {
-    final wantsRating = await showOrderSheet<bool>(
+    required bool canRateLaundry,
+    required bool canRateDriver,
+  }) {
+    return showOrderSheet<OrderCompletedChoice>(
       context,
-      OrderCompletedSheet(canRate: canRate),
+      OrderCompletedSheet(
+        canRateLaundry: canRateLaundry,
+        canRateDriver: canRateDriver,
+      ),
     );
-    return wantsRating ?? false;
   }
 
   @override
@@ -62,17 +74,33 @@ class OrderCompletedSheet extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
               Gap(28.h),
-              if (canRate) ...[
+              if (canRateLaundry) ...[
                 SheetButton(
                   label: 'rate_laundry'.tr(),
-                  onPressed: () => Navigator.of(context).pop(true),
+                  onPressed: () => Navigator.of(
+                    context,
+                  ).pop(OrderCompletedChoice.rateLaundry),
+                ),
+                Gap(10.h),
+              ],
+              // لو زرار المغسلة موجود ده بيبقى التاني فبيبقى فاتح
+              if (canRateDriver) ...[
+                SheetButton(
+                  label: 'rate_driver'.tr(),
+                  filled: !canRateLaundry,
+                  onPressed: () => Navigator.of(
+                    context,
+                  ).pop(OrderCompletedChoice.rateDriver),
                 ),
                 Gap(10.h),
               ],
               SheetButton(
                 label: 'close'.tr(),
-                filled: !canRate,
-                onPressed: () => Navigator.of(context).pop(false),
+                filled: !canRateLaundry && !canRateDriver,
+                color: canRateLaundry && canRateDriver
+                    ? AppColors.greyColor3
+                    : AppColors.primaryColor,
+                onPressed: () => Navigator.of(context).pop(),
               ),
             ],
           ),

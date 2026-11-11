@@ -8,20 +8,17 @@ import 'package:maghsalati/core/router/app_router.dart';
 import 'package:maghsalati/core/service_locator/service_locator.dart';
 import 'package:maghsalati/core/style/app_colors.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
-import 'package:maghsalati/features/auth/logout/presentation/logic/logout_bloc.dart';
-import 'package:maghsalati/features/auth/logout/presentation/logic/logout_event.dart';
 import 'package:maghsalati/features/profile/data/model/contact_info_model.dart';
-import 'package:maghsalati/features/profile/data/model/page_content_model.dart';
 import 'package:maghsalati/features/profile/data/model/user_model.dart';
-import 'package:maghsalati/features/profile/presentation/view/widget/confirm_action_dialog.dart';
 import 'package:maghsalati/features/profile/presentation/view/widget/customer_service_card.dart';
 import 'package:maghsalati/features/profile/presentation/view/widget/profile_header.dart';
-import 'package:maghsalati/features/profile/presentation/view/widget/profile_menu_tile.dart';
+import 'package:maghsalati/features/profile/presentation/view/widget/profile_list_section.dart';
 import 'package:maghsalati/features/profile/presentation/view_model/contact_us_cubit.dart';
 import 'package:maghsalati/features/profile/presentation/view_model/profile_cubit.dart';
 
-/// شاشة حسابي: هيدر أزرق فيه بيانات المستخدم وتحته قايمة الصفحات
-/// وفي الآخر رقم خدمة العملاء. بيانات المستخدم جاية من api/customer/profile
+/// شاشة حسابي على شكل التطبيق الصيني: هيدر بصورة باهتة فيه بيانات المستخدم،
+/// وتحته مجموعات سطور بيضا بعرض الشاشة، و"المزيد"، وسطر الاتصال بخدمة العملاء
+/// بيانات المستخدم جاية من api/customer/profile
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -66,159 +63,80 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => getIt<LogoutBloc>(),
-      child: BlocListener<LogoutBloc, BaseState<void>>(
-        listener: (context, state) {
-          if (state.isSuccess) context.go(AppRouter.login);
-        },
-        child: _buildBody(),
-      ),
-    );
-  }
-
-  Widget _buildBody() {
     return Scaffold(
       backgroundColor: AppColors.secondaryColor,
-      body: Column(
-        children: [
-          BlocBuilder<ProfileCubit, BaseState<UserModel>>(
-            bloc: _profileCubit,
-            builder: (context, state) => ProfileHeader(
-              user: state.data,
-              hasError: state.isFailure,
-              onRetry: _profileCubit.getProfile,
-            ),
-          ),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: EdgeInsets.fromLTRB(16.w, 20.h, 16.w, 24.h),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+      // مكان الـ status bar بلون الشاشة، والصورة بتبدأ من تحته زي التصميم
+      body: SafeArea(
+        bottom: false,
+        child: SingleChildScrollView(
+          padding: EdgeInsets.only(bottom: 24.h),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              BlocBuilder<ProfileCubit, BaseState<UserModel>>(
+                bloc: _profileCubit,
+                builder: (context, state) => ProfileHeader(
+                  user: state.data,
+                  hasError: state.isFailure,
+                  onRetry: _profileCubit.getProfile,
+                  onEdit: _openUpdateProfile,
+                ),
+              ),
+              _buildMainSection(),
+              SizedBox(height: 12.h),
+              ProfileListSection(
                 children: [
-                  ..._buildMenuTiles(),
-                  SizedBox(height: 24.h),
-                  _buildLogoutButton(),
-                  _buildCustomerService(),
+                  ProfileListRow(
+                    icon: Icons.pending_rounded,
+                    iconColor: AppColors.greyColor4,
+                    titleKey: 'more',
+                    onTap: () => context.push(AppRouter.moreScreen),
+                  ),
                 ],
               ),
-            ),
+              _buildCustomerService(),
+              _buildFooter(),
+            ],
           ),
-        ],
-      ),
-    );
-  }
-
-  /// سطور القايمة، بينهم مسافة ثابتة من غير ما تتحط تحت آخر واحد
-  /// نطاق الخدمة ومقدم الخدمة بيتفتحوا من اختصارات صفحة المغسلة
-  List<Widget> _buildMenuTiles() {
-    final tiles = <Widget>[
-      ProfileMenuTile(
-        icon: Icons.location_on_outlined,
-        iconColor: AppColors.redColor2,
-        titleKey: 'saved_addresses',
-        onTap: () => context.push(AppRouter.savedAddresses),
-      ),
-      ProfileMenuTile(
-        icon: Icons.edit_outlined,
-        iconColor: AppColors.primaryColor,
-        titleKey: 'edit_profile',
-        onTap: _openUpdateProfile,
-      ),
-      ProfileMenuTile(
-        icon: Icons.notifications_none_rounded,
-        iconColor: AppColors.orangeColor,
-        titleKey: 'notifications',
-        onTap: () => context.push(AppRouter.notificationScreen),
-      ),
-      ProfileMenuTile(
-        icon: Icons.manage_accounts_outlined,
-        iconColor: AppColors.darkGreenColor,
-        titleKey: 'account_settings',
-        onTap: () => context.push(AppRouter.accountSettings),
-      ),
-      // نفس المحتوى اللي بيظهر في ديالوج الشروط وقت تسجيل الدخول
-      ProfileMenuTile(
-        icon: Icons.lock_outline_rounded,
-        iconColor: AppColors.greenColor,
-        titleKey: ContentPage.privacyPolicy.titleKey,
-        onTap: () => context.push(
-          AppRouter.contentPage,
-          extra: ContentPage.privacyPolicy,
         ),
       ),
-      ProfileMenuTile(
-        icon: Icons.chat_bubble_outline_rounded,
-        iconColor: AppColors.lightBlueColor,
-        titleKey: 'support_help',
-        onTap: () => context.push(AppRouter.contactUsScreen),
-      ),
-      // ProfileMenuTile(
-      //   icon: Icons.info_outline_rounded,
-      //   iconColor: AppColors.orangeColor,
-      //   titleKey: 'about_app',
-      //   onTap: () => context.push(AppRouter.aboutUs),
-      // ),
-    ];
-
-    return [
-      for (int i = 0; i < tiles.length; i++) ...[
-        if (i > 0) SizedBox(height: 12.h),
-        tiles[i],
-      ],
-    ];
-  }
-
-  /// زرار تسجيل الخروج، لونه أحمر باهت عشان يبان إنه إجراء مختلف عن باقي القايمة
-  Widget _buildLogoutButton() {
-    return BlocBuilder<LogoutBloc, BaseState<void>>(
-      builder: (context, state) {
-        return Material(
-          color: AppColors.redColor2.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(14.r),
-          child: InkWell(
-            // بنقفل الزرار وقت الطلب عشان مايتبعتش مرتين
-            onTap: state.isLoading ? null : () => _confirmLogout(context),
-            borderRadius: BorderRadius.circular(14.r),
-            child: Padding(
-              padding: EdgeInsets.symmetric(vertical: 16.h),
-              child: state.isLoading
-                  ? Center(
-                      child: SizedBox(
-                        width: 22.r,
-                        height: 22.r,
-                        child: const CircularProgressIndicator(
-                          strokeWidth: 2.5,
-                          color: AppColors.redColor2,
-                        ),
-                      ),
-                    )
-                  : Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.logout_rounded,
-                          size: 19.r,
-                          color: AppColors.redColor2,
-                        ),
-                        SizedBox(width: 8.w),
-                        Text(
-                          'logout'.tr(),
-                          style: TextStyles.darkBold16.copyWith(
-                            color: AppColors.redColor2,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-            ),
-          ),
-        );
-      },
     );
   }
 
-  /// رقم خدمة العملاء تحت الخروج، ولو لسه بيحمل أو الطلب وقع مابيظهرش
+  /// القايمة الأساسية، وتعديل الملف الشخصي بقى من الهيدر
+  /// نطاق الخدمة ومقدم الخدمة بيتفتحوا من اختصارات صفحة المغسلة
+  Widget _buildMainSection() {
+    return ProfileListSection(
+      children: [
+        ProfileListRow(
+          icon: Icons.location_on_rounded,
+          iconColor: AppColors.lightBlueColor,
+          titleKey: 'saved_addresses',
+          onTap: () => context.push(AppRouter.savedAddresses),
+        ),
+        ProfileListRow(
+          icon: Icons.notifications_rounded,
+          iconColor: AppColors.pinkColor,
+          titleKey: 'notifications',
+          onTap: () => context.push(AppRouter.notificationScreen),
+        ),
+        ProfileListRow(
+          icon: Icons.verified_user_rounded,
+          iconColor: AppColors.darkGreenColor,
+          titleKey: 'account_settings',
+          onTap: () => context.push(AppRouter.accountSettings),
+        ),
+        ProfileListRow(
+          icon: Icons.rate_review_rounded,
+          iconColor: AppColors.orangeColor,
+          titleKey: 'support_help',
+          onTap: () => context.push(AppRouter.contactUsScreen),
+        ),
+      ],
+    );
+  }
+
+  /// سطر الاتصال بخدمة العملاء، ولو الرقم لسه بيحمل أو الطلب وقع مابيظهرش
   /// والأرقام كلها موجودة في شاشة الدعم والمساعدة
   Widget _buildCustomerService() {
     return BlocBuilder<ContactUsCubit, BaseState<ContactInfoModel>>(
@@ -228,26 +146,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
         if (phone.isEmpty) return const SizedBox.shrink();
 
         return Padding(
-          padding: EdgeInsets.only(top: 20.h),
+          padding: EdgeInsets.only(top: 12.h),
           child: CustomerServiceCard(phoneNumber: phone),
         );
       },
     );
   }
 
-  /// بنأكد قبل الخروج عشان مايخرجش بالغلط
-  Future<void> _confirmLogout(BuildContext blocContext) async {
-    final shouldLogout = await showConfirmActionDialog(
-      blocContext,
-      titleKey: 'logout',
-      messageKey: 'logout_confirm',
-      confirmKey: 'logout',
+  /// سطر باهت في الآخر مكان اسم الشركة في التصميم
+  Widget _buildFooter() {
+    return Padding(
+      padding: EdgeInsets.only(top: 14.h),
+      child: Text(
+        'all_rights_reserved'.tr(),
+        textAlign: TextAlign.center,
+        style: TextStyles.boldStyle(
+          12,
+          color: AppColors.greyColor4,
+          weight: FontWeight.w400,
+        ),
+      ),
     );
-
-    // الـ bloc بيبعت الـ refreshToken للباك ويمسح الكاش،
-    // والتوجيه للوجين بيحصل في الـ BlocListener
-    if (shouldLogout && blocContext.mounted) {
-      blocContext.read<LogoutBloc>().add(const LogoutEvent());
-    }
   }
 }

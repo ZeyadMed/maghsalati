@@ -21,12 +21,10 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
-  final TextEditingController _searchController = TextEditingController();
-
   /// جاي من get_it فالعنوان متشارك مع باقي الشاشات ومابيتجابش كل مرة
   final LocationController _locationController = getIt<LocationController>();
 
-  /// بيجيب المغاسل القريبة، والبحث اللي في الهيدر بيبعت عليه نفس الطلب بـ search
+  /// بيجيب المغاسل القريبة من العنوان المختار (البحث في تاب البحث بس)
   late final NearbyLaundriesCubit _laundriesCubit =
       getIt<NearbyLaundriesCubit>()..start();
 
@@ -49,7 +47,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _searchController.dispose();
     _laundriesCubit.close();
     // الكنترولر مش بيتعمله dispose هنا لأنه singleton في get_it
     // وشاشات تانية لسه محتاجاه
@@ -70,14 +67,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          HomeHeader(
-            searchController: _searchController,
-            locationController: _locationController,
-            onSearchChanged: (value) {
-              _laundriesCubit.search(value ?? '');
-              return null;
-            },
-          ),
+          // من غير خانة بحث: زرار "اختر مكانك" في النص بيفتح العناوين المحفوظة
+          HomeHeader(locationController: _locationController),
           Expanded(
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: 16.w),

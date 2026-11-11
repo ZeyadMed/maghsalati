@@ -43,6 +43,7 @@ abstract final class AppColors {
   static const Color hintTextColor = Color(0xff91958E);
   static const Color borderColor = Color(0xffE8EBE6);
   static const Color orangeColor = Color(0xffFF6B00);
+  static const Color pinkColor = Color(0xffF27BA0);
   static const Color lightOrangeColor = Color(0xffFFC107);
   static const Color filledColor = Color(0xFFF5F9FF);
   static const Color petrollColor = Color(0xFF003B63);

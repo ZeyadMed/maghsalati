@@ -8,12 +8,11 @@ import 'package:maghsalati/features/orders/data/model/order_model.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/order_sheet_frame.dart';
 
 /// كارت "الخطوة الجاية" في تفاصيل الطلب: الطلب فين دلوقتي، ولو فيه حاجة
-/// مطلوبة من العميل (يراجع تعديل، يأكد الاستلام، يقيّم، يختار مغسلة تانية)
+/// مطلوبة من العميل (يراجع تعديل، يقيّم، يختار مغسلة تانية)
 /// بيظهر زرارها. الدفع ليه كارت لوحده لأنه ماشي جنب الحالة مش جزء منها
 class OrderNextStepCard extends StatelessWidget {
   final OrderModel order;
   final VoidCallback onReviewAdjustment;
-  final VoidCallback onConfirmDropoff;
   final VoidCallback onRateLaundry;
   final VoidCallback onChooseAnotherLaundry;
 
@@ -21,7 +20,6 @@ class OrderNextStepCard extends StatelessWidget {
     super.key,
     required this.order,
     required this.onReviewAdjustment,
-    required this.onConfirmDropoff,
     required this.onRateLaundry,
     required this.onChooseAnotherLaundry,
   });
@@ -157,27 +155,26 @@ class OrderNextStepCard extends StatelessWidget {
       titleKey: 'next_step_awaiting_dropoff_collection_title',
       body: 'next_step_awaiting_dropoff_collection_body'.tr(),
     ),
-    // زرار الكود بيظهر بس لما الرحلة تقول إنها مستنية العميل
-    // (awaitingConfirmationBy == Customer)، لأن رحلة التسليم ليها كود قبله
-    // للمغسلة. ولو الريسبونس قديم من غير الحقل ده بيفضل ظاهر طول التوصيل
+    // مفيش كود: المندوب هو اللي بيأكد التسليم. لما يوصل الكارت بيتعلّم
+    // عشان العميل يطلع ياخد هدومه
     OrderStatus.outForDelivery => _NextStep(
       icon: Icons.delivery_dining_outlined,
       color: AppColors.primaryColor,
-      titleKey: (order.dropoffTrip?.hasArrived ?? false)
+      titleKey: order.isDriverAtDoor
           ? 'next_step_driver_arrived_title'
           : 'next_step_out_for_delivery_title',
-      body: 'next_step_out_for_delivery_body'.tr(),
-      actionKey: (order.dropoffTrip?.awaitsCustomer ?? true)
-          ? 'confirm_receipt'
-          : null,
-      onAction: onConfirmDropoff,
-      needsAction: order.dropoffTrip?.awaitsCustomer ?? true,
+      body:
+          (order.isDriverAtDoor
+                  ? 'next_step_driver_arrived_body'
+                  : 'next_step_out_for_delivery_body')
+              .tr(),
+      needsAction: order.isDriverAtDoor,
     ),
     OrderStatus.delivered => _NextStep(
       icon: Icons.check_circle_outline_rounded,
       color: AppColors.greenColor,
       titleKey: 'next_step_delivered_title',
-      // نفس رسالة الشكر اللي بتظهر في شيت التهنئة بعد تأكيد الاستلام
+      // نفس رسالة الشكر اللي بتظهر في شيت التهنئة بعد التسليم
       body: 'order_completed_message'.tr(args: ['app_name'.tr()]),
       // التقييم محتاج رقم المغسلة، فمن غيره الزرار مابيظهرش
       actionKey: order.laundryId > 0 ? 'rate_laundry' : null,

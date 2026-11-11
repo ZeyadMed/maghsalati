@@ -8,20 +8,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:gap/gap.dart';
-import 'package:lottie/lottie.dart';
 
 import 'dart:ui' as ui;
 
 import 'package:maghsalati/core/cache_manager/cache_manager.dart';
 import 'package:maghsalati/core/internet_connenction/internet_connection_state.dart';
 import 'package:maghsalati/core/internet_connenction/internet_connenction_cubit.dart';
+import 'package:maghsalati/core/internet_connenction/no_internet_screen.dart';
 import 'package:maghsalati/core/notification/messaging_config.dart';
 import 'package:maghsalati/core/router/app_router.dart';
 import 'package:maghsalati/core/service_locator/service_locator.dart';
-import 'package:maghsalati/core/style/app_colors.dart';
-import 'package:maghsalati/core/style/assets.dart';
-import 'package:maghsalati/core/theme/text_styles.dart';
 import 'package:maghsalati/core/theme/theme.dart';
 import 'package:maghsalati/firebase_options.dart';
 
@@ -122,40 +118,7 @@ class MyApp extends StatelessWidget {
                     if (offline) {
                       return MediaQuery(
                         data: media,
-                        child: Scaffold(
-                          backgroundColor: AppColors.whiteColor,
-                          body: Column(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Center(
-                                child: Lottie.asset(
-                                  Assets.assetsIconsLottieJson,
-                                  height: 200.h,
-                                ),
-                              ),
-                              Gap(20.h),
-                              Center(
-                                child: Text(
-                                  "noInternet".tr(),
-                                  style: TextStyles.darkBold16.copyWith(
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ),
-                              Gap(10.h),
-                              Center(
-                                child: Text(
-                                  "checkInternet".tr(),
-                                  style: TextStyles.darkRegular12.copyWith(
-                                    color: AppColors.greyColor4,
-                                    fontSize: 12.sp,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                        child: const NoInternetScreen(),
                       );
                     }
                     return MediaQuery(data: media, child: child!);

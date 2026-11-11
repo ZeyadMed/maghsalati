@@ -187,11 +187,49 @@ enum OrderStage {
 enum DeliveryTripType { pickup, dropoff }
 
 /// مين اللي مستني يدخل الكود دلوقتي (awaitingConfirmationBy)
-/// رحلة التسليم ليها كودين: الأول للمغسلة وهي بتسلّم المندوب، والتاني للعميل
+/// رحلة التسليم فيها كود واحد للمغسلة وهي بتسلّم المندوب. كود العميل اتلغى
+/// والمندوب هو اللي بيأكد التسليم، و customer فاضلة بس للريسبونس القديم
 enum TripConfirmer { laundry, customer }
 
-/// رحلة من رحلات الطلب. العميل محتاج منها رقمها عشان يأكد التسليم بالكود،
-/// وبيانات المندوب عشان يعرف مين جاي
+/// حالة رحلة المندوب زي ما العميل بيشوفها في كارت المندوب.
+/// نفس منطق TripStage في أبلكيشن المندوب بس من ناحية العميل
+enum DriverTripStage {
+  /// الرحلة اتفتحت ولسه محدش اتعيّن عليها
+  awaitingDriver,
+
+  /// الاستلام: رايح للعميل ياخد الهدوم. التسليم: استلم من المغسلة ورايح للعميل
+  onTheWay,
+
+  /// وصل باب العميل
+  arrived,
+
+  /// الاستلام: أخد الهدوم ورايح بيها المغسلة
+  toLaundry,
+
+  /// التسليم: رايح المغسلة أو مستني المغسلة تسلّمه الطلب
+  atLaundry,
+
+  /// الاستلام: الهدوم وصلت المغسلة. التسليم: الطلب اتسلّم للعميل
+  completed,
+
+  /// PickupFailed أو DeliveryFailed
+  failed,
+  cancelled,
+}
+
+extension DriverTripStageX on DriverTripStage {
+  /// المندوب لسه شغال على الرحلة، فمكانه بيبان على الخريطة
+  bool get isActive => switch (this) {
+    DriverTripStage.onTheWay ||
+    DriverTripStage.arrived ||
+    DriverTripStage.toLaundry ||
+    DriverTripStage.atLaundry => true,
+    _ => false,
+  };
+}
+
+/// رحلة من رحلات الطلب. العميل محتاج منها حالتها وبيانات المندوب عشان يعرف
+/// مين جاي، ورقمها عشان يقيّم المندوب
 class OrderTripModel {
   final int id;
   final DeliveryTripType type;
@@ -204,11 +242,7 @@ class OrderTripModel {
   /// null لو مفيش حد مستني كود دلوقتي
   final TripConfirmer? awaitingConfirmationBy;
 
-  /// السيرفر بعت حقول التأكيد (DeliveryTripDto الرسمي)، فـ [awaitingConfirmationBy]
-  /// لما يبقى null معناه إن مفيش كود مطلوب، مش إن الحقل مش موجود
-  final bool hasConfirmationInfo;
-
-  /// العميل أكد الاستلام بالكود والطلب بقى Delivered
+  /// الرحلة خلصت: المغسلة أكدت الاستلام، أو المندوب أكد التسليم للعميل
   final bool isConfirmed;
 
   /// المغسلة سلمت الهدوم للمندوب (في رحلة التسليم)
@@ -218,6 +252,26 @@ class OrderTripModel {
   final double? driverLatitude;
   final double? driverLongitude;
 
+  /// بيانات المندوب اللي العميل بيشوفها في كارته. لسه مش في الـ API
+  /// (طلبناها من الباك باسم driverPlateNumber و driverTotalTrips
+  /// و driverAverageRating و driverReviewsCount و driverJoinedAt)
+  /// فكل واحدة فاضية أو null لحد ما السيرفر يبعتها، والكارت بيخبيها
+  final String driverPlateNumber;
+
+  /// عدد الرحلات اللي المندوب خلصها بنجاح
+  final int? driverTotalTrips;
+
+  /// متوسط التقييم من 0 لـ 5
+  final double? driverRating;
+  final int? driverReviewsCount;
+
+  /// من إمتى المندوب شغال على المنصة
+  final DateTime? driverJoinedAt;
+
+  /// العميل قيّم مندوب الرحلة دي (isDriverReviewed)، و null لو السيرفر
+  /// مابعتش الحقل، ساعتها الزرار بيفضل ظاهر والسيرفر هو اللي بيرفض التكرار
+  final bool? isDriverReviewed;
+
   const OrderTripModel({
     required this.id,
     required this.type,
@@ -225,11 +279,16 @@ class OrderTripModel {
     this.driverName = '',
     this.driverPhone = '',
     this.awaitingConfirmationBy,
-    this.hasConfirmationInfo = false,
     this.isConfirmed = false,
     this.isHandedOver = false,
     this.driverLatitude,
     this.driverLongitude,
+    this.driverPlateNumber = '',
+    this.driverTotalTrips,
+    this.driverRating,
+    this.driverReviewsCount,
+    this.driverJoinedAt,
+    this.isDriverReviewed,
   });
 
   bool get hasDriver => driverName.isNotEmpty || driverPhone.isNotEmpty;
@@ -237,16 +296,31 @@ class OrderTripModel {
   bool get hasDriverLocation =>
       isValidCoordinate(driverLatitude, driverLongitude);
 
-  /// المندوب وصل باب العميل وبقى معاه كود التسليم
+  bool get hasDriverRating => driverRating != null || driverReviewsCount != null;
+
+  /// فيه إحصائية واحدة على الأقل للمندوب (تقييم أو رحلات أو مدة شغل)
+  bool get hasDriverStats =>
+      hasDriverRating || driverTotalTrips != null || driverJoinedAt != null;
+
+  /// المندوب لسه محدش قيّمه، فبنكتب "جديد" بدل 0.0
+  bool get isNewDriver =>
+      (driverReviewsCount ?? 0) == 0 && (driverRating ?? 0) == 0;
+
+  /// عدد الشهور الكاملة من ساعة ما المندوب انضم لحد النهارده
+  int? get driverMonthsOfService {
+    final joined = driverJoinedAt?.toLocal();
+    if (joined == null) return null;
+    final now = DateTime.now();
+    var months = (now.year - joined.year) * 12 + now.month - joined.month;
+    if (now.day < joined.day) months--;
+    return months < 0 ? 0 : months;
+  }
+
+  /// المندوب وصل باب العميل: الرحلة status = "Arrived" بعد arrive،
+  /// أو awaitingConfirmationBy = Customer في ريسبونس الباك القديم
   bool get hasArrived =>
       awaitingConfirmationBy == TripConfirmer.customer ||
       status.toLowerCase().contains('arriv');
-
-  /// الكود مطلوب من العميل دلوقتي. لو السيرفر مابعتش حقول التأكيد (ريسبونس
-  /// قديم) بنفضل على السلوك القديم ونسيب الزرار ظاهر طول التوصيل
-  bool get awaitsCustomer => hasConfirmationInfo
-      ? awaitingConfirmationBy == TripConfirmer.customer
-      : true;
 
   /// { id, type, status, driverName, driverPhoneNumber } زي أبلكيشن المغسلة
   /// وبيانات المندوب ممكن تيجي جوه "driver" بدل ما تبقى في الرحلة نفسها
@@ -268,9 +342,6 @@ class OrderTripModel {
         driver.pickString(['phoneNumber', 'phone']),
       ]),
       awaitingConfirmationBy: confirmerOf(json['awaitingConfirmationBy']),
-      hasConfirmationInfo:
-          json.containsKey('awaitingConfirmationBy') ||
-          json.containsKey('isAwaitingConfirmation'),
       isConfirmed: json['isConfirmed'] == true,
       isHandedOver: json['isHandedOver'] == true,
       driverLatitude: json
@@ -279,6 +350,31 @@ class OrderTripModel {
       driverLongitude: json
           .pickNum(['driverLongitude', 'currentLongitude'], inside: ['driver'])
           ?.toDouble(),
+      driverPlateNumber: json
+          .pickString(['driverPlateNumber', 'plateNumber'], inside: ['driver'])
+          .trim(),
+      driverTotalTrips: json.pickInt([
+        'driverTotalTrips',
+        'totalTrips',
+        'completedTripsCount',
+      ], inside: ['driver']),
+      driverRating: json
+          .pickNum(['driverAverageRating', 'averageRating'], inside: ['driver'])
+          ?.toDouble()
+          .clamp(0, 5)
+          .toDouble(),
+      driverReviewsCount: json.pickInt([
+        'driverReviewsCount',
+        'reviewsCount',
+      ], inside: ['driver']),
+      // createdAt بتاع الرحلة نفسها تاريخ الرحلة، فبنقراه من "driver" بس
+      driverJoinedAt: DateTime.tryParse(
+        '${json['driverJoinedAt'] ?? driver.pick(['joinedAt', 'createdAt']) ?? ''}',
+      ),
+      isDriverReviewed: switch (json['isDriverReviewed']) {
+        final bool reviewed => reviewed,
+        _ => null,
+      },
     );
   }
 
@@ -707,16 +803,79 @@ class OrderModel {
 
   bool get hasPaymentUrl => paymentUrl != null && paymentUrl!.isNotEmpty;
 
-  /// رقم رحلة التسليم اللي بيتبعت مع كود التسليم، null لو مش معروف
-  int? get dropoffTripId => (dropoffTrip?.id ?? 0) > 0 ? dropoffTrip!.id : null;
+  /// رحلات الطلب اللي ليها كارت مندوب، الاستلام الأول وبعده التسليم:
+  /// اللي عليها مندوب، واللي لسه مستنية مندوب والطلب شغال.
+  /// المرحلة اللي العميل بيعملها بنفسه مالهاش رحلة أصلًا فمش بتظهر
+  List<OrderTripModel> get driverTrips => [
+    for (final trip in [pickupTrip, dropoffTrip])
+      if (trip != null &&
+          (trip.hasDriver ||
+              (isCurrent && tripStage(trip) == DriverTripStage.awaitingDriver)))
+        trip,
+  ];
 
-  /// آخر مندوب اتعيّن على الطلب: بتاع التسليم لو اتعيّن، وإلا بتاع الاستلام،
-  /// فبيفضل ظاهر وقت ما الهدوم في المغسلة. null لو لسه مفيش مندوب خالص
-  OrderTripModel? get driverTrip {
-    if (dropoffTrip?.hasDriver ?? false) return dropoffTrip;
-    if (pickupTrip?.hasDriver ?? false) return pickupTrip;
-    return null;
+  /// حالة الرحلة من ناحية العميل: من حقول الرحلة الأول (اتأكدت، مستنية مين)
+  /// وبعدها من حالة الطلب، لأن حالة الرحلة نفسها مش متوثقة في الـ swagger
+  DriverTripStage tripStage(OrderTripModel trip) {
+    final isPickup = trip.type == DeliveryTripType.pickup;
+    final tripStatus = trip.status.toLowerCase();
+    if (trip.isConfirmed) return DriverTripStage.completed;
+    if (status ==
+            (isPickup ? OrderStatus.pickupFailed : OrderStatus.deliveryFailed) ||
+        tripStatus.contains('fail')) {
+      return DriverTripStage.failed;
+    }
+    if (isTripFinished(trip)) return DriverTripStage.completed;
+    if (status == OrderStatus.cancelled ||
+        status == OrderStatus.rejected ||
+        tripStatus.contains('cancel')) {
+      return DriverTripStage.cancelled;
+    }
+    if (!trip.hasDriver) return DriverTripStage.awaitingDriver;
+
+    if (isPickup) {
+      // المغسلة هي اللي مستنية تدخل الكود يبقى الهدوم مع المندوب
+      if (trip.awaitingConfirmationBy == TripConfirmer.laundry ||
+          tripStatus.contains('collect') ||
+          tripStatus.contains('transit')) {
+        return DriverTripStage.toLaundry;
+      }
+      return trip.hasArrived
+          ? DriverTripStage.arrived
+          : DriverTripStage.onTheWay;
+    }
+    if (trip.hasArrived) return DriverTripStage.arrived;
+    if (trip.isHandedOver || status == OrderStatus.outForDelivery) {
+      return DriverTripStage.onTheWay;
+    }
+    return DriverTripStage.atLaundry;
   }
+
+  /// الرحلة خلصت: الاستلام لما الهدوم توصل المغسلة (والطلب يعدّي مرحلة
+  /// الاستلام)، والتسليم لما الطلب يتسلّم للعميل
+  bool isTripFinished(OrderTripModel trip) =>
+      trip.isConfirmed ||
+      switch (trip.type) {
+        DeliveryTripType.pickup => const {
+          OrderStatus.atLaundryPendingMatch,
+          OrderStatus.adjustmentPendingApproval,
+          OrderStatus.inProgress,
+          OrderStatus.ready,
+          OrderStatus.awaitingDropoffCollection,
+          OrderStatus.outForDelivery,
+          OrderStatus.delivered,
+          OrderStatus.deliveryFailed,
+        }.contains(status),
+        DeliveryTripType.dropoff => status == OrderStatus.delivered,
+      };
+
+  /// العميل يقدر يقيّم مندوب الرحلة: فيها مندوب ورقمها معروف وخلصت
+  /// ولسه ماتقيّمتش (api/customer/driver-reviews بياخد رقم الرحلة)
+  bool canRateDriver(OrderTripModel trip) =>
+      trip.id > 0 &&
+      trip.hasDriver &&
+      trip.isDriverReviewed != true &&
+      isTripFinished(trip);
 
   bool get hasLocation => isValidCoordinate(latitude, longitude);
 
@@ -725,11 +884,11 @@ class OrderModel {
 
   bool get hasNotesOrImages => notes.isNotEmpty || images.isNotEmpty;
 
-  /// المندوب وصل والسيرفر قال صراحة إنه مستني كود العميل. مش بنعتمد هنا على
-  /// fallback الريسبونس القديم عشان مانطلعش تنبيه "المندوب وصل" غلط
-  bool get awaitsDropoffCode =>
-      (dropoffTrip?.hasConfirmationInfo ?? false) &&
-      dropoffTrip!.awaitingConfirmationBy == TripConfirmer.customer;
+  /// مندوب التسليم عند باب العميل ومستني يسلّمه، من غير أي كود.
+  /// المندوب هو اللي بيقفل الرحلة بعدها والطلب بيبقى Delivered
+  bool get isDriverAtDoor =>
+      status == OrderStatus.outForDelivery &&
+      (dropoffTrip?.hasArrived ?? false);
 
   /// نسخة من الطلب بلينك دفع تاني. أحداث الـ realtime ممكن تيجي من غير
   /// لينك، فبنحتفظ باللي كان معانا بدل ما زرار الدفع يختفي

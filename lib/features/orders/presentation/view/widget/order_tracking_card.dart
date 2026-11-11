@@ -8,14 +8,29 @@ import 'package:maghsalati/features/orders/data/model/order_model.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/order_driver_tile.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/order_section_card.dart';
 
-/// كارت التتبع لما يبقى فيه مندوب: خريطة عليها بيت العميل والمغسلة والمندوب
-/// (اللي السيرفر بعت مكانه منهم)، وتحتها كارت المندوب بزرار الاتصال.
+/// كارت المناديب: خريطة عليها بيت العميل والمغسلة والمندوب اللي شغال دلوقتي
+/// (اللي السيرفر بعت مكانه منهم)، وتحتها كارت لكل رحلة لوحده: مندوب الاستلام
+/// الأول وبعده مندوب التسليم، وكل واحد بحالته.
 /// الخريطة بتبان بس والطلب لسه شغال وفيه نقطة واحدة على الأقل
 class OrderTrackingCard extends StatelessWidget {
   final OrderModel order;
-  final OrderTripModel trip;
 
-  const OrderTrackingCard({super.key, required this.order, required this.trip});
+  /// [OrderModel.driverTrips]، والكارت مابيتعرضش لو فاضية
+  final List<OrderTripModel> trips;
+
+  /// بيفتح شاشة تقييم مندوب الرحلة
+  final ValueChanged<OrderTripModel> onRateDriver;
+
+  /// العميل قيّم مندوب الرحلة دي (من السيرفر أو من الشاشة)
+  final bool Function(OrderTripModel trip) isDriverRated;
+
+  const OrderTrackingCard({
+    super.key,
+    required this.order,
+    required this.trips,
+    required this.onRateDriver,
+    required this.isDriverRated,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -33,9 +48,24 @@ class OrderTrackingCard extends StatelessWidget {
             ),
             Gap(12.h),
           ],
-          OrderDriverTile(trip: trip),
+          for (var i = 0; i < trips.length; i++) ...[
+            if (i > 0) Gap(10.h),
+            _buildTile(trips[i]),
+          ],
         ],
       ),
+    );
+  }
+
+  Widget _buildTile(OrderTripModel trip) {
+    final isRated = isDriverRated(trip);
+    return OrderDriverTile(
+      trip: trip,
+      stage: order.tripStage(trip),
+      onRate: !isRated && order.canRateDriver(trip)
+          ? () => onRateDriver(trip)
+          : null,
+      isRated: isRated,
     );
   }
 
@@ -52,12 +82,14 @@ class OrderTrackingCard extends StatelessWidget {
         Icons.storefront_rounded,
         AppColors.orangeColor,
       ),
-    if (trip.hasDriverLocation)
-      _MapPoint(
-        LatLng(trip.driverLatitude!, trip.driverLongitude!),
-        Icons.delivery_dining_rounded,
-        AppColors.greenColor,
-      ),
+    // المندوب اللي لسه شغال بس، مش اللي خلص رحلته
+    for (final trip in trips)
+      if (trip.hasDriverLocation && order.tripStage(trip).isActive)
+        _MapPoint(
+          LatLng(trip.driverLatitude!, trip.driverLongitude!),
+          Icons.delivery_dining_rounded,
+          AppColors.greenColor,
+        ),
   ];
 
   /// نقطة واحدة بتبقى في النص، وأكتر من واحدة الخريطة بتتظبط عليهم كلهم.

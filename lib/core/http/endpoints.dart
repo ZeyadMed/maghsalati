@@ -89,12 +89,12 @@ abstract interface class Endpoints {
   static String retryPayment(int orderId) =>
       'api/customer/orders/$orderId/retry-payment';
 
-  /// POST: بتاخد { otpCode } اللي مع المندوب لما يوصل، والطلب بيبقى Delivered
-  static String confirmDropoff(int tripId) =>
-      'api/customer/deliveries/$tripId/confirm-dropoff';
-
   /// POST: بتاخد { laundryId, rating, comment } وبتضيف تقييم للمغسلة
   static const String reviews = 'api/customer/reviews';
+
+  /// POST: بتاخد { deliveryTripId, rating, comment } وبتضيف تقييم لمندوب
+  /// الرحلة، مرة واحدة لكل رحلة وبعد ما تخلص
+  static const String driverReviews = 'api/customer/driver-reviews';
 
   /// GET: بترجع بيانات العميل { id, name, phoneNumber, address, cityId,
   /// cityName, latitude, longitude, phoneNumberConfirmed, createdAt } جوه data

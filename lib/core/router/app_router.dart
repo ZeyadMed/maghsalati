@@ -25,10 +25,12 @@ import 'package:maghsalati/features/orders/data/model/order_model.dart';
 import 'package:maghsalati/features/orders/presentation/view/order_details_screen.dart';
 import 'package:maghsalati/features/orders/presentation/view/order_invoice_screen.dart';
 import 'package:maghsalati/features/orders/presentation/view/orders_screen.dart';
+import 'package:maghsalati/features/orders/presentation/view/rate_driver_screen.dart';
 import 'package:maghsalati/features/profile/data/model/page_content_model.dart';
 import 'package:maghsalati/features/profile/data/model/user_model.dart';
 import 'package:maghsalati/features/profile/presentation/view/about_us_screen.dart';
 import 'package:maghsalati/features/profile/presentation/view/account_settings_screen.dart';
+import 'package:maghsalati/features/profile/presentation/view/more_screen.dart';
 import 'package:maghsalati/features/profile/presentation/view/contact_us_screen.dart';
 import 'package:maghsalati/features/profile/presentation/view/page_content_screen.dart';
 import 'package:maghsalati/features/profile/presentation/view/profile_screen.dart';
@@ -63,6 +65,7 @@ abstract class AppRouter {
   static const String orderScreen = '/orderScreen';
   static const String orderDetails = '/orderDetails';
   static const String orderInvoice = '/orderInvoice';
+  static const String rateDriver = '/rateDriver';
   static const String profileScreen = '/profileScreen';
   static const String contactUsScreen = '/contactUsScreen';
   static const String notificationScreen = '/notificationScreen';
@@ -70,6 +73,7 @@ abstract class AppRouter {
   static const String aboutUs = '/aboutUs';
   static const String updateProfileScreen = '/updateProfileScreen';
   static const String accountSettings = '/accountSettings';
+  static const String moreScreen = '/moreScreen';
   static const String contentPage = '/contentPage';
   static const String savedAddresses = '/savedAddresses';
   static const String addressForm = '/addressForm';
@@ -201,6 +205,16 @@ abstract class AppRouter {
         builder: (context, state) =>
             OrderInvoiceScreen(order: state.extra as OrderModel),
       ),
+
+      // رحلة المندوب بتيجي في state.extra من تفاصيل الطلب أو شيت التهنئة،
+      // ومن غيرها مفيش رقم رحلة نقيّم عليه فبيرجع للرئيسية
+      GoRoute(
+        path: rateDriver,
+        redirect: (context, state) =>
+            state.extra is OrderTripModel ? null : initialRoot,
+        builder: (context, state) =>
+            RateDriverScreen(trip: state.extra as OrderTripModel),
+      ),
       GoRoute(
         path: profileScreen,
         builder: (context, state) => const ProfileScreen(),
@@ -216,6 +230,10 @@ abstract class AppRouter {
       GoRoute(
         path: accountSettings,
         builder: (context, state) => const AccountSettingsScreen(),
+      ),
+      GoRoute(
+        path: moreScreen,
+        builder: (context, state) => const MoreScreen(),
       ),
       // الصفحة (سياسة الخصوصية، نطاق الخدمة، مقدم الخدمة) بتتبعت في state.extra
       GoRoute(

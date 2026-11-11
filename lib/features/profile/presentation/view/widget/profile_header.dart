@@ -6,56 +6,74 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:maghsalati/core/style/app_colors.dart';
+import 'package:maghsalati/core/style/assets.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
 import 'package:maghsalati/features/profile/data/model/user_model.dart';
 
-/// الجزء الأزرق اللي فوق في شاشة حسابي: العنوان وتحته بيانات المستخدم
-/// بياخد نفس شكل هيدر الرئيسية عشان الشاشتين يبقوا متسقين
+/// الجزء اللي فوق في شاشة حسابي على شكل التصميم الصيني: صورة مغسلة باهتة
+/// وعليها الأفاتار والاسم والتليفون، وكلمة "تعديل" على الطرف التاني
 /// لو [user] لسه null بيعرض لودر، ولو التحميل فشل بيعرض زرار حاول مرة أخرى
 class ProfileHeader extends StatelessWidget {
   final UserModel? user;
   final bool hasError;
   final VoidCallback? onRetry;
 
+  /// بيفتح تعديل الملف الشخصي، من الدوسة على السطر كله أو على كلمة تعديل
+  final VoidCallback? onEdit;
+
   const ProfileHeader({
     super.key,
     required this.user,
     this.hasError = false,
     this.onRetry,
+    this.onEdit,
   });
+
+  static const double _avatarSize = 60;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsetsDirectional.only(
-        top: MediaQuery.of(context).padding.top + 12.h,
-        bottom: 24.h,
-        start: 16.w,
-        end: 16.w,
-      ),
-      decoration: BoxDecoration(
-        color: AppColors.primaryColor,
-        borderRadius: BorderRadiusDirectional.only(
-          bottomStart: Radius.circular(28.r),
-          bottomEnd: Radius.circular(28.r),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            'profile'.tr(),
-            style: TextStyles.whiteText(20, weight: FontWeight.w700),
-          ),
-          SizedBox(height: 20.h),
-          ConstrainedBox(
-            constraints: BoxConstraints(minHeight: 64.r),
+    return Stack(
+      children: [
+        Positioned.fill(child: _buildBackground()),
+        Padding(
+          padding: EdgeInsets.fromLTRB(16.w, 24.h, 16.w, 28.h),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: _avatarSize.r),
             child: _buildState(),
           ),
-        ],
-      ),
+        ),
+      ],
+    );
+  }
+
+  /// الصورة متغطية بأبيض شبه كامل عشان تبان باهتة زي التصميم،
+  /// وآخرها بيدوب في لون الشاشة عشان مايبقاش فيه حد بينها وبين القايمة
+  Widget _buildBackground() {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Image.asset(
+          Assets.assetsImagesLaundry,
+          fit: BoxFit.cover,
+          color: AppColors.whiteColor.withValues(alpha: 0.8),
+          colorBlendMode: BlendMode.srcOver,
+        ),
+        DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              stops: const [0, 0.65, 1],
+              colors: [
+                AppColors.secondaryColor.withValues(alpha: 0),
+                AppColors.secondaryColor.withValues(alpha: 0),
+                AppColors.secondaryColor,
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -66,95 +84,111 @@ class ProfileHeader extends StatelessWidget {
       return Center(
         child: TextButton.icon(
           onPressed: onRetry,
-          icon: Icon(Icons.refresh_rounded, color: AppColors.whiteColor),
+          icon: const Icon(
+            Icons.refresh_rounded,
+            color: AppColors.primaryColor,
+          ),
           label: Text(
             'try_again'.tr(),
-            style: TextStyles.whiteText(14, weight: FontWeight.w600),
+            style: TextStyles.boldStyle(
+              14,
+              color: AppColors.primaryColor,
+              weight: FontWeight.w600,
+            ),
           ),
         ),
       );
     }
     return const Center(
-      child: CircularProgressIndicator(color: AppColors.whiteColor),
+      child: CircularProgressIndicator(color: AppColors.primaryColor),
     );
   }
 
-  /// الأفاتار على جنب والاسم والتليفون والمدينة على الجنب التاني
+  /// الأفاتار على جنب والاسم والتليفون جنبه، وكلمة تعديل في آخر السطر
   Widget _buildUserRow(UserModel user) {
-    return Row(
-      children: [
-        _buildAvatar(user),
-        SizedBox(width: 14.w),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                user.name,
-                style: TextStyles.whiteText(18, weight: FontWeight.w700),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              SizedBox(height: 4.h),
-              // الرقم دايماً بيتعرض من الشمال لليمين
-              Directionality(
-                textDirection: ui.TextDirection.ltr,
-                child: _buildSubtitle(user.phoneNumber),
-              ),
-              if (user.cityName.isNotEmpty) ...[
+    return GestureDetector(
+      onTap: onEdit,
+      behavior: HitTestBehavior.opaque,
+      child: Row(
+        children: [
+          _buildAvatar(user),
+          SizedBox(width: 12.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  user.name,
+                  style: TextStyles.boldStyle(18, weight: FontWeight.w600),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
                 SizedBox(height: 2.h),
-                _buildSubtitle(user.cityName),
+                // الرقم دايماً بيتعرض من الشمال لليمين
+                Directionality(
+                  textDirection: ui.TextDirection.ltr,
+                  child: Text(
+                    user.phoneNumber,
+                    style: TextStyles.boldStyle(
+                      13,
+                      color: AppColors.greyColor3,
+                      weight: FontWeight.w400,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               ],
-            ],
+            ),
           ),
-        ),
-      ],
+          SizedBox(width: 8.w),
+          Text(
+            'edit'.tr(),
+            style: TextStyles.boldStyle(
+              15,
+              color: AppColors.orangeColor,
+              weight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  /// التليفون والمدينة بنفس الشكل الباهت تحت الاسم
-  Widget _buildSubtitle(String text) {
-    return Text(
-      text,
-      style: TextStyles.whiteText(
-        13,
-        weight: FontWeight.w300,
-      ).copyWith(color: AppColors.whiteColor.withValues(alpha: 0.85)),
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-    );
-  }
-
-  /// دايرة فيها صورة المستخدم، ولو مفيش صورة أو اللينك باظ أول حرف من اسمه
+  /// دايرة بيضا بحلقة زرقا رفيعة، وجواها صورة المستخدم
+  /// ولو مفيش صورة أو اللينك باظ أول حرف من اسمه على خلفية زرقا
   Widget _buildAvatar(UserModel user) {
-    final initial = Text(
-      user.initial,
-      style: TextStyles.whiteText(26, weight: FontWeight.w700),
+    final innerSize = _avatarSize.r - 8.r;
+    final initial = Container(
+      color: AppColors.primaryColor,
+      alignment: Alignment.center,
+      child: Text(user.initial, style: TextStyles.whiteText(22)),
     );
+
     return Container(
-      width: 64.r,
-      height: 64.r,
-      clipBehavior: Clip.antiAlias,
+      width: _avatarSize.r,
+      height: _avatarSize.r,
+      padding: EdgeInsets.all(3.r),
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: AppColors.whiteColor.withValues(alpha: 0.22),
-        border: Border.all(
-          color: AppColors.whiteColor.withValues(alpha: 0.5),
-          width: 1.5,
+        color: AppColors.whiteColor,
+        border: Border.all(color: AppColors.primaryColor, width: 1),
+      ),
+      child: ClipOval(
+        child: SizedBox(
+          width: innerSize,
+          height: innerSize,
+          child: user.imageUrl.isEmpty
+              ? initial
+              : CachedNetworkImage(
+                  imageUrl: user.imageUrl,
+                  fit: BoxFit.cover,
+                  placeholder: (_, _) => initial,
+                  errorWidget: (_, _, _) => initial,
+                ),
         ),
       ),
-      alignment: Alignment.center,
-      child: user.imageUrl.isEmpty
-          ? initial
-          : CachedNetworkImage(
-              imageUrl: user.imageUrl,
-              width: 64.r,
-              height: 64.r,
-              fit: BoxFit.cover,
-              placeholder: (_, _) => initial,
-              errorWidget: (_, _, _) => initial,
-            ),
     );
   }
 }

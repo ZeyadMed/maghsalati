@@ -224,18 +224,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
-  /// بيتعلّم كمقروء، ولو مربوط بطلب بيفتح تفاصيله ومعاه رقم الرحلة لو موجود
-  /// (إشعار وصول المندوب) عشان تأكيد الاستلام يلاقيه
+  /// بيتعلّم كمقروء، ولو مربوط بطلب بيفتح تفاصيله
   void _onTap(NotificationModel notification) {
     _run(_cubit.markAsRead(notification.id));
     final orderId = notification.orderId;
     if (orderId == null) return;
     context.push(
       AppRouter.orderDetails,
-      extra: OrderDetailsArgs(
-        orderId: orderId,
-        deliveryTripId: notification.deliveryTripId,
-      ),
+      extra: OrderDetailsArgs(orderId: orderId),
     );
   }
 

@@ -62,11 +62,11 @@ class _ActiveOrderBarState extends State<ActiveOrderBar>
     super.dispose();
   }
 
-  /// اللي مستني رد العميل (تعديل أو كود التسليم) الأول، وإلا الأحدث
+  /// اللي مستني العميل (تعديل أو المندوب عند الباب) الأول، وإلا الأحدث
   OrderModel _featured(List<OrderModel> orders) {
     for (final order in orders) {
       if (order.status == OrderStatus.adjustmentPendingApproval ||
-          order.awaitsDropoffCode) {
+          order.isDriverAtDoor) {
         return order;
       }
     }
@@ -91,7 +91,7 @@ class _ActiveOrderBarState extends State<ActiveOrderBar>
   Widget _buildBar(OrderModel order, int othersCount) {
     final needsAction =
         order.status == OrderStatus.adjustmentPendingApproval ||
-        order.awaitsDropoffCode;
+        order.isDriverAtDoor;
 
     return Padding(
       padding: EdgeInsets.fromLTRB(12.w, 6.h, 12.w, 8.h),

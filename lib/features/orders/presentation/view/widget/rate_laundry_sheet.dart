@@ -8,6 +8,7 @@ import 'package:maghsalati/core/service_locator/service_locator.dart';
 import 'package:maghsalati/core/style/app_colors.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/order_sheet_frame.dart';
+import 'package:maghsalati/features/orders/presentation/view/widget/rating_stars.dart';
 import 'package:maghsalati/features/orders/presentation/view_model/add_review_cubit.dart';
 
 /// شيت تقييم المغسلة بعد التسليم: نجوم من 1 لـ 5 وتعليق اختياري
@@ -107,33 +108,19 @@ class _RateLaundrySheetState extends State<RateLaundrySheet> {
                 textAlign: TextAlign.center,
               ),
               Gap(16.h),
-              _buildStars(),
+              RatingStars(
+                rating: _rating,
+                onChanged: (value) => setState(() {
+                  _rating = value;
+                  _showRatingError = false;
+                }),
+              ),
               Gap(16.h),
               _buildCommentField(),
             ],
           ),
         );
       },
-    );
-  }
-
-  Widget _buildStars() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(5, (index) {
-        final value = index + 1;
-        return IconButton(
-          onPressed: () => setState(() {
-            _rating = value;
-            _showRatingError = false;
-          }),
-          icon: Icon(
-            value <= _rating ? Icons.star_rounded : Icons.star_border_rounded,
-            size: 36.r,
-            color: AppColors.lightOrangeColor,
-          ),
-        );
-      }),
     );
   }
 

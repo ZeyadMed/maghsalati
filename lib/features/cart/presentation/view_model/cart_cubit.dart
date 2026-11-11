@@ -57,7 +57,7 @@ class CartCubit extends Cubit<BaseState<CartModel>> {
   /// وبعدين بتجيب السلة تاني عشان الإجماليات والرسوم بتتحسب من السيرفر
   Future<void> updateQuantity(CartItemModel item, int quantity) async {
     // تعديل واحد في المرة عشان الدوسات السريعة ماتبعتش كميات متلخبطة،
-    // وأقل كمية 1 فالـ - عند 1 مابيبعتش حاجة
+    // وأقل كمية 1 (الـ - عند 1 بيروح على removeItem من التايل)
     if (_isBusy || quantity < 1) return;
     emit(state.copyWith(metadata: {_updatingKey: item.id}));
 

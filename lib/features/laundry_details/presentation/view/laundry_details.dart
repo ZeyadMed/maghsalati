@@ -240,7 +240,7 @@ class _LaundryDetailsState extends State<LaundryDetails> {
     }
   }
 
-  /// نفس بار شاشة القطع: السلة وعدد القطع والسعر التقديري وزرار التأكيد
+  /// نفس بار شاشة القطع: زرار التأكيد وجواه السلة بالعدد والسعر التقديري
   /// بيقرا من سلة السيرفر، ولو السلة بتاعة مغسلة تانية بيبان فاضي
   Widget _buildBottomBar() {
     return BlocBuilder<CartCubit, BaseState<CartModel>>(
@@ -252,7 +252,6 @@ class _LaundryDetailsState extends State<LaundryDetails> {
         return CartBottomBar(
           pieces: cart?.totalPieces ?? 0,
           estimatedPrice: cart?.itemsTotal ?? 0,
-          deliveryFees: cart?.deliveryFees ?? 0,
           onBasketTap: _openCart,
           onConfirm: cart == null ? null : () => _confirmCart(cart),
         );

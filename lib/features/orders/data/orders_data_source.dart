@@ -23,10 +23,11 @@ abstract interface class OrdersDataSource {
   /// بيرجع لينك الدفع الجديد لو السيرفر بعته في الرد، و null لو مابعتهوش
   Future<Either<Failure, String?>> retryPayment(int orderId);
 
-  /// الكود اللي المندوب إداه للعميل لما وصل بالهدوم
-  Future<Either<Failure, void>> confirmDropoff({
+  /// تقييم مندوب رحلة خلصت، والتعليق اختياري
+  Future<Either<Failure, void>> addDriverReview({
     required int tripId,
-    required String otpCode,
+    required int rating,
+    String? comment,
   });
 }
 
@@ -79,13 +80,14 @@ class OrdersDataSourceImpl implements OrdersDataSource {
   }
 
   @override
-  Future<Either<Failure, void>> confirmDropoff({
+  Future<Either<Failure, void>> addDriverReview({
     required int tripId,
-    required String otpCode,
+    required int rating,
+    String? comment,
   }) async {
     final result = await _genericDataSource.postData<Map<String, dynamic>>(
-      endpoint: Endpoints.confirmDropoff(tripId),
-      data: {'otpCode': otpCode},
+      endpoint: Endpoints.driverReviews,
+      data: {'deliveryTripId': tripId, 'rating': rating, 'comment': ?comment},
     );
     return result.fold((failure) => Left(failure), (_) => const Right(null));
   }

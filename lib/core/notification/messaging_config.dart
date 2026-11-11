@@ -238,8 +238,7 @@ class MessagingConfig {
     _openFromTap(data);
   }
 
-  /// الإشعار اللي فيه orderId بيفتح تفاصيل الطلب ده، ومعاه رقم الرحلة لو موجود
-  /// (إشعار وصول المندوب) عشان تأكيد الاستلام يلاقيه
+  /// الإشعار اللي فيه orderId بيفتح تفاصيل الطلب ده
   static void _openFromTap(Map<String, dynamic> data) {
     try {
       final orderId = _orderIdOf(data);
@@ -250,10 +249,7 @@ class MessagingConfig {
       }
       AppRouter.router.push(
         AppRouter.orderDetails,
-        extra: OrderDetailsArgs(
-          orderId: orderId,
-          deliveryTripId: _intOf(data, const ['deliveryTripId', 'tripId']),
-        ),
+        extra: OrderDetailsArgs(orderId: orderId),
       );
     } catch (e) {
       log('Error opening notification: $e');

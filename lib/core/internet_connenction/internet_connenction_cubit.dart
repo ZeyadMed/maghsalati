@@ -14,10 +14,13 @@ class InternetCubit extends Cubit<InternetState> {
     _startListening();
   }
 
-  void _checkConnectivity() async {
+  Future<void> _checkConnectivity() async {
     final result = await connectivity.checkConnectivity();
     _emitConnectionState(result);
   }
+
+  /// زرار إعادة المحاولة في شاشة انقطاع النت
+  Future<void> retry() async => _checkConnectivity();
 
   void _startListening() {
     streamSubscription = connectivity.onConnectivityChanged.listen((result) {

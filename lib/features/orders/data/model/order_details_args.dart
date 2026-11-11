@@ -7,15 +7,7 @@ class OrderDetailsArgs {
   final int orderId;
   final OrderModel? order;
 
-  /// رقم رحلة التسليم لو جاي من إشعار وصول المندوب،
-  /// بيتستخدم لو تفاصيل الطلب مابترجعش رحلة التسليم
-  final int? deliveryTripId;
-
-  const OrderDetailsArgs({
-    required this.orderId,
-    this.order,
-    this.deliveryTripId,
-  });
+  const OrderDetailsArgs({required this.orderId, this.order});
 
   factory OrderDetailsArgs.fromOrder(OrderModel order) =>
       OrderDetailsArgs(orderId: order.id, order: order);

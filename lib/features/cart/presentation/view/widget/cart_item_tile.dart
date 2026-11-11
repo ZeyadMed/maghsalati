@@ -10,7 +10,7 @@ import 'package:maghsalati/features/laundry_details/presentation/view/widget/qua
 
 /// سطر القطعة في السلة: الصورة والاسم والحساب، وعلى الجنب كاونتر الكمية
 /// كل + أو - بيبعت الكمية الجديدة للسيرفر عن طريق [onQuantityChanged]
-/// وأيقونة المسح بتشيل السطر كله عن طريق [onRemove]
+/// وأيقونة المسح (أو - والكمية 1) بتشيل السطر كله عن طريق [onRemove]
 /// وبيتستخدم في شيت السلة وتاب السلة، و [boxed] بيحطه جوا كارت
 class CartItemTile extends StatelessWidget {
   final CartItemModel item;
@@ -100,7 +100,10 @@ class CartItemTile extends StatelessWidget {
             child: QuantityCounter(
               quantity: item.quantity,
               onIncrement: () => onQuantityChanged(item.quantity + 1),
-              onDecrement: () => onQuantityChanged(item.quantity - 1),
+              // الـ - عند كمية 1 بيشيل القطعة من السلة بدل ما يبعت 0
+              onDecrement: () => item.quantity <= 1
+                  ? onRemove()
+                  : onQuantityChanged(item.quantity - 1),
               compact: true,
             ),
           ),

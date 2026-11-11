@@ -19,7 +19,6 @@ import 'package:maghsalati/core/theme/text_styles.dart';
 import 'package:maghsalati/features/orders/data/model/order_details_args.dart';
 import 'package:maghsalati/features/orders/data/model/order_model.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/adjustment_review_sheet.dart';
-import 'package:maghsalati/features/orders/presentation/view/widget/confirm_dropoff_sheet.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/order_completed_sheet.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/order_customer_card.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/order_help_card.dart';
@@ -40,9 +39,9 @@ import 'package:maghsalati/features/orders/presentation/view_model/payment_link_
 
 /// شاشة تفاصيل الطلب: بتتفتح برقم الطلب وبتجيبه من api/customer/orders/{id}
 /// الترتيب من فوق لتحت: الحالة الحالية (ولو فيه حاجة مطلوبة من العميل زرارها
-/// هنا)، رقم الطلب وتاريخه وشريط المراحل، الخريطة والمندوب، المغسلة، بيانات
-/// العميل والعنوان، الصور والملاحظات، القطع، طريقة الدفع، الحساب والفاتورة،
-/// وفي الآخر التواصل والمساعدة
+/// هنا)، رقم الطلب وتاريخه وشريط المراحل، الخريطة ومندوب الاستلام ومندوب
+/// التسليم كل واحد بحالته، المغسلة، بيانات العميل والعنوان، الصور والملاحظات،
+/// القطع، طريقة الدفع، الحساب والفاتورة، وفي الآخر التواصل والمساعدة
 /// بتتحدث بالسحب، ولما التطبيق يرجع من الخلفية، ولما ييجي تحديث للطلب ده
 /// والـ realtime بيبعت الطلب كله فبيتعرض على طول، ولو المغسلة بعتت تعديل
 /// شيت المراجعة بيتفتح لوحده، ولو نتيجة الدفع وصلت صفحة الدفع بتقفل
@@ -68,7 +67,13 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen>
 
   /// عشان شيت التعديل مايتفتحش مرتين (من الزرار ومن الحدث)
   bool _adjustmentSheetOpen = false;
-  bool _dropoffSheetOpen = false;
+
+  /// شيت التهنئة بيتفتح مرة واحدة بس لما الطلب يبقى Delivered قدام العميل
+  bool _completedSheetShown = false;
+
+  /// الرحلات اللي العميل قيّم مندوبها من الشاشة دي، عشان الزرار يختفي على طول
+  /// حتى لو السيرفر مابيبعتش isDriverReviewed
+  final Set<int> _ratedDriverTrips = {};
 
   int get _orderId => widget.args.orderId;
 
@@ -93,15 +98,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen>
   void _onRealtimeOrder(OrderModel order) {
     if (order.id != _orderId) return;
     final previousPayment = _cubit.state.data?.paymentStatus;
-    final wasAwaitingCode = _cubit.state.data?.awaitsDropoffCode ?? false;
     _cubit.apply(order);
-
-    // المندوب وصل وبقى مستني الكود: نفتح شيت الكود لو الشاشة دي قدام اليوزر
-    if (order.awaitsDropoffCode &&
-        !wasAwaitingCode &&
-        (ModalRoute.of(context)?.isCurrent ?? false)) {
-      _confirmDropoff(order);
-    }
 
     final settled =
         order.paymentStatus == PaymentStatus.successful ||
@@ -204,23 +201,47 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen>
     }
   }
 
-  Future<void> _confirmDropoff(OrderModel order) async {
-    if (_dropoffSheetOpen) return;
-    _dropoffSheetOpen = true;
-    final confirmed = await ConfirmDropoffSheet.show(
-      context,
-      orderId: order.id,
-      tripId: order.dropoffTripId ?? widget.args.deliveryTripId,
-    );
-    _dropoffSheetOpen = false;
-    if (!confirmed || !mounted) return;
+  /// المندوب أكد التسليم والطلب بقى Delivered والشاشة دي قدام العميل
+  /// (من الـ realtime أو التحديث): رسالة التهنئة مرة واحدة، ومنها العميل
+  /// يختار يقيّم المغسلة أو المندوب أو يقفل
+  Future<void> _onDelivered(OrderModel order) async {
+    if (_completedSheetShown) return;
+    if (!(ModalRoute.of(context)?.isCurrent ?? false)) return;
+    _completedSheetShown = true;
     _notifyOrderChanged();
-    // رسالة التهنئة مرة واحدة بعد التسليم، ومنها العميل يختار يقيّم أو لأ
-    final wantsRating = await OrderCompletedSheet.show(
+    final dropoffTrip = order.dropoffTrip;
+    final canRateDriver =
+        dropoffTrip != null &&
+        !_isDriverRated(dropoffTrip) &&
+        order.canRateDriver(dropoffTrip);
+    final choice = await OrderCompletedSheet.show(
       context,
-      canRate: order.laundryId > 0,
+      canRateLaundry: order.laundryId > 0,
+      canRateDriver: canRateDriver,
     );
-    if (wantsRating && mounted) _rateLaundry(order);
+    if (!mounted) return;
+    switch (choice) {
+      case OrderCompletedChoice.rateLaundry:
+        _rateLaundry(order);
+      case OrderCompletedChoice.rateDriver:
+        _rateDriver(dropoffTrip!);
+      case null:
+        break;
+    }
+  }
+
+  bool _isDriverRated(OrderTripModel trip) =>
+      trip.isDriverReviewed == true || _ratedDriverTrips.contains(trip.id);
+
+  Future<void> _rateDriver(OrderTripModel trip) async {
+    final submitted = await context.push<bool>(
+      AppRouter.rateDriver,
+      extra: trip,
+    );
+    if (submitted != true || !mounted) return;
+    setState(() => _ratedDriverTrips.add(trip.id));
+    context.showSuccessMessage('review_submitted'.tr());
+    _notifyOrderChanged();
   }
 
   Future<void> _rateLaundry(OrderModel order) async {
@@ -236,16 +257,32 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen>
 
   @override
   Widget build(BuildContext context) {
-    return BlocListener<PaymentLinkCubit, BaseState<String>>(
-      bloc: _paymentCubit,
-      listenWhen: (previous, current) => current.isSuccess || current.isFailure,
-      listener: (context, state) {
-        final url = state.data;
-        if (state.isSuccess && url != null) _openPayment(url);
-        if (state.isFailure) {
-          context.showErrorMessage(state.errorMessage ?? 'try_again'.tr());
-        }
-      },
+    return MultiBlocListener(
+      listeners: [
+        BlocListener<PaymentLinkCubit, BaseState<String>>(
+          bloc: _paymentCubit,
+          listenWhen: (previous, current) =>
+              current.isSuccess || current.isFailure,
+          listener: (context, state) {
+            final url = state.data;
+            if (state.isSuccess && url != null) _openPayment(url);
+            if (state.isFailure) {
+              context.showErrorMessage(state.errorMessage ?? 'try_again'.tr());
+            }
+          },
+        ),
+        // الطلب كان معروض بحالة تانية واتحول لـ Delivered (المندوب قفل الرحلة)
+        BlocListener<OrderDetailsCubit, BaseState<OrderModel>>(
+          bloc: _cubit,
+          listenWhen: (previous, current) {
+            final before = previous.data?.status;
+            return before != null &&
+                before != OrderStatus.delivered &&
+                current.data?.status == OrderStatus.delivered;
+          },
+          listener: (context, state) => _onDelivered(state.data!),
+        ),
+      ],
       child: Scaffold(
         backgroundColor: AppColors.secondaryColor,
         appBar: CustomAppBar(
@@ -281,7 +318,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen>
     BaseState<OrderModel> state,
     OrderModel order,
   ) {
-    final driverTrip = order.driverTrip;
+    final driverTrips = order.driverTrips;
 
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
@@ -294,15 +331,19 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen>
           OrderNextStepCard(
             order: order,
             onReviewAdjustment: () => _reviewAdjustment(order),
-            onConfirmDropoff: () => _confirmDropoff(order),
             onRateLaundry: () => _rateLaundry(order),
             onChooseAnotherLaundry: () => context.go(AppRouter.initialRoot),
           ),
           Gap(14.h),
           _buildSummaryCard(context, order),
-          if (driverTrip != null) ...[
+          if (driverTrips.isNotEmpty) ...[
             Gap(14.h),
-            OrderTrackingCard(order: order, trip: driverTrip),
+            OrderTrackingCard(
+              order: order,
+              trips: driverTrips,
+              onRateDriver: _rateDriver,
+              isDriverRated: _isDriverRated,
+            ),
           ],
           if (order.laundryName.isNotEmpty) ...[
             Gap(14.h),
