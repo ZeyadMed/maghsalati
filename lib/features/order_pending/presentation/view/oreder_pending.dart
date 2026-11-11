@@ -9,7 +9,6 @@ import 'package:go_router/go_router.dart';
 import 'package:maghsalati/core/bloc/base_bloc.dart';
 import 'package:maghsalati/core/router/app_router.dart';
 import 'package:maghsalati/core/service_locator/service_locator.dart';
-import 'package:maghsalati/core/style/app_colors.dart';
 import 'package:maghsalati/features/order_pending/data/model/pending_order_model.dart';
 import 'package:maghsalati/features/order_pending/presentation/view/widget/order_action_button.dart';
 import 'package:maghsalati/features/order_pending/presentation/view/widget/order_details_card.dart';
@@ -81,9 +80,14 @@ class _OrederPendingState extends State<OrederPending>
   }
 
   /// أي حالة بعد "جديدة" غير الرفض والإلغاء معناها إن المغسلة قبلت
-  /// و pushReplacement عشان لو رجع مايرجعش للانتظار
+  /// و pushReplacement عشان لو رجع مايرجعش للانتظار.
+  /// "بانتظار الدفع" قبل "جديدة" (الدفع لسه بيتأكد)، فبنفضل مستنيين
   void _onOrderLoaded(OrderModel order) {
-    if (_resultShown || order.status == OrderStatus.newOrder) return;
+    if (_resultShown ||
+        order.status == OrderStatus.newOrder ||
+        order.status == OrderStatus.pendingPayment) {
+      return;
+    }
     _resultShown = true;
     _pollTimer?.cancel();
     context.pushReplacement(
@@ -115,7 +119,6 @@ class _OrederPendingState extends State<OrederPending>
           current.isSuccess && current.data != null,
       listener: (context, state) => _onOrderLoaded(state.data!),
       child: Scaffold(
-        backgroundColor: AppColors.secondaryColor,
         body: SafeArea(
           child: LayoutBuilder(
             builder: (context, constraints) {

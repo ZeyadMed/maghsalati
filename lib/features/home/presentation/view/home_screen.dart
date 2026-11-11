@@ -63,7 +63,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Widget _buildBody(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.semiWhiteColor3,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

@@ -17,6 +17,8 @@ import 'package:maghsalati/features/cart/presentation/view/widget/pickup_contact
 import 'package:maghsalati/features/cart/presentation/view_model/cart_cubit.dart';
 import 'package:maghsalati/features/cart/presentation/view_model/confirm_cart_cubit.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view_model/selected_services_controller.dart';
+import 'package:maghsalati/features/orders/data/model/order_model.dart';
+import 'package:maghsalati/features/orders/presentation/view/widget/order_status_style.dart';
 import 'package:maghsalati/features/orders/presentation/view_model/order_updates.dart';
 import 'package:maghsalati/features/profile/data/model/user_model.dart';
 import 'package:maghsalati/features/profile/presentation/view_model/profile_cubit.dart';
@@ -24,21 +26,27 @@ import 'package:maghsalati/features/saved_addresses/data/model/saved_address_mod
 import 'package:maghsalati/features/saved_addresses/presentation/view/widget/address_type_icon.dart';
 import 'package:maghsalati/features/saved_addresses/presentation/view/widget/default_address_badge.dart';
 import 'package:maghsalati/features/saved_addresses/presentation/view_model/saved_addresses_cubit.dart';
+import 'package:maghsalati/features/wallet/presentation/view/widget/payment_method_selector.dart';
+import 'package:maghsalati/features/wallet/presentation/view_model/wallet_balance_cubit.dart';
 
-/// شيت بيانات الاستلام: العنوان الافتراضي (الطلب بيروح عليه بس ومابيتغيرش من هنا)
+/// شيت تأكيد الطلب: العنوان الافتراضي (الطلب بيروح عليه بس ومابيتغيرش من هنا)
 /// واسم ورقم اللي هيسلم الهدوم (صاحب الحساب جاهز، ويعدلهم لو حد تاني هيسلّم)،
-/// وبيبعتهم على api/customer/cart/confirm قبل ما الطلب يتأكد
+/// وطريقة الدفع (المحفظة برصيدها أو البوابة)، وبيبعتهم على
+/// api/customer/cart/confirm. الدفع بقى وقت إنشاء الطلب مش بعد المطابقة
 class ConfirmCartBottomSheet extends StatefulWidget {
-  const ConfirmCartBottomSheet({super.key});
+  /// إجمالي السلة، عشان نعرف رصيد المحفظة يكفي ولا لأ
+  final num total;
 
-  /// بيرجع رقم الطلب لو اتأكد من السيرفر (0 لو الرقم مش معروف)،
-  /// و null لو قفل الشيت من غير تأكيد
-  static Future<int?> show(BuildContext context) {
-    return showModalBottomSheet<int>(
+  const ConfirmCartBottomSheet({super.key, required this.total});
+
+  /// بيرجع الطلب لو اتأكد من السيرفر: بالمحفظة بيبقى New ومدفوع، وبالبوابة
+  /// PendingPayment ومعاه paymentUrl لسه هيتفتح. و null لو قفل من غير تأكيد
+  static Future<OrderModel?> show(BuildContext context, {required num total}) {
+    return showModalBottomSheet<OrderModel>(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (_) => const ConfirmCartBottomSheet(),
+      builder: (_) => ConfirmCartBottomSheet(total: total),
     );
   }
 
@@ -71,6 +79,12 @@ class _ConfirmCartBottomSheetState extends State<ConfirmCartBottomSheet> {
   /// خطأ من الشيت نفسه قبل ما الريكوست يتبعت، زي إن العنوان مش متحدد
   String? _localError;
 
+  /// singleton في get_it فمش بيتعمله close هنا
+  final WalletBalanceCubit _wallet = getIt<WalletBalanceCubit>();
+
+  /// null لحد ما العميل يختار، والافتراضي من [PaymentMethodSelector.effectiveMethod]
+  PaymentMethod? _paymentMethod;
+
   @override
   void initState() {
     super.initState();
@@ -79,6 +93,7 @@ class _ConfirmCartBottomSheetState extends State<ConfirmCartBottomSheet> {
     // و _onAddressesLoaded و _onProfileResult بيمسكوا الجديد
     _addresses.load();
     _profile.getProfile();
+    _wallet.load();
   }
 
   @override
@@ -152,17 +167,24 @@ class _ConfirmCartBottomSheetState extends State<ConfirmCartBottomSheet> {
         longitude: address.longitude,
         pickupContactName: contact.name.trim(),
         pickupContactPhoneNumber: contact.phone,
+        paymentMethod: PaymentMethodSelector.effectiveMethod(
+          _paymentMethod,
+          widget.total,
+        ),
       ),
     );
   }
 
   /// السلة اتفضت على السيرفر، فبنفضي الكميات اللي على الموبايل ونحدث السلة
-  /// ونبلّغ ليستة الطلبات إن فيه طلب جديد
-  void _onConfirmed(int orderId) {
+  /// ونبلّغ ليستة الطلبات إن فيه طلب جديد، ولو اتدفع من المحفظة نحدث الرصيد
+  void _onConfirmed(OrderModel order) {
     getIt<SelectedServicesController>().clear();
     getIt<CartCubit>().getCart();
     getIt<OrderUpdates>().notify();
-    Navigator.of(context).pop(orderId);
+    if (order.paymentMethod == PaymentMethod.wallet || order.isPaid) {
+      _wallet.load();
+    }
+    Navigator.of(context).pop(order);
   }
 
   @override
@@ -170,10 +192,10 @@ class _ConfirmCartBottomSheetState extends State<ConfirmCartBottomSheet> {
     // الخطأ بيتعرض جوه الشيت فوق الزرار، لأن السناك بار بيطلع تحت الشيت ومابيبانش
     return MultiBlocListener(
       listeners: [
-        BlocListener<ConfirmCartCubit, BaseState<int>>(
+        BlocListener<ConfirmCartCubit, BaseState<OrderModel>>(
           bloc: _cubit,
           listenWhen: (previous, current) => current.isSuccess,
-          listener: (context, state) => _onConfirmed(state.data ?? 0),
+          listener: (context, state) => _onConfirmed(state.data!),
         ),
         BlocListener<SavedAddressesCubit, BaseState<SavedAddressModel>>(
           bloc: _addresses,
@@ -270,6 +292,14 @@ class _ConfirmCartBottomSheetState extends State<ConfirmCartBottomSheet> {
               loadingPhone: _profile.state.isLoading,
               onEdit: _editContact,
             ),
+          SizedBox(height: 16.h),
+          Text('payment_method'.tr(), style: TextStyles.darkBold14),
+          SizedBox(height: 8.h),
+          PaymentMethodSelector(
+            selected: _paymentMethod,
+            amount: widget.total,
+            onChanged: (method) => setState(() => _paymentMethod = method),
+          ),
           SizedBox(height: 12.h),
           _buildNote('final_price_note'.tr()),
         ],
@@ -448,7 +478,7 @@ class _ConfirmCartBottomSheetState extends State<ConfirmCartBottomSheet> {
   }
 
   /// ملاحظة صغيرة بأيقونة، زي إن الإجمالي مبدئي (المغسلة بتعد القطع بعد
-  /// ما توصلها وممكن تبعت تعديل، والدفع بيتطلب بعدها)
+  /// ما توصلها: لو زاد العميل يدفع الفرق، ولو قلّ الفرق يرجع لمحفظته)
   Widget _buildNote(String text) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -468,7 +498,7 @@ class _ConfirmCartBottomSheetState extends State<ConfirmCartBottomSheet> {
   Widget _buildSubmitButton() {
     return Padding(
       padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 12.h),
-      child: BlocBuilder<ConfirmCartCubit, BaseState<int>>(
+      child: BlocBuilder<ConfirmCartCubit, BaseState<OrderModel>>(
         bloc: _cubit,
         builder: (context, state) {
           final error =
@@ -487,7 +517,11 @@ class _ConfirmCartBottomSheetState extends State<ConfirmCartBottomSheet> {
                 ),
                 SizedBox(height: 8.h),
               ],
-              _buildButton(state),
+              // الرصيد بيتحدث من الشحن جوه الاختيار، فالزرار بيتبني معاه
+              BlocBuilder<WalletBalanceCubit, BaseState<num>>(
+                bloc: _wallet,
+                builder: (context, _) => _buildButton(state),
+              ),
             ],
           );
         },
@@ -495,11 +529,17 @@ class _ConfirmCartBottomSheetState extends State<ConfirmCartBottomSheet> {
     );
   }
 
-  Widget _buildButton(BaseState<int> state) {
+  /// المحفظة متختارة ورصيدها معروف إنه مش كفاية، فالزرار مقفول لحد ما
+  /// يشحن أو يختار البوابة (التنبيه وزرار الشحن تحت الاختيار)
+  Widget _buildButton(BaseState<OrderModel> state) {
+    final walletShort = PaymentMethodSelector.isWalletShort(
+      _paymentMethod,
+      widget.total,
+    );
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        onPressed: state.isLoading ? null : _submit,
+        onPressed: state.isLoading || walletShort ? null : _submit,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primaryColor,
           foregroundColor: AppColors.whiteColor,
@@ -521,7 +561,11 @@ class _ConfirmCartBottomSheetState extends State<ConfirmCartBottomSheet> {
                   color: AppColors.whiteColor,
                 ),
               )
-            : Text('confirm_order'.tr(), style: TextStyles.whiteBold15),
+            : Text(
+                '${'confirm_and_pay'.tr()} • '
+                '${formatOrderPrice(widget.total)} ${'currency'.tr()}',
+                style: TextStyles.whiteBold15,
+              ),
       ),
     );
   }

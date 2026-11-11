@@ -13,8 +13,9 @@ import 'package:maghsalati/features/profile/presentation/view/widget/retry_error
 import 'package:maghsalati/features/profile/presentation/view_model/page_content_cubit.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-/// شاشة صفحة محتوى زي سياسة الخصوصية أو نطاق الخدمة أو مقدم الخدمة
+/// شاشة صفحة محتوى زي سياسة الخصوصية أو مقدم الخدمة
 /// المحتوى HTML جاي من اند بوينت [page]، وبيتعرض في كارت واحد وتحته تاريخ آخر تحديث
+/// نطاق الخدمة بيفتح ServiceAreaScreen بدلها (الراوتر هو اللي بيختار)
 class PageContentScreen extends StatefulWidget {
   final ContentPage page;
 
@@ -44,10 +45,9 @@ class _PageContentScreenState extends State<PageContentScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.secondaryColor,
       appBar: CustomAppBar(
         title: widget.page.titleKey,
-        backgroundColor: AppColors.secondaryColor,
+        backgroundColor: AppColors.scaffoldBackgroundColor,
       ),
       body: BlocBuilder<PageContentCubit, BaseState<PageContentModel>>(
         bloc: _cubit,

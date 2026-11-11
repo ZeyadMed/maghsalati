@@ -24,6 +24,7 @@ OrderModel _order({
   num? paidAmount,
   num? remainingAmount,
   num? totalPrice,
+  PaymentMethod? paymentMethod,
   List<OrderItemModel> items = const [],
 }) {
   return OrderModel(
@@ -39,8 +40,11 @@ OrderModel _order({
     platformFee: platformFee,
     discount: discount,
     couponCode: couponCode,
-    paidAmount: paidAmount,
-    remainingAmount: remainingAmount,
+    amountPaid: paidAmount,
+    outstandingAmount: remainingAmount,
+    // زي fromJson: من غير isPaid من السيرفر، الدفع الناجح يعني مدفوع
+    isPaid: paymentStatus == PaymentStatus.successful,
+    paymentMethod: paymentMethod,
     totalPrice: totalPrice,
     paymentStatus: paymentStatus,
   );
@@ -147,11 +151,20 @@ void main() {
       },
     );
 
-    test('طريقة الدفع: كاش لو السيرفر قال كده، وإلا إلكتروني', () {
-      expect(OrderInvoice.paymentMethodKeyOf('Cash'), 'payment_method_cash');
-      expect(OrderInvoice.paymentMethodKeyOf('TLync'), 'payment_method_online');
-      expect(OrderInvoice.paymentMethodKeyOf(''), 'payment_method_online');
-    });
+    test(
+      'طريقة الدفع: المحفظة أو البوابة، والطلب القديم من غير طريقة إلكتروني',
+      () {
+        expect(
+          OrderInvoice.paymentMethodKeyOf(PaymentMethod.wallet),
+          'payment_method_wallet',
+        );
+        expect(
+          OrderInvoice.paymentMethodKeyOf(PaymentMethod.gateway),
+          'payment_method_online',
+        );
+        expect(OrderInvoice.paymentMethodKeyOf(null), 'payment_method_online');
+      },
+    );
   });
 
   group('OrderModel', () {
@@ -174,17 +187,106 @@ void main() {
         'dropoffFee': 5,
         'platformFee': 2,
         'coupon': {'code': 'WELCOME', 'discount': -10},
-        'paidAmount': 52,
-        'paymentMethod': 'Cash',
+        'amountPaid': 52,
+        'paymentMethod': 'Wallet',
       });
 
       expect(order.platformFee, 2);
       expect(order.discount, 10);
       expect(order.couponCode, 'WELCOME');
-      expect(order.paidAmount, 52);
-      expect(order.remainingAmount, isNull);
-      expect(order.paymentMethod, 'Cash');
+      expect(order.amountPaid, 52);
+      expect(order.outstandingAmount, isNull);
+      expect(order.paymentMethod, PaymentMethod.wallet);
       expect(order.grandTotal, 52);
+    });
+  });
+
+  group('OrderModel payment', () {
+    test('طلب بوابة لسه مادفعش: PendingPayment ومعاه لينك ومستحق كله', () {
+      final order = OrderModel.fromJson({
+        'id': 9,
+        'status': 'PendingPayment',
+        'totalPrice': 80,
+        'paymentMethod': 'Gateway',
+        'amountPaid': 0,
+        'outstandingAmount': 80,
+        'paymentUrl': 'https://pay.example/abc',
+        'paymentStatus': 'Pending',
+        'isPaid': false,
+      });
+
+      expect(order.status, OrderStatus.pendingPayment);
+      expect(order.isCurrent, isTrue);
+      expect(order.paymentMethod, PaymentMethod.gateway);
+      expect(order.hasPaymentUrl, isTrue);
+      expect(order.needsPayment, isTrue);
+      expect(order.amountDue, 80);
+      expect(order.isDifferenceDue, isFalse);
+      expect(order.payActionKey, 'pay_now');
+      expect(order.statusLabelKey, 'status_pending_payment');
+      expect(order.currentStage, OrderStage.pending);
+    });
+
+    test('PendingPayment بالرقم 14', () {
+      expect(OrderStatusX.fromJson(14), OrderStatus.pendingPayment);
+    });
+
+    test('مدفوع من المحفظة: مفيش مستحق ولا لينك، والحالة ناجح', () {
+      final order = OrderModel.fromJson({
+        'id': 10,
+        'status': 'New',
+        'totalPrice': 50,
+        'paymentMethod': 'Wallet',
+        'amountPaid': 50,
+        'outstandingAmount': 0,
+        'paymentUrl': null,
+        'paymentStatus': null,
+        'isPaid': true,
+      });
+
+      expect(order.isPaid, isTrue);
+      expect(order.needsPayment, isFalse);
+      expect(order.hasPaymentUrl, isFalse);
+      expect(order.paymentStatus, PaymentStatus.successful);
+    });
+
+    test('السعر زاد بعد المطابقة: ادفع الفرق، والدفع المبدئي لسه ناجح', () {
+      final order = OrderModel.fromJson({
+        'id': 11,
+        'status': 'InProgress',
+        'totalPrice': 60,
+        'paymentMethod': 'Gateway',
+        'amountPaid': 50,
+        'outstandingAmount': 10,
+        'paymentStatus': 'Successful',
+        'isPaid': false,
+      });
+
+      expect(order.isPaid, isFalse);
+      expect(order.needsPayment, isTrue);
+      expect(order.amountDue, 10);
+      expect(order.isDifferenceDue, isTrue);
+      expect(order.payActionKey, 'pay_difference');
+    });
+
+    test('المرفوض والملغي مفيش عليهم دفع حتى لو فيه مبلغ', () {
+      for (final status in ['Rejected', 'Cancelled']) {
+        final order = OrderModel.fromJson({
+          'id': 12,
+          'status': status,
+          'outstandingAmount': 40,
+        });
+        expect(order.needsPayment, isFalse, reason: status);
+      }
+    });
+
+    test('الدفع المبدئي فشل: إعادة الدفع', () {
+      final order = _order(
+        status: OrderStatus.pendingPayment,
+        paymentStatus: PaymentStatus.failed,
+        remainingAmount: 125,
+      );
+      expect(order.payActionKey, 'retry_payment');
     });
   });
 

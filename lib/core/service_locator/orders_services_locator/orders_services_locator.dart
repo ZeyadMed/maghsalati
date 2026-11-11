@@ -7,7 +7,7 @@ import 'package:maghsalati/features/orders/presentation/view_model/adjustment_re
 import 'package:maghsalati/features/orders/presentation/view_model/order_details_cubit.dart';
 import 'package:maghsalati/features/orders/presentation/view_model/order_updates.dart';
 import 'package:maghsalati/features/orders/presentation/view_model/orders_cubit.dart';
-import 'package:maghsalati/features/orders/presentation/view_model/payment_link_cubit.dart';
+import 'package:maghsalati/features/orders/presentation/view_model/order_payment_cubit.dart';
 
 class OrdersServicesLocator {
   static Future<void> init({required GetIt getIt}) async {
@@ -22,7 +22,9 @@ class OrdersServicesLocator {
     getIt.registerFactory<AdjustmentResponseCubit>(
       () => AdjustmentResponseCubit(getIt()),
     );
-    getIt.registerFactory<PaymentLinkCubit>(() => PaymentLinkCubit(getIt()));
+    getIt.registerFactory<OrderPaymentCubit>(
+      () => OrderPaymentCubit(getIt(), getIt()),
+    );
     // الـ data source بتاعه متسجل مع تفاصيل المغسلة لأنه نفس بتاع عرض التقييمات
     getIt.registerFactory<AddReviewCubit>(() => AddReviewCubit(getIt()));
     getIt.registerFactory<AddDriverReviewCubit>(

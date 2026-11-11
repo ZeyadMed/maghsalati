@@ -68,7 +68,9 @@ abstract interface class Endpoints {
   static String cartItem(int cartItemId) => 'api/customer/cart/$cartItemId';
 
   /// POST: بتاخد { deliveryAddress, latitude, longitude, pickupContactName,
-  /// pickupContactPhoneNumber } وبتحول السلة لطلب
+  /// pickupContactPhoneNumber, paymentMethod } وبتحول السلة لطلب وبترجع OrderDto.
+  /// "Wallet": بيتخصم على طول والطلب New، والرصيد مش كفاية = 400.
+  /// "Gateway": الطلب PendingPayment ومعاه paymentUrl، ومش ظاهر للمغسلة لحد الدفع
   static const String confirmCart = 'api/customer/cart/confirm';
 
   /// GET: بتاخد PageIndex و PageSize في الـ query وبترجع طلبات العميل
@@ -84,10 +86,11 @@ abstract interface class Endpoints {
   static String respondToAdjustment(int orderId) =>
       'api/customer/orders/$orderId/adjustment/respond';
 
-  /// POST من غير body: بتعمل لينك دفع جديد لو الدفع فشل
-  /// مسموحة من InProgress لحد Delivered
-  static String retryPayment(int orderId) =>
-      'api/customer/orders/$orderId/retry-payment';
+  /// POST: بتاخد { paymentMethod } وبتدفع المستحق (outstandingAmount) وبترجع
+  /// OrderDto: الدفع المبدئي لطلب PendingPayment، أو فرق المطابقة.
+  /// "Gateway" بترجع paymentUrl جديد، و "Wallet" بتتسوّى على طول.
+  /// 400 لو الرصيد مش كفاية أو مفيش مستحق. بدل retry-payment اللي اتشالت
+  static String payOrder(int orderId) => 'api/customer/orders/$orderId/pay';
 
   /// POST: بتاخد { laundryId, rating, comment } وبتضيف تقييم للمغسلة
   static const String reviews = 'api/customer/reviews';
@@ -118,6 +121,19 @@ abstract interface class Endpoints {
   static String defaultSavedAddress(int addressId) =>
       'api/saved-addresses/$addressId/default';
 
+  // ****************************** Wallet ********************************
+  /// GET: بترجع { balance } جوه data
+  static const String wallet = 'api/customer/wallet';
+
+  /// GET: بتاخد PageIndex و PageSize في الـ query وبترجع الحركات جوه data.data
+  /// ومعاها pageIndex و totalPages. كل حركة { id, amount, type, orderId,
+  /// deliveryTripId, description, createdAt } والـ amount بالسالب للخصم
+  static const String walletTransactions = 'api/customer/wallet/transactions';
+
+  /// POST: بتاخد { code } وبترجع { amount, newBalance } جوه data.
+  /// الكود مش حساس لحالة الأحرف، والسيرفر بيرجع 400 برسالة عربي لو غلط أو مستخدم
+  static const String redeemWalletCode = 'api/customer/wallet/redeem';
+
   // ****************************** Notifications ********************************
   /// GET: بتاخد PageIndex و PageSize في الـ query وبترجع الإشعارات
   /// جوه data.data ومعاها pageIndex و totalPages
@@ -137,10 +153,9 @@ abstract interface class Endpoints {
       'api/customer/notifications/read-all';
 
   // ****************************** Payment ********************************
-  /// MyFatoorah بيحوّل صفحة الدفع على المسارين دول بعد الدفع ومعاهم ?paymentId
-  /// والباك بيسجل حالة الدفع لما الصفحة دي تتفتح، فالـ WebView لازم يسيبها تحمّل
-  static const String paymentCallback = 'api/payments/myfatoorah/callback';
-  static const String paymentError = 'api/payments/myfatoorah/error';
+  /// بوابة TLync بترجّع صفحة الدفع على المسار ده بعد الدفع (نجح أو فشل)،
+  /// فالـ WebView بيقفل لما يوصله. النتيجة نفسها بتيجي من OrderUpdated
+  static const String paymentReturn = 'api/payments/tlync/return';
 
   // ****************************** Realtime ********************************
   /// SignalR hub واحد للتلت أبلكيشنز، السيرفر بيبعت بس والعميل بيسمع

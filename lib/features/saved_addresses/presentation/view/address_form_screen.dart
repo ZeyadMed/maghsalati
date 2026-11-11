@@ -198,10 +198,9 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
       bloc: _saveCubit,
       listener: _onSaveStateChanged,
       child: Scaffold(
-        backgroundColor: AppColors.secondaryColor,
         appBar: CustomAppBar(
           title: _isEditing ? 'edit_address' : 'add_address',
-          backgroundColor: AppColors.secondaryColor,
+          backgroundColor: AppColors.scaffoldBackgroundColor,
         ),
         body: SafeArea(
           child: Form(

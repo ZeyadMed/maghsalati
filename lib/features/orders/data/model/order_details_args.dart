@@ -7,8 +7,21 @@ class OrderDetailsArgs {
   final int orderId;
   final OrderModel? order;
 
-  const OrderDetailsArgs({required this.orderId, this.order});
+  /// جاي من زرار "ادفع" في كارت الطلب، فشيت الدفع بيتفتح أول ما الشاشة تفتح
+  final bool openPayment;
 
-  factory OrderDetailsArgs.fromOrder(OrderModel order) =>
-      OrderDetailsArgs(orderId: order.id, order: order);
+  const OrderDetailsArgs({
+    required this.orderId,
+    this.order,
+    this.openPayment = false,
+  });
+
+  factory OrderDetailsArgs.fromOrder(
+    OrderModel order, {
+    bool openPayment = false,
+  }) => OrderDetailsArgs(
+    orderId: order.id,
+    order: order,
+    openPayment: openPayment,
+  );
 }

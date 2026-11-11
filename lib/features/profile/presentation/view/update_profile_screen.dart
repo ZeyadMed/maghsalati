@@ -127,10 +127,9 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
       bloc: _updateCubit,
       listener: _onUpdateStateChanged,
       child: Scaffold(
-        backgroundColor: AppColors.secondaryColor,
         appBar: CustomAppBar(
           title: 'edit_profile',
-          backgroundColor: AppColors.secondaryColor,
+          backgroundColor: AppColors.scaffoldBackgroundColor,
         ),
         body: SafeArea(
           child: Form(

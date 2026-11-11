@@ -59,7 +59,6 @@ class _LaundryReviewsScreenState extends State<LaundryReviewsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.secondaryColor,
       appBar: AppBar(
         backgroundColor: AppColors.whiteColor,
         elevation: 0,

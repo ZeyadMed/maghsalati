@@ -2,6 +2,7 @@ import 'package:maghsalati/core/http/endpoints.dart';
 
 /// الصفحات اللي محتواها بيتكتب من لوحة التحكم، وكلها اند بوينتس مفتوحة
 /// بترجع نفس الشكل { content, updatedAt } فبتتعرض بنفس الشاشة
+/// ما عدا [scopeOfService] اللي ليها شاشة بخريطة فوق النص (ServiceAreaScreen)
 enum ContentPage {
   privacyPolicy(Endpoints.privacyPolicy, 'privacy_policy'),
   scopeOfService(Endpoints.scopeOfService, 'service_area'),

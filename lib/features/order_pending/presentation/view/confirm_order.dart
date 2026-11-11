@@ -4,7 +4,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:maghsalati/core/router/app_router.dart';
-import 'package:maghsalati/core/style/app_colors.dart';
 import 'package:maghsalati/features/order_pending/data/model/pending_order_model.dart';
 import 'package:maghsalati/features/order_pending/presentation/view/widget/accepted_status_header.dart';
 import 'package:maghsalati/features/order_pending/presentation/view/widget/order_action_button.dart';
@@ -21,7 +20,6 @@ class ConfirmOrder extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.secondaryColor,
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {

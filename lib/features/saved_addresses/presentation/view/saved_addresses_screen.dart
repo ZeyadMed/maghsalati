@@ -110,10 +110,9 @@ class _SavedAddressesScreenState extends State<SavedAddressesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.secondaryColor,
       appBar: CustomAppBar(
         title: 'saved_addresses',
-        backgroundColor: AppColors.secondaryColor,
+        backgroundColor: AppColors.scaffoldBackgroundColor,
       ),
       body: BlocBuilder<SavedAddressesCubit, BaseState<SavedAddressModel>>(
         bloc: _cubit,

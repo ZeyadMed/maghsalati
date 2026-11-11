@@ -14,7 +14,7 @@ import 'package:maghsalati/core/style/assets.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
 import 'package:maghsalati/core/widget/loading_shimmer.dart';
 import 'package:maghsalati/features/cart/data/model/cart_model.dart';
-import 'package:maghsalati/features/cart/presentation/view/widget/confirm_cart_bottom_sheet.dart';
+import 'package:maghsalati/features/cart/presentation/view/checkout_flow.dart';
 import 'package:maghsalati/features/cart/presentation/view_model/cart_cubit.dart';
 import 'package:maghsalati/features/laundry_details/data/model/service_category_model.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view/category_items_screen.dart';
@@ -23,7 +23,7 @@ import 'package:maghsalati/features/laundry_details/presentation/view/widget/car
 import 'package:maghsalati/features/laundry_details/presentation/view/widget/cart_bottom_sheet.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view/widget/laundry_details_header.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view/widget/laundry_shortcuts_section.dart';
-import 'package:maghsalati/features/laundry_details/presentation/view/widget/reviews_button.dart';
+import 'package:maghsalati/features/laundry_details/presentation/view/widget/laundry_reviews_slider.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view/widget/services_section.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view/widget/working_hours_button.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view_model/laundry_services_cubit.dart';
@@ -187,30 +187,20 @@ class _LaundryDetailsState extends State<LaundryDetails> {
           // من شاشة الانتظار يلاقي نفسه في شاشة التفاصيل
           // والطلب بيتبني من سلة السيرفر اللي في الشيت، بعد ما بيانات
           // الاستلام تتبعت والسيرفر يأكده
-          onConfirmOrder: (cart) async {
-            final orderId = await ConfirmCartBottomSheet.show(context);
-            if (orderId == null || !mounted) return;
-            Navigator.of(context).maybePop();
-            context.push(
-              AppRouter.orderPending,
-              extra: cart.toPendingOrder(orderId: orderId),
-            );
-          },
+          onConfirmOrder: (cart) => CheckoutFlow.start(
+            context,
+            cart,
+            beforeNavigate: () => Navigator.of(context).maybePop(),
+          ),
         ),
       ),
     );
   }
 
-  /// بيفتح شيت بيانات الاستلام، ولما السيرفر يأكد الطلب بيودّي على شاشة
-  /// انتظار موافقة المغسلة ومعاه رقم الطلب (الشيت نفسه بيحدث السلة)
-  Future<void> _confirmCart(CartModel cart) async {
-    final orderId = await ConfirmCartBottomSheet.show(context);
-    if (orderId == null || !mounted) return;
-    context.push(
-      AppRouter.orderPending,
-      extra: cart.toPendingOrder(orderId: orderId),
-    );
-  }
+  /// شيت التأكيد والدفع، وبعدها شاشة انتظار المغسلة أو تفاصيل الطلب
+  /// لو لسه مادفعش ([CheckoutFlow])
+  Future<void> _confirmCart(CartModel cart) =>
+      CheckoutFlow.start(context, cart);
 
   /// شيت السلة اللي فيه تعديل الكميات والمسح، والتأكيد من جواه نفس زرار البار
   void _openCart() {
@@ -343,13 +333,12 @@ class _LaundryDetailsState extends State<LaundryDetails> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.secondaryColor,
       // الصورة لازم توصل لحد فوق خالص تحت الاستاتس بار
       extendBodyBehindAppBar: true,
       // ثابت تحت الصفحة، والأرقام جواه بتتحدث مع سلة السيرفر
       bottomNavigationBar: _buildBottomBar(),
       // الخدمات أول حاجة بعد الهيدر عشان اليوزر يختار ويطلب على طول،
-      // وبعدها مواعيد العمل والتقييمات، وفي الآخر نطاق الخدمة ومقدم الخدمة
+      // وبعدها مواعيد العمل وتعليقات العملاء، وفي الآخر نطاق الخدمة ومقدم الخدمة
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -380,24 +369,20 @@ class _LaundryDetailsState extends State<LaundryDetails> {
             Gap(16.h),
             Padding(
               padding: EdgeInsets.symmetric(horizontal: 16.w),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  WorkingHoursButton(
-                    laundryId: widget.laundryId,
-                    laundryName: widget.name,
-                  ),
-                  Gap(10.h),
-                  ReviewsButton(
-                    laundryId: widget.laundryId,
-                    laundryName: widget.name,
-                    rating: widget.rating,
-                    ratingCount: widget.ratingCount,
-                  ),
-                ],
+              child: WorkingHoursButton(
+                laundryId: widget.laundryId,
+                laundryName: widget.name,
               ),
             ),
             Gap(16.h),
+            // واصل لحرف الشاشة، والمسافة اللي تحته جواه عشان تختفي معاه
+            // لو مفيش تعليقات
+            LaundryReviewsSlider(
+              laundryId: widget.laundryId,
+              laundryName: widget.name,
+              rating: widget.rating,
+              ratingCount: widget.ratingCount,
+            ),
             LaundryShortcutsSection(onTap: _onShortcutTap),
             Gap(16.h),
           ],

@@ -84,10 +84,9 @@ class _OrderInvoiceScreenState extends State<OrderInvoiceScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.secondaryColor,
       appBar: CustomAppBar(
         title: 'invoice',
-        backgroundColor: AppColors.secondaryColor,
+        backgroundColor: AppColors.scaffoldBackgroundColor,
         actions: [
           Builder(
             builder: (buttonContext) => IconButton(

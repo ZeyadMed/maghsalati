@@ -1,4 +1,7 @@
 import 'package:maghsalati/core/helpers/json_reader.dart';
+import 'package:maghsalati/features/orders/data/model/payment_method.dart';
+
+export 'package:maghsalati/features/orders/data/model/payment_method.dart';
 
 /// حالة الطلب زي الـ enum اللي في الباك (OrderStatus)، بنفس الترتيب
 /// القيم اللي بتيجي من السيرفر بتتحول للـ enum ده بـ [OrderStatusX.fromJson]
@@ -42,6 +45,10 @@ enum OrderStatus {
 
   /// ملغية (13) - نهائية، والطلب بيروح على تاب السابقة
   cancelled,
+
+  /// بانتظار الدفع (14) - طلب بوابة دفع لسه مادفعش الدفع المبدئي،
+  /// ومش ظاهر للمغسلة لحد ما الدفع ينجح
+  pendingPayment,
 }
 
 extension OrderStatusX on OrderStatus {
@@ -62,6 +69,7 @@ extension OrderStatusX on OrderStatus {
     OrderStatus.pickupFailed => 'status_pickup_failed',
     OrderStatus.deliveryFailed => 'status_delivery_failed',
     OrderStatus.cancelled => 'status_cancelled',
+    OrderStatus.pendingPayment => 'status_pending_payment',
   };
 
   /// المسلّمة والمرفوضة والملغية خلصوا خلاص، فبيروحوا على تاب السابقة
@@ -69,17 +77,6 @@ extension OrderStatusX on OrderStatus {
     OrderStatus.delivered ||
     OrderStatus.rejected ||
     OrderStatus.cancelled => true,
-    _ => false,
-  };
-
-  /// الدفع بيتطلب بعد المطابقة، وإعادة الدفع مسموحة من InProgress لحد Delivered
-  bool get isPaymentPhase => switch (this) {
-    OrderStatus.inProgress ||
-    OrderStatus.ready ||
-    OrderStatus.awaitingDropoffCollection ||
-    OrderStatus.outForDelivery ||
-    OrderStatus.deliveryFailed ||
-    OrderStatus.delivered => true,
     _ => false,
   };
 
@@ -102,6 +99,7 @@ extension OrderStatusX on OrderStatus {
         11 => OrderStatus.pickupFailed,
         12 => OrderStatus.deliveryFailed,
         13 => OrderStatus.cancelled,
+        14 => OrderStatus.pendingPayment,
         _ => OrderStatus.newOrder,
       };
     }
@@ -118,14 +116,17 @@ extension OrderStatusX on OrderStatus {
       'pickupfailed' => OrderStatus.pickupFailed,
       'deliveryfailed' => OrderStatus.deliveryFailed,
       'cancelled' || 'canceled' => OrderStatus.cancelled,
+      'pendingpayment' => OrderStatus.pendingPayment,
       _ => OrderStatus.newOrder,
     };
   }
 }
 
-/// حالة الدفع، ماشية لوحدها جنب حالة الطلب ومش بتوقف شغل المغسلة
+/// حالة آخر محاولة دفع (paymentStatus)، و null في الـ JSON بتبقى none.
+/// الطلب مدفوع بالكامل ولا لأ ده من [OrderModel.isPaid] مش من هنا، لأن الدفع
+/// المبدئي ممكن يبقى نجح وفرق المطابقة لسه مستحق
 enum PaymentStatus {
-  /// الدفع لسه ماتطلبش، بيتطلب بعد ما المغسلة تطابق القطع
+  /// مفيش محاولة دفع (زي الدفع من المحفظة)
   none,
   pending,
   successful,
@@ -296,7 +297,8 @@ class OrderTripModel {
   bool get hasDriverLocation =>
       isValidCoordinate(driverLatitude, driverLongitude);
 
-  bool get hasDriverRating => driverRating != null || driverReviewsCount != null;
+  bool get hasDriverRating =>
+      driverRating != null || driverReviewsCount != null;
 
   /// فيه إحصائية واحدة على الأقل للمندوب (تقييم أو رحلات أو مدة شغل)
   bool get hasDriverStats =>
@@ -353,20 +355,19 @@ class OrderTripModel {
       driverPlateNumber: json
           .pickString(['driverPlateNumber', 'plateNumber'], inside: ['driver'])
           .trim(),
-      driverTotalTrips: json.pickInt([
-        'driverTotalTrips',
-        'totalTrips',
-        'completedTripsCount',
-      ], inside: ['driver']),
+      driverTotalTrips: json.pickInt(
+        ['driverTotalTrips', 'totalTrips', 'completedTripsCount'],
+        inside: ['driver'],
+      ),
       driverRating: json
           .pickNum(['driverAverageRating', 'averageRating'], inside: ['driver'])
           ?.toDouble()
           .clamp(0, 5)
           .toDouble(),
-      driverReviewsCount: json.pickInt([
-        'driverReviewsCount',
-        'reviewsCount',
-      ], inside: ['driver']),
+      driverReviewsCount: json.pickInt(
+        ['driverReviewsCount', 'reviewsCount'],
+        inside: ['driver'],
+      ),
       // createdAt بتاع الرحلة نفسها تاريخ الرحلة، فبنقراه من "driver" بس
       driverJoinedAt: DateTime.tryParse(
         '${json['driverJoinedAt'] ?? driver.pick(['joinedAt', 'createdAt']) ?? ''}',
@@ -653,20 +654,25 @@ class OrderModel {
   /// كود الكوبون اللي اتخصم بيه، فاضي لو مفيش
   final String couponCode;
 
-  /// اللي اتدفع فعلًا والباقي، null لو السيرفر مابعتهومش
-  /// والفاتورة بتحسبهم من حالة الدفع ([OrderInvoice])
-  final num? paidAmount;
-  final num? remainingAmount;
+  /// مجموع اللي اتدفع (amountPaid)، null لو السيرفر مابعتهوش
+  final num? amountPaid;
 
-  /// طريقة الدفع زي ما السيرفر بيبعتها، فاضية لو مابعتهاش
-  final String paymentMethod;
+  /// المتبقي على العميل (outstandingAmount): الدفع المبدئي لو مادفعش،
+  /// أو فرق المطابقة لو السعر زاد. 0 يعني مدفوع بالكامل
+  final num? outstandingAmount;
+
+  /// اتدفع بالكامل (isPaid من السيرفر)
+  final bool isPaid;
+
+  /// الطريقة اللي العميل اختارها وقت الطلب، null للطلبات القديمة
+  final PaymentMethod? paymentMethod;
 
   /// الإجمالي زي ما السيرفر حسبه، ولو مابعتهوش بنحسبه
   final num? totalPrice;
 
   final PaymentStatus paymentStatus;
 
-  /// لينك الدفع، بيتعمل بعد المطابقة وبيتجدد مع إعادة الدفع
+  /// لينك بوابة الدفع، null لو الدفع من المحفظة. بيتجدد مع كل /pay بالبوابة
   final String? paymentUrl;
 
   /// سبب الرفض لو المغسلة كتبته
@@ -708,9 +714,10 @@ class OrderModel {
     this.platformFee = 0,
     this.discount = 0,
     this.couponCode = '',
-    this.paidAmount,
-    this.remainingAmount,
-    this.paymentMethod = '',
+    this.amountPaid,
+    this.outstandingAmount,
+    this.isPaid = false,
+    this.paymentMethod,
     this.totalPrice,
     this.paymentStatus = PaymentStatus.none,
     this.paymentUrl,
@@ -748,7 +755,7 @@ class OrderModel {
   /// المطابقة والتعديل بيحصلوا بعد ما الهدوم توصل، والفشل بيفضل على المرحلة
   /// اللي وقف عندها، والمسلّم بيبقى مكتمل لما يتدفع
   OrderStage? get currentStage => switch (status) {
-    OrderStatus.newOrder => OrderStage.pending,
+    OrderStatus.newOrder || OrderStatus.pendingPayment => OrderStage.pending,
     OrderStatus.awaitingPickup ||
     OrderStatus.pickupFailed => OrderStage.awaitingHandover,
     OrderStatus.atLaundryPendingMatch ||
@@ -792,14 +799,41 @@ class OrderModel {
     OrderStatus.rejected ||
     OrderStatus.pickupFailed ||
     OrderStatus.deliveryFailed ||
-    OrderStatus.cancelled => status.labelKey,
+    OrderStatus.cancelled ||
+    OrderStatus.pendingPayment => status.labelKey,
     _ => stageLabelKey(currentStage!),
   };
 
-  bool get isPaid => paymentStatus == PaymentStatus.successful;
+  /// المبلغ المستحق دلوقتي. لو السيرفر مابعتش outstandingAmount (طلب قديم)
+  /// بنحسبه من الإجمالي واللي اتدفع
+  num get amountDue {
+    final outstanding = outstandingAmount;
+    if (outstanding != null) return outstanding < 0 ? 0 : outstanding;
+    if (isPaid) return 0;
+    final due = grandTotal - (amountPaid ?? 0);
+    return due < 0 ? 0 : due;
+  }
 
-  /// الدفع اتطلب ولسه ماتمش، وحالة الطلب نفسها مش بتستنى الدفع
-  bool get needsPayment => status.isPaymentPhase && !isPaid;
+  /// فيه مبلغ مستحق، فزرار الدفع بيظهر (ادفع الآن / ادفع الفرق).
+  /// المرفوض والملغي مفيش دفع عليهم حتى لو السيرفر سايب مبلغ
+  bool get needsPayment =>
+      amountDue > 0 &&
+      status != OrderStatus.rejected &&
+      status != OrderStatus.cancelled;
+
+  /// المستحق فرق مطابقة مش الدفع المبدئي: الطلب عدّى مرحلة الدفع الأولى
+  /// واتدفع منه حاجة قبل كده (الطلبات القديمة اللي مااتدفعش منها حاجة بتبان
+  /// "ادفع الآن" مش "ادفع الفرق")
+  bool get isDifferenceDue =>
+      needsPayment &&
+      status != OrderStatus.pendingPayment &&
+      (amountPaid ?? 0) > 0;
+
+  /// مفتاح زرار الدفع حسب نوع المستحق، ولو آخر محاولة فشلت "إعادة الدفع"
+  String get payActionKey {
+    if (isDifferenceDue) return 'pay_difference';
+    return paymentStatus == PaymentStatus.failed ? 'retry_payment' : 'pay_now';
+  }
 
   bool get hasPaymentUrl => paymentUrl != null && paymentUrl!.isNotEmpty;
 
@@ -821,7 +855,9 @@ class OrderModel {
     final tripStatus = trip.status.toLowerCase();
     if (trip.isConfirmed) return DriverTripStage.completed;
     if (status ==
-            (isPickup ? OrderStatus.pickupFailed : OrderStatus.deliveryFailed) ||
+            (isPickup
+                ? OrderStatus.pickupFailed
+                : OrderStatus.deliveryFailed) ||
         tripStatus.contains('fail')) {
       return DriverTripStage.failed;
     }
@@ -919,8 +955,9 @@ class OrderModel {
     platformFee: platformFee,
     discount: discount,
     couponCode: couponCode,
-    paidAmount: paidAmount,
-    remainingAmount: remainingAmount,
+    amountPaid: amountPaid,
+    outstandingAmount: outstandingAmount,
+    isPaid: isPaid,
     paymentMethod: paymentMethod,
     totalPrice: totalPrice,
     paymentStatus: paymentStatus,
@@ -932,16 +969,33 @@ class OrderModel {
     adjustment: adjustment,
   );
 
-  /// حقول الفاتورة (رسوم المنصة والخصم والمدفوع وطريقة الدفع) مش في الـ API
-  /// لسه، فبنقرا الأسماء المتوقعة، والكوبون ممكن ييجي object جوه "coupon".
+  /// حقول الدفع (paymentMethod و amountPaid و outstandingAmount و isPaid)
+  /// من OrderDto الرسمي. رسوم المنصة والخصم مش في الـ API لسه، فبنقرا الأسماء
+  /// المتوقعة، والكوبون ممكن ييجي object جوه "coupon".
   /// ونفس الكلام للوجو المغسلة ورقمها وموقعها، وموقع العميل والملاحظات والصور
   factory OrderModel.fromJson(Map<String, dynamic> json) {
     final laundry = json.pickMap(['laundry']) ?? const <String, dynamic>{};
     final customer = json.pickMap(['customer']) ?? const <String, dynamic>{};
     final coupon = json.pickMap(['coupon']) ?? const <String, dynamic>{};
-    final paymentStatus = json['isPaid'] == true
-        ? PaymentStatus.successful
-        : PaymentStatusX.fromJson(json['paymentStatus']);
+    final outstanding = json.pickNum([
+      'outstandingAmount',
+      'remainingAmount',
+      'amountDue',
+    ]);
+    // isPaid من السيرفر هو الأساس، ولو مش موجود: مفيش مستحق أو الدفع نجح
+    final isPaid = switch (json['isPaid']) {
+      final bool paid => paid,
+      _ =>
+        outstanding != null
+            ? outstanding <= 0
+            : PaymentStatusX.fromJson(json['paymentStatus']) ==
+                  PaymentStatus.successful,
+    };
+    var paymentStatus = PaymentStatusX.fromJson(json['paymentStatus']);
+    // الدفع من المحفظة مالوش paymentStatus، فبنعرضه ناجح لو اتدفع
+    if (paymentStatus == PaymentStatus.none && isPaid) {
+      paymentStatus = PaymentStatus.successful;
+    }
 
     return OrderModel(
       id: (json['id'] as num?)?.toInt() ?? 0,
@@ -1022,16 +1076,15 @@ class OrderModel {
         json.pickString(['couponCode', 'promoCode']),
         coupon.pickString(['code']),
       ]),
-      paidAmount: json.pickNum(['paidAmount', 'amountPaid', 'totalPaid']),
-      remainingAmount: json.pickNum([
-        'remainingAmount',
-        'amountDue',
-        'dueAmount',
-      ]),
-      paymentMethod: json.pickString(['paymentMethod', 'paymentMethodName']),
+      amountPaid: json.pickNum(['amountPaid', 'paidAmount']),
+      outstandingAmount: outstanding,
+      isPaid: isPaid,
+      paymentMethod: PaymentMethodX.fromJson(json['paymentMethod']),
       totalPrice: json['totalPrice'] as num?,
       paymentStatus: paymentStatus,
-      paymentUrl: json['paymentUrl']?.toString(),
+      paymentUrl: json.pickString(['paymentUrl']).isEmpty
+          ? null
+          : json.pickString(['paymentUrl']),
       rejectionReason: json.pickString(['rejectionReason', 'rejectReason']),
       items: ((json['items'] as List?) ?? [])
           .map((e) => OrderItemModel.fromJson(e as Map<String, dynamic>))

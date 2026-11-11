@@ -36,10 +36,9 @@ class AccountSettingsScreen extends StatelessWidget {
           }
         },
         child: Scaffold(
-          backgroundColor: AppColors.secondaryColor,
           appBar: CustomAppBar(
             title: 'account_settings',
-            backgroundColor: AppColors.secondaryColor,
+            backgroundColor: AppColors.scaffoldBackgroundColor,
           ),
           body: ListView(
             padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 24.h),

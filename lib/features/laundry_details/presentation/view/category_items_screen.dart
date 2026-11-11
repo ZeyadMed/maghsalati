@@ -127,7 +127,6 @@ class _CategoryItemsScreenState extends State<CategoryItemsScreen>
       listener: (context, state) =>
           context.showErrorMessage(state.errorMessage ?? 'try_again'.tr()),
       child: Scaffold(
-        backgroundColor: AppColors.whiteColor,
         appBar: _buildAppBar(),
         bottomNavigationBar: _withCart(_buildBottomBar),
         body: Column(

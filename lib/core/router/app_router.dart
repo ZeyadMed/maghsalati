@@ -33,8 +33,10 @@ import 'package:maghsalati/features/profile/presentation/view/account_settings_s
 import 'package:maghsalati/features/profile/presentation/view/more_screen.dart';
 import 'package:maghsalati/features/profile/presentation/view/contact_us_screen.dart';
 import 'package:maghsalati/features/profile/presentation/view/page_content_screen.dart';
+import 'package:maghsalati/features/profile/presentation/view/service_area_screen.dart';
 import 'package:maghsalati/features/profile/presentation/view/profile_screen.dart';
 import 'package:maghsalati/features/profile/presentation/view/update_profile_screen.dart';
+import 'package:maghsalati/features/wallet/presentation/view/wallet_screen.dart';
 import 'package:maghsalati/features/saved_addresses/data/model/saved_address_model.dart';
 import 'package:maghsalati/features/saved_addresses/presentation/view/address_form_screen.dart';
 import 'package:maghsalati/features/saved_addresses/presentation/view/map_picker_screen.dart';
@@ -74,6 +76,7 @@ abstract class AppRouter {
   static const String updateProfileScreen = '/updateProfileScreen';
   static const String accountSettings = '/accountSettings';
   static const String moreScreen = '/moreScreen';
+  static const String wallet = '/wallet';
   static const String contentPage = '/contentPage';
   static const String savedAddresses = '/savedAddresses';
   static const String addressForm = '/addressForm';
@@ -235,11 +238,17 @@ abstract class AppRouter {
         path: moreScreen,
         builder: (context, state) => const MoreScreen(),
       ),
+      GoRoute(path: wallet, builder: (context, state) => const WalletScreen()),
       // الصفحة (سياسة الخصوصية، نطاق الخدمة، مقدم الخدمة) بتتبعت في state.extra
+      // نطاق الخدمة ليه شاشة لوحده بالخريطة، والباقي بنفس شاشة المحتوى
       GoRoute(
         path: contentPage,
-        builder: (context, state) =>
-            PageContentScreen(page: state.extra as ContentPage),
+        builder: (context, state) {
+          final page = state.extra as ContentPage;
+          return page == ContentPage.scopeOfService
+              ? const ServiceAreaScreen()
+              : PageContentScreen(page: page);
+        },
       ),
       GoRoute(
         path: savedAddresses,

@@ -40,10 +40,9 @@ class AboutUsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.secondaryColor,
       appBar: CustomAppBar(
         title: 'about_app',
-        backgroundColor: AppColors.secondaryColor,
+        backgroundColor: AppColors.scaffoldBackgroundColor,
       ),
       body: SingleChildScrollView(
         padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 24.h),

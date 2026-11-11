@@ -6,12 +6,15 @@ import 'package:maghsalati/core/style/app_colors.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
 import 'package:maghsalati/features/orders/data/model/order_model.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/order_sheet_frame.dart';
+import 'package:maghsalati/features/orders/presentation/view/widget/order_status_style.dart';
 
 /// كارت "الخطوة الجاية" في تفاصيل الطلب: الطلب فين دلوقتي، ولو فيه حاجة
-/// مطلوبة من العميل (يراجع تعديل، يقيّم، يختار مغسلة تانية)
-/// بيظهر زرارها. الدفع ليه كارت لوحده لأنه ماشي جنب الحالة مش جزء منها
+/// مطلوبة من العميل (يدفع، يراجع تعديل، يقيّم، يختار مغسلة تانية)
+/// بيظهر زرارها. أي مبلغ مستحق بيتقدم على أي حاجة تانية، لأن الطلب مش بيوصل
+/// المغسلة قبل الدفع المبدئي، والمغسلة مش بتجهّزه قبل دفع الفرق
 class OrderNextStepCard extends StatelessWidget {
   final OrderModel order;
+  final VoidCallback onPay;
   final VoidCallback onReviewAdjustment;
   final VoidCallback onRateLaundry;
   final VoidCallback onChooseAnotherLaundry;
@@ -19,6 +22,7 @@ class OrderNextStepCard extends StatelessWidget {
   const OrderNextStepCard({
     super.key,
     required this.order,
+    required this.onPay,
     required this.onReviewAdjustment,
     required this.onRateLaundry,
     required this.onChooseAnotherLaundry,
@@ -71,10 +75,10 @@ class OrderNextStepCard extends StatelessWidget {
               ),
             ],
           ),
-          if (step.actionKey != null && step.onAction != null) ...[
+          if (step.actionLabel != null && step.onAction != null) ...[
             Gap(14.h),
             SheetButton(
-              label: step.actionKey!.tr(),
+              label: step.actionLabel!,
               color: step.needsAction ? step.color : AppColors.primaryColor,
               onPressed: step.onAction,
             ),
@@ -97,7 +101,49 @@ class OrderNextStepCard extends StatelessWidget {
     );
   }
 
-  _NextStep _stepOf(OrderModel order) => switch (order.status) {
+  _NextStep _stepOf(OrderModel order) {
+    if (order.needsPayment) return _paymentStepOf(order);
+    return _statusStepOf(order);
+  }
+
+  /// فيه مبلغ مستحق: الدفع المبدئي (الطلب لسه ماوصلش المغسلة)
+  /// أو فرق المطابقة (المغسلة مستنياه عشان تجهّز)
+  _NextStep _paymentStepOf(OrderModel order) {
+    final amount = '${formatOrderPrice(order.amountDue)} ${'currency'.tr()}';
+    final (titleKey, bodyKey) = switch (order) {
+      _ when order.status == OrderStatus.pendingPayment => (
+        'next_step_pending_payment_title',
+        'next_step_pending_payment_body',
+      ),
+      _ when order.isDifferenceDue => (
+        'next_step_difference_due_title',
+        'next_step_difference_due_body',
+      ),
+      _ => ('next_step_payment_due_title', 'next_step_payment_due_body'),
+    };
+    return _NextStep(
+      icon: Icons.payments_outlined,
+      color: order.paymentStatus == PaymentStatus.failed
+          ? AppColors.redColor2
+          : AppColors.orangeColor,
+      titleKey: titleKey,
+      body: order.paymentStatus == PaymentStatus.failed
+          ? 'payment_failed_message'.tr()
+          : bodyKey.tr(),
+      actionLabel: '${order.payActionKey.tr()} • $amount',
+      onAction: onPay,
+      needsAction: true,
+    );
+  }
+
+  _NextStep _statusStepOf(OrderModel order) => switch (order.status) {
+    // اتدفع والنتيجة لسه بتوصل (المستحق 0 والحالة لسه ماتغيرتش)
+    OrderStatus.pendingPayment => _NextStep(
+      icon: Icons.schedule_rounded,
+      color: AppColors.orangeColor,
+      titleKey: 'status_pending_payment',
+      body: 'payment_processing'.tr(),
+    ),
     OrderStatus.newOrder => _NextStep(
       icon: Icons.hourglass_top_rounded,
       color: AppColors.orangeColor,
@@ -128,7 +174,7 @@ class OrderNextStepCard extends StatelessWidget {
       color: AppColors.orangeColor,
       titleKey: 'next_step_adjustment_title',
       body: 'next_step_adjustment_body'.tr(),
-      actionKey: 'review_adjustment',
+      actionLabel: 'review_adjustment'.tr(),
       onAction: onReviewAdjustment,
       needsAction: true,
     ),
@@ -177,7 +223,7 @@ class OrderNextStepCard extends StatelessWidget {
       // نفس رسالة الشكر اللي بتظهر في شيت التهنئة بعد التسليم
       body: 'order_completed_message'.tr(args: ['app_name'.tr()]),
       // التقييم محتاج رقم المغسلة، فمن غيره الزرار مابيظهرش
-      actionKey: order.laundryId > 0 ? 'rate_laundry' : null,
+      actionLabel: order.laundryId > 0 ? 'rate_laundry'.tr() : null,
       onAction: onRateLaundry,
     ),
     OrderStatus.rejected => _NextStep(
@@ -187,7 +233,7 @@ class OrderNextStepCard extends StatelessWidget {
       body: order.rejectionReason.isNotEmpty
           ? '${'rejection_reason'.tr()}: ${order.rejectionReason}'
           : 'next_step_rejected_body'.tr(),
-      actionKey: 'choose_another_laundry',
+      actionLabel: 'choose_another_laundry'.tr(),
       onAction: onChooseAnotherLaundry,
     ),
     // الفشل مش مطلوب فيه حاجة من العميل، المغسلة هي اللي بتقرر الخطوة الجاية
@@ -208,7 +254,7 @@ class OrderNextStepCard extends StatelessWidget {
       color: AppColors.greyColor3,
       titleKey: 'next_step_cancelled_title',
       body: 'next_step_cancelled_body'.tr(),
-      actionKey: 'choose_another_laundry',
+      actionLabel: 'choose_another_laundry'.tr(),
       onAction: onChooseAnotherLaundry,
     ),
   };
@@ -222,7 +268,9 @@ class _NextStep {
 
   /// نص جاهز مش مفتاح، عشان سبب الرفض بييجي من السيرفر
   final String body;
-  final String? actionKey;
+
+  /// نص الزرار جاهز، عشان زرار الدفع فيه المبلغ
+  final String? actionLabel;
   final VoidCallback? onAction;
 
   /// الطلب واقف على رد العميل
@@ -233,7 +281,7 @@ class _NextStep {
     required this.color,
     required this.titleKey,
     required this.body,
-    this.actionKey,
+    this.actionLabel,
     this.onAction,
     this.needsAction = false,
   });

@@ -113,7 +113,6 @@ class _OtpScreenState extends State<OtpScreen> {
         BlocProvider(create: (context) => getIt<ResendCodeCubit>()),
       ],
       child: Scaffold(
-        backgroundColor: AppColors.secondaryColor,
         body: BlocListener<ResendCodeCubit, BaseState<String>>(
           listener: (context, state) {
             if (state.isSuccess) {

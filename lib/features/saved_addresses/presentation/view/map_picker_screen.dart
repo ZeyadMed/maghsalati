@@ -249,7 +249,6 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.whiteColor,
       body: Column(
         children: [
           // الدبوس في نص الخريطة نفسها مش نص الشاشة،

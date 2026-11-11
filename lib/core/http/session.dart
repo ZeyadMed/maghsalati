@@ -4,6 +4,7 @@ import 'package:maghsalati/core/service_locator/service_locator.dart';
 import 'package:maghsalati/features/home/presentation/view_model/location_controller.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view_model/selected_services_controller.dart';
 import 'package:maghsalati/features/saved_addresses/presentation/view_model/saved_addresses_cubit.dart';
+import 'package:maghsalati/features/wallet/presentation/view_model/wallet_balance_cubit.dart';
 
 /// مكان واحد لكل حاجة تخص جلسة المستخدم: مسح بياناته عند الخروج
 /// أو انتهاء الجلسة، ومنع التحويل للوجين أكتر من مرة.
@@ -28,6 +29,10 @@ abstract final class Session {
     }
     if (getIt.isRegistered<LocationController>()) {
       getIt<LocationController>().reset();
+    }
+    // رصيد المحفظة بتاع الحساب ده
+    if (getIt.isRegistered<WalletBalanceCubit>()) {
+      getIt<WalletBalanceCubit>().reset();
     }
   }
 

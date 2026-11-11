@@ -74,12 +74,12 @@ class OrderInvoice {
     required this.total,
   });
 
-  /// المدفوع والباقي من السيرفر لو بعتهم، وإلا من حالة الدفع:
-  /// مدفوع يبقى الإجمالي كله اتدفع، ومش مدفوع يبقى الإجمالي كله باقي
+  /// المدفوع (amountPaid) والباقي (outstandingAmount) من السيرفر، ولو طلب
+  /// قديم مابعتهمش: مدفوع يبقى الإجمالي كله اتدفع، وإلا الإجمالي كله باقي
   factory OrderInvoice.fromOrder(OrderModel order) {
     final items = order.items.where((item) => !item.isReturned).toList();
     final total = order.grandTotal;
-    final paid = order.paidAmount ?? (order.isPaid ? total : 0);
+    final paid = order.amountPaid ?? (order.isPaid ? total : 0);
 
     return OrderInvoice(
       orderId: order.id,
@@ -98,7 +98,7 @@ class OrderInvoice {
       discount: order.discount,
       couponCode: order.couponCode,
       paidAmount: paid,
-      remainingAmount: order.remainingAmount ?? math.max(total - paid, 0),
+      remainingAmount: order.outstandingAmount ?? math.max(total - paid, 0),
       total: total,
     );
   }
@@ -136,9 +136,7 @@ class OrderInvoice {
     InvoiceLine('invoice_final_total', total, InvoiceLineKind.total),
   ];
 
-  /// الدفع في التطبيق أونلاين بس، فلو السيرفر مابعتش الطريقة بنعرضها إلكتروني
-  static String paymentMethodKeyOf(String method) =>
-      method.toLowerCase().contains('cash')
-      ? 'payment_method_cash'
-      : 'payment_method_online';
+  /// المحفظة أو البوابة، ولو السيرفر مابعتش الطريقة (طلب قديم) بنعرضها إلكتروني
+  static String paymentMethodKeyOf(PaymentMethod? method) =>
+      (method ?? PaymentMethod.gateway).labelKey;
 }

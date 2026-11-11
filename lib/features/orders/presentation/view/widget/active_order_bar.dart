@@ -12,6 +12,7 @@ import 'package:maghsalati/core/style/app_colors.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
 import 'package:maghsalati/features/orders/data/model/order_details_args.dart';
 import 'package:maghsalati/features/orders/data/model/order_model.dart';
+import 'package:maghsalati/features/orders/presentation/view/widget/order_status_style.dart';
 import 'package:maghsalati/features/orders/presentation/view_model/active_orders_cubit.dart';
 import 'package:maghsalati/features/orders/presentation/view_model/order_updates.dart';
 
@@ -62,13 +63,16 @@ class _ActiveOrderBarState extends State<ActiveOrderBar>
     super.dispose();
   }
 
-  /// اللي مستني العميل (تعديل أو المندوب عند الباب) الأول، وإلا الأحدث
+  /// الطلب مستني العميل: دفع مستحق أو تعديل أو المندوب عند الباب
+  static bool _needsAction(OrderModel order) =>
+      order.needsPayment ||
+      order.status == OrderStatus.adjustmentPendingApproval ||
+      order.isDriverAtDoor;
+
+  /// اللي مستني العميل الأول، وإلا الأحدث
   OrderModel _featured(List<OrderModel> orders) {
     for (final order in orders) {
-      if (order.status == OrderStatus.adjustmentPendingApproval ||
-          order.isDriverAtDoor) {
-        return order;
-      }
+      if (_needsAction(order)) return order;
     }
     return orders.reduce((a, b) => b.date.isAfter(a.date) ? b : a);
   }
@@ -89,9 +93,7 @@ class _ActiveOrderBarState extends State<ActiveOrderBar>
   }
 
   Widget _buildBar(OrderModel order, int othersCount) {
-    final needsAction =
-        order.status == OrderStatus.adjustmentPendingApproval ||
-        order.isDriverAtDoor;
+    final needsAction = _needsAction(order);
 
     return Padding(
       padding: EdgeInsets.fromLTRB(12.w, 6.h, 12.w, 8.h),
@@ -102,9 +104,13 @@ class _ActiveOrderBarState extends State<ActiveOrderBar>
         shadowColor: AppColors.primaryColor.withValues(alpha: 0.4),
         child: InkWell(
           borderRadius: BorderRadius.circular(16.r),
+          // الدفع المستحق بيفتح شيته على طول
           onTap: () => context.push(
             AppRouter.orderDetails,
-            extra: OrderDetailsArgs.fromOrder(order),
+            extra: OrderDetailsArgs.fromOrder(
+              order,
+              openPayment: order.needsPayment,
+            ),
           ),
           child: Padding(
             padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
@@ -182,8 +188,12 @@ class _ActiveOrderBarState extends State<ActiveOrderBar>
           overflow: TextOverflow.ellipsis,
         ),
         Gap(1.h),
+        // المستحق بيتقال بدل اسم المرحلة، لأنه اللي واقف عليه الطلب
         Text(
-          order.statusLabelKey.tr(),
+          order.needsPayment
+              ? '${order.payActionKey.tr()} • '
+                    '${formatOrderPrice(order.amountDue)} ${'currency'.tr()}'
+              : order.statusLabelKey.tr(),
           style: TextStyles.darkRegular12.copyWith(
             color: AppColors.whiteColor.withValues(alpha: 0.85),
           ),

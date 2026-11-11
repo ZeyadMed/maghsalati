@@ -29,10 +29,9 @@ class MoreScreen extends StatelessWidget {
           if (state.isSuccess) context.go(AppRouter.login);
         },
         child: Scaffold(
-          backgroundColor: AppColors.secondaryColor,
           appBar: CustomAppBar(
             title: 'more',
-            backgroundColor: AppColors.secondaryColor,
+            backgroundColor: AppColors.scaffoldBackgroundColor,
           ),
           body: ListView(
             padding: EdgeInsets.only(top: 8.h, bottom: 24.h),

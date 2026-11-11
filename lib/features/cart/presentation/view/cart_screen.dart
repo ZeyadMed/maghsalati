@@ -4,7 +4,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:maghsalati/core/bloc/base_bloc.dart';
-import 'package:maghsalati/core/router/app_router.dart';
 import 'package:maghsalati/core/service_locator/service_locator.dart';
 import 'package:maghsalati/core/style/app_colors.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
@@ -12,7 +11,7 @@ import 'package:maghsalati/features/cart/data/model/cart_model.dart';
 import 'package:maghsalati/features/cart/presentation/view/widget/cart_item_tile.dart';
 import 'package:maghsalati/features/cart/presentation/view/widget/cart_state_view.dart';
 import 'package:maghsalati/features/cart/presentation/view/widget/cart_summary.dart';
-import 'package:maghsalati/features/cart/presentation/view/widget/confirm_cart_bottom_sheet.dart';
+import 'package:maghsalati/features/cart/presentation/view/checkout_flow.dart';
 import 'package:maghsalati/features/cart/presentation/view_model/cart_cubit.dart';
 
 /// تاب السلة في البوتوم ناف: بيعرض سلة العميل الجاية من api/customer/cart
@@ -35,16 +34,11 @@ class _CartScreenState extends State<CartScreen> {
     _cartCubit.getCart();
   }
 
-  /// بيفتح شيت بيانات الاستلام، ولما السيرفر يأكد الطلب بيودي على شاشة
-  /// انتظار موافقة المغسلة ومعاه رقم الطلب (الشيت نفسه بيحدث السلة)
+  /// شيت التأكيد والدفع، وبعدها شاشة انتظار المغسلة أو تفاصيل الطلب
+  /// لو لسه مادفعش ([CheckoutFlow])
   Future<void> _onConfirmOrder(CartModel cart) async {
     if (cart.isEmpty) return;
-    final orderId = await ConfirmCartBottomSheet.show(context);
-    if (orderId == null || !mounted) return;
-    context.push(
-      AppRouter.orderPending,
-      extra: cart.toPendingOrder(orderId: orderId),
-    );
+    await CheckoutFlow.start(context, cart);
   }
 
   /// بنأكد قبل مسح السلة كلها عشان مايمسحهاش بالغلط
@@ -83,7 +77,6 @@ class _CartScreenState extends State<CartScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.secondaryColor,
       appBar: _buildAppBar(),
       body: RefreshIndicator(
         color: AppColors.primaryColor,

@@ -4,7 +4,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:maghsalati/core/common_widget/label.dart';
 import 'package:maghsalati/core/service_locator/service_locator.dart';
-import 'package:maghsalati/core/style/app_colors.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
 import 'package:maghsalati/features/home/presentation/view/widget/home_header.dart';
 import 'package:maghsalati/features/home/presentation/view/widget/nearby_laundries_list.dart';
@@ -75,7 +74,6 @@ class SearchScreenState extends State<SearchScreen>
     return BlocProvider.value(
       value: _laundriesCubit,
       child: Scaffold(
-        backgroundColor: AppColors.semiWhiteColor3,
         body: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

@@ -103,10 +103,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.secondaryColor,
       appBar: CustomAppBar(
         title: 'notifications',
-        backgroundColor: AppColors.secondaryColor,
+        backgroundColor: AppColors.scaffoldBackgroundColor,
         actions: [_buildActionsMenu()],
       ),
       body: BlocBuilder<NotificationsCubit, BaseState<NotificationModel>>(

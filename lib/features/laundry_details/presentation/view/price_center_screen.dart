@@ -41,7 +41,6 @@ class _PriceCenterScreenState extends State<PriceCenterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.semiWhiteColor3,
       appBar: CustomAppBar(
         title: 'price_center',
         backgroundColor: AppColors.whiteColor,

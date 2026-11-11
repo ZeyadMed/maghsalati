@@ -74,10 +74,9 @@ class _RateDriverScreenState extends State<RateDriverScreen> {
             : null;
 
         return Scaffold(
-          backgroundColor: AppColors.secondaryColor,
           appBar: CustomAppBar(
             title: 'rate_driver',
-            backgroundColor: AppColors.secondaryColor,
+            backgroundColor: AppColors.scaffoldBackgroundColor,
           ),
           // الزرار جوه الـ body مش bottomNavigationBar عشان يطلع فوق الكيبورد
           body: Column(

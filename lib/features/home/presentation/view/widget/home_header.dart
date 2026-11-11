@@ -42,6 +42,9 @@ class HomeHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final searchController = this.searchController;
     return Container(
+      // بياخد عرض الشاشة كله حتى لو الأب Column بـ crossAxisAlignment.start،
+      // وإلا هيدر الرئيسية بيصغر على قد زرار "اختر مكانك" ويسيب فاضي على الشمال
+      width: double.infinity,
       padding: EdgeInsetsDirectional.only(
         top: MediaQuery.of(context).padding.top + 12.h,
         bottom: 20.h,

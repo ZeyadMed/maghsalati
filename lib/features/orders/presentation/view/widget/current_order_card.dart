@@ -6,6 +6,7 @@ import 'package:maghsalati/core/style/app_colors.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
 import 'package:maghsalati/features/orders/data/model/order_model.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/order_items_chips.dart';
+import 'package:maghsalati/features/orders/presentation/view/widget/order_pay_button.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/order_progress_tracker.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/order_status_badge.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/order_status_style.dart';
@@ -16,10 +17,14 @@ class CurrentOrderCard extends StatelessWidget {
   final OrderModel order;
   final VoidCallback onDetailsTap;
 
+  /// فيه مبلغ مستحق ([OrderModel.needsPayment]): بيفتح التفاصيل وشيت الدفع
+  final VoidCallback? onPay;
+
   const CurrentOrderCard({
     super.key,
     required this.order,
     required this.onDetailsTap,
+    this.onPay,
   });
 
   @override
@@ -48,6 +53,7 @@ class CurrentOrderCard extends StatelessWidget {
           Divider(height: 1.h, color: AppColors.lightGreyColor),
           Gap(10.h),
           _buildFooter(),
+          ...orderPaySection(order, onPay),
         ],
       ),
     );

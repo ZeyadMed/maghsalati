@@ -18,6 +18,7 @@ import 'package:maghsalati/core/service_locator/notifications_services_locator/n
 import 'package:maghsalati/core/service_locator/orders_services_locator/orders_services_locator.dart';
 import 'package:maghsalati/core/service_locator/profile_services_locator/profile_services_locator.dart';
 import 'package:maghsalati/core/service_locator/saved_addresses_services_locator/saved_addresses_services_locator.dart';
+import 'package:maghsalati/core/service_locator/wallet_services_locator/wallet_services_locator.dart';
 import 'package:maghsalati/core/http/api_consumer.dart';
 import 'package:maghsalati/core/http/auth_interceptor.dart';
 import 'package:maghsalati/core/http/endpoints.dart';
@@ -75,6 +76,7 @@ class SharedServiceLocator {
     await NotificationsServicesLocator.init(getIt: getIt);
     await ProfileServicesLocator.init(getIt: getIt);
     await SavedAddressesServicesLocator.init(getIt: getIt);
+    await WalletServicesLocator.init(getIt: getIt);
 
     // اتصال SignalR واحد للتطبيق كله، بيبعت أحداث الطلبات في OrderUpdates
     getIt.registerLazySingleton<RealtimeService>(

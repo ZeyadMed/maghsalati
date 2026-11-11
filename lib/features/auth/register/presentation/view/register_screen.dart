@@ -94,7 +94,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
         BlocProvider(create: (context) => getIt<CityCubit>()..getCities()),
       ],
       child: Scaffold(
-        backgroundColor: AppColors.secondaryColor,
         body: BlocConsumer<RegisterBloc, BaseState<RegisterModel>>(
           listener: (context, state) {
             if (state.isSuccess) {

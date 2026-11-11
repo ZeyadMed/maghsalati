@@ -60,10 +60,11 @@ class _OrdersScreenState extends State<OrdersScreen> {
   }
 
   /// الطلب من الليستة بيتعرض على طول، والتفاصيل بتتجاب من السيرفر
-  void _openDetails(OrderModel order) {
+  /// [openPayment] من زرار الدفع في الكارت، فشيت الدفع بيتفتح على طول
+  void _openDetails(OrderModel order, {bool openPayment = false}) {
     context.push(
       AppRouter.orderDetails,
-      extra: OrderDetailsArgs.fromOrder(order),
+      extra: OrderDetailsArgs.fromOrder(order, openPayment: openPayment),
     );
   }
 
@@ -75,7 +76,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.secondaryColor,
       body: BlocBuilder<OrdersCubit, BaseState<OrderModel>>(
         bloc: _cubit,
         builder: (context, state) {
@@ -154,10 +154,12 @@ class _OrdersScreenState extends State<OrdersScreen> {
             ? CurrentOrderCard(
                 order: order,
                 onDetailsTap: () => _openDetails(order),
+                onPay: () => _openDetails(order, openPayment: true),
               )
             : PreviousOrderCard(
                 order: order,
                 onDetailsTap: () => _openDetails(order),
+                onPay: () => _openDetails(order, openPayment: true),
               );
       },
     );

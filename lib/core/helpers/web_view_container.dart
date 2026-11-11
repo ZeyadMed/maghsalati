@@ -139,7 +139,6 @@ class _WebViewContainerState extends State<WebViewContainer> {
         if (!didPop) _confirmLeave();
       },
       child: Scaffold(
-        backgroundColor: AppColors.whiteColor,
         appBar: CustomAppBar(
           title: widget.args.title,
           backgroundColor: AppColors.whiteColor,

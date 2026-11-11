@@ -1,5 +1,4 @@
 import 'package:maghsalati/core/helpers/generic_data_source.dart';
-import 'package:maghsalati/core/helpers/json_reader.dart';
 import 'package:maghsalati/core/http/either.dart';
 import 'package:maghsalati/core/http/endpoints.dart';
 import 'package:maghsalati/core/http/failure.dart';
@@ -20,8 +19,12 @@ abstract interface class OrdersDataSource {
     required bool approve,
   });
 
-  /// بيرجع لينك الدفع الجديد لو السيرفر بعته في الرد، و null لو مابعتهوش
-  Future<Either<Failure, String?>> retryPayment(int orderId);
+  /// بيدفع المستحق على الطلب بالطريقة دي وبيرجع الطلب بعد الدفع:
+  /// البوابة فيها paymentUrl يتفتح، والمحفظة بتتسوّى على طول
+  Future<Either<Failure, OrderModel>> payOrder({
+    required int orderId,
+    required PaymentMethod method,
+  });
 
   /// تقييم مندوب رحلة خلصت، والتعليق اختياري
   Future<Either<Failure, void>> addDriverReview({
@@ -69,13 +72,14 @@ class OrdersDataSourceImpl implements OrdersDataSource {
   }
 
   @override
-  Future<Either<Failure, String?>> retryPayment(int orderId) async {
-    final result = await _genericDataSource.postData<Map<String, dynamic>>(
-      endpoint: Endpoints.retryPayment(orderId),
-    );
-    return result.fold(
-      (failure) => Left(failure),
-      (response) => Right(_paymentUrlOf(response)),
+  Future<Either<Failure, OrderModel>> payOrder({
+    required int orderId,
+    required PaymentMethod method,
+  }) {
+    return _genericDataSource.postData<OrderModel>(
+      endpoint: Endpoints.payOrder(orderId),
+      data: {'paymentMethod': method.apiValue},
+      fromJson: orderFromResponse,
     );
   }
 
@@ -91,15 +95,15 @@ class OrdersDataSourceImpl implements OrdersDataSource {
     );
     return result.fold((failure) => Left(failure), (_) => const Right(null));
   }
+}
 
-  /// postData بترجع الريسبونس كله، واللينك ممكن ييجي نص في data
-  /// أو جوه data.paymentUrl أو في الروت، لأن شكل الرد مش متوثق
-  static String? _paymentUrlOf(Map<String, dynamic> response) {
-    final data = response['data'];
-    if (data is String && data.startsWith('http')) return data;
-    final url = data is Map<String, dynamic>
-        ? data.pickString(['paymentUrl', 'url', 'invoiceUrl'])
-        : response.pickString(['paymentUrl']);
-    return url.isEmpty ? null : url;
-  }
+/// postData بترجع الريسبونس كله، والـ OrderDto جوه data (أو في الروت لو
+/// السيرفر مابيلفهوش). من غير رقم طلب الرد مالوش لازمة فبنعتبره غلط
+OrderModel orderFromResponse(Map<String, dynamic> response) {
+  final data = response['data'];
+  final order = OrderModel.fromJson(
+    data is Map<String, dynamic> ? data : response,
+  );
+  if (order.id <= 0) throw const FormatException('Order response has no id');
+  return order;
 }

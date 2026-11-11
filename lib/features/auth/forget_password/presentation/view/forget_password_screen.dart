@@ -52,7 +52,6 @@ class _ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
     return BlocProvider(
       create: (context) => getIt<ForgotPasswordBloc>(),
       child: Scaffold(
-        backgroundColor: AppColors.secondaryColor,
         body: BlocConsumer<ForgotPasswordBloc, BaseState<String>>(
           listener: (context, state) {
             if (state.isSuccess) {

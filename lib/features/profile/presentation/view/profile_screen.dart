@@ -13,11 +13,14 @@ import 'package:maghsalati/features/profile/data/model/user_model.dart';
 import 'package:maghsalati/features/profile/presentation/view/widget/customer_service_card.dart';
 import 'package:maghsalati/features/profile/presentation/view/widget/profile_header.dart';
 import 'package:maghsalati/features/profile/presentation/view/widget/profile_list_section.dart';
+import 'package:maghsalati/features/profile/presentation/view/widget/profile_wallet_card.dart';
 import 'package:maghsalati/features/profile/presentation/view_model/contact_us_cubit.dart';
 import 'package:maghsalati/features/profile/presentation/view_model/profile_cubit.dart';
+import 'package:maghsalati/features/wallet/presentation/view_model/wallet_balance_cubit.dart';
 
 /// شاشة حسابي على شكل التطبيق الصيني: هيدر بصورة باهتة فيه بيانات المستخدم،
-/// وتحته مجموعات سطور بيضا بعرض الشاشة، و"المزيد"، وسطر الاتصال بخدمة العملاء
+/// وتحته رصيد المحفظة، ومجموعات سطور بيضا بعرض الشاشة، و"المزيد"، وسطر
+/// الاتصال بخدمة العملاء
 /// بيانات المستخدم جاية من api/customer/profile
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -37,6 +40,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.initState();
     _profileCubit.getProfile();
     _contactsCubit.getContacts();
+    // singleton، فالرصيد بيتحدث هنا وفي أي شاشة تانية بتعرضه
+    getIt<WalletBalanceCubit>().load();
   }
 
   @override
@@ -64,7 +69,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.secondaryColor,
       // مكان الـ status bar بلون الشاشة، والصورة بتبدأ من تحته زي التصميم
       body: SafeArea(
         bottom: false,
@@ -82,6 +86,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   onEdit: _openUpdateProfile,
                 ),
               ),
+              const ProfileWalletCard(),
+              SizedBox(height: 12.h),
               _buildMainSection(),
               SizedBox(height: 12.h),
               ProfileListSection(

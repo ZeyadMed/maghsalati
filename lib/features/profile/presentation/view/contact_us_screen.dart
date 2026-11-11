@@ -40,10 +40,9 @@ class _ContactUsScreenState extends State<ContactUsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.secondaryColor,
       appBar: CustomAppBar(
         title: 'support_help',
-        backgroundColor: AppColors.secondaryColor,
+        backgroundColor: AppColors.scaffoldBackgroundColor,
       ),
       body: BlocBuilder<ContactUsCubit, BaseState<ContactInfoModel>>(
         bloc: _cubit,

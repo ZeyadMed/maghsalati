@@ -10,14 +10,13 @@ import 'package:go_router/go_router.dart';
 import 'package:maghsalati/core/bloc/base_bloc.dart';
 import 'package:maghsalati/core/common_widget/custom_app_bar.dart';
 import 'package:maghsalati/core/extensions/context_extension.dart';
-import 'package:maghsalati/core/helpers/web_view_container.dart';
-import 'package:maghsalati/core/http/endpoints.dart';
 import 'package:maghsalati/core/router/app_router.dart';
 import 'package:maghsalati/core/service_locator/service_locator.dart';
 import 'package:maghsalati/core/style/app_colors.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
 import 'package:maghsalati/features/orders/data/model/order_details_args.dart';
 import 'package:maghsalati/features/orders/data/model/order_model.dart';
+import 'package:maghsalati/features/orders/presentation/view/gateway_payment.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/adjustment_review_sheet.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/order_completed_sheet.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/order_customer_card.dart';
@@ -32,10 +31,10 @@ import 'package:maghsalati/features/orders/presentation/view/widget/order_sectio
 import 'package:maghsalati/features/orders/presentation/view/widget/order_sheet_frame.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/order_status_style.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/order_tracking_card.dart';
+import 'package:maghsalati/features/orders/presentation/view/widget/pay_order_sheet.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/rate_laundry_sheet.dart';
 import 'package:maghsalati/features/orders/presentation/view_model/order_details_cubit.dart';
 import 'package:maghsalati/features/orders/presentation/view_model/order_updates.dart';
-import 'package:maghsalati/features/orders/presentation/view_model/payment_link_cubit.dart';
 
 /// شاشة تفاصيل الطلب: بتتفتح برقم الطلب وبتجيبه من api/customer/orders/{id}
 /// الترتيب من فوق لتحت: الحالة الحالية (ولو فيه حاجة مطلوبة من العميل زرارها
@@ -44,7 +43,8 @@ import 'package:maghsalati/features/orders/presentation/view_model/payment_link_
 /// القطع، طريقة الدفع، الحساب والفاتورة، وفي الآخر التواصل والمساعدة
 /// بتتحدث بالسحب، ولما التطبيق يرجع من الخلفية، ولما ييجي تحديث للطلب ده
 /// والـ realtime بيبعت الطلب كله فبيتعرض على طول، ولو المغسلة بعتت تعديل
-/// شيت المراجعة بيتفتح لوحده، ولو نتيجة الدفع وصلت صفحة الدفع بتقفل
+/// شيت المراجعة بيتفتح لوحده. أي مبلغ مستحق (outstandingAmount) زراره في
+/// كارت الخطوة الجاية، وبيفتح شيت الدفع (محفظة أو بوابة)
 class OrderDetailsScreen extends StatefulWidget {
   final OrderDetailsArgs args;
 
@@ -57,13 +57,12 @@ class OrderDetailsScreen extends StatefulWidget {
 class _OrderDetailsScreenState extends State<OrderDetailsScreen>
     with WidgetsBindingObserver {
   final OrderDetailsCubit _cubit = getIt<OrderDetailsCubit>();
-  final PaymentLinkCubit _paymentCubit = getIt<PaymentLinkCubit>();
   late final StreamSubscription<int?> _updatesSubscription;
   late final StreamSubscription<OrderModel> _ordersSubscription;
   late final StreamSubscription<int> _adjustmentsSubscription;
 
-  /// موجود بس وصفحة الدفع مفتوحة، وبيقفلها لما النتيجة توصل من الـ realtime
-  ValueNotifier<String?>? _paymentCloseSignal;
+  /// شيت الدفع أو صفحة البوابة مفتوحين، عشان الدفع مايبدأش مرتين
+  bool _paying = false;
 
   /// عشان شيت التعديل مايتفتحش مرتين (من الزرار ومن الحدث)
   bool _adjustmentSheetOpen = false;
@@ -91,21 +90,20 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen>
     _adjustmentsSubscription = updates.adjustments.listen((orderId) {
       if (orderId == _orderId) _onAdjustmentCreated();
     });
+    // جاي من زرار الدفع في كارت الطلب، فشيت الدفع بيتفتح على طول
+    final initial = widget.args.order;
+    if (widget.args.openPayment && initial != null && initial.needsPayment) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _pay(_cubit.state.data ?? initial);
+      });
+    }
   }
 
-  /// OrderUpdated للطلب ده: بيتعرض على طول، ولو صفحة الدفع مفتوحة
-  /// والدفع نجح أو فشل بنقفلها و [_openPayment] يكمل ويعرض النتيجة
+  /// OrderUpdated للطلب ده: بيتعرض على طول. لو صفحة البوابة مفتوحة
+  /// [GatewayPayment] هو اللي بيقفلها لما النتيجة توصل
   void _onRealtimeOrder(OrderModel order) {
     if (order.id != _orderId) return;
-    final previousPayment = _cubit.state.data?.paymentStatus;
     _cubit.apply(order);
-
-    final settled =
-        order.paymentStatus == PaymentStatus.successful ||
-        order.paymentStatus == PaymentStatus.failed;
-    if (settled && order.paymentStatus != previousPayment) {
-      _paymentCloseSignal?.value = 'realtime';
-    }
   }
 
   /// AdjustmentCreated: بيوصل بعد OrderUpdated بحالة AdjustmentPendingApproval
@@ -137,10 +135,8 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen>
     _updatesSubscription.cancel();
     _ordersSubscription.cancel();
     _adjustmentsSubscription.cancel();
-    // _paymentCloseSignal بيتقفل في _openPayment لما صفحة الدفع ترجع
     getIt<OrderUpdates>().unwatch(_orderId);
     _cubit.close();
-    _paymentCubit.close();
     super.dispose();
   }
 
@@ -156,48 +152,36 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen>
     context.showSuccessMessage(
       (approved ? 'adjustment_approved' : 'adjustment_rejected').tr(),
     );
-    // بعد الرد الطلب بيبقى InProgress ولينك الدفع بيتعمل، فكارت الدفع بيظهر
+    // بعد الرد الطلب بيبقى InProgress: لو السعر زاد فيه فرق مستحق وزرار
+    // "ادفع الفرق" بيظهر، ولو قلّ الفرق رجع للمحفظة
     _notifyOrderChanged();
   }
 
-  /// لما اللينك يجهز الـ listener بيفتح صفحة الدفع
-  void _pay(OrderModel order) => _paymentCubit.prepare(order);
+  /// شيت الدفع بيبعت /pay بالطريقة اللي اختارها: المحفظة بتتسوّى على طول،
+  /// والبوابة بترجع لينك بيتفتح في [GatewayPayment] وبعدها بنعرض النتيجة
+  Future<void> _pay(OrderModel order) async {
+    if (_paying || !order.needsPayment) return;
+    _paying = true;
+    try {
+      final paid = await PayOrderSheet.show(context, order);
+      if (paid == null || !mounted) return;
+      _cubit.apply(paid);
 
-  /// صفحة MyFatoorah بتقفل لوحدها لما توصل للـ callback أو الـ error،
-  /// أو لما نتيجة الدفع توصل من الـ realtime الأول ([_paymentCloseSignal])،
-  /// وبعدها بنجيب حالة الدفع الحقيقية من السيرفر بدل ما نعتمد على اللينك
-  Future<void> _openPayment(String url) async {
-    final closeSignal = ValueNotifier<String?>(null);
-    _paymentCloseSignal = closeSignal;
-    final finishedAt = await context.push<String>(
-      AppRouter.webViewContainer,
-      extra: WebViewArgs(
-        url: url,
-        title: 'payment',
-        finishUrls: const [Endpoints.paymentCallback, Endpoints.paymentError],
-        closeSignal: closeSignal,
-      ),
-    );
-    _paymentCloseSignal = null;
-    closeSignal.dispose();
-    if (finishedAt == null || !mounted) return;
-
-    await _cubit.refresh();
-    if (!mounted) return;
-    _notifyOrderChanged();
-
-    final status = _cubit.state.data?.paymentStatus;
-    if (status == PaymentStatus.successful) {
-      context.showSuccessMessage('payment_success'.tr());
-    } else if (status == PaymentStatus.failed ||
-        finishedAt.contains(Endpoints.paymentError)) {
-      context.showErrorMessage('payment_failed_message'.tr());
-    } else {
-      context.showSuccessMessage(
-        'payment_processing'.tr(),
-        color: AppColors.orangeColor,
-        icon: Icons.schedule_rounded,
-      );
+      if (!paid.isPaid && paid.hasPaymentUrl) {
+        final result = await GatewayPayment.open(
+          context,
+          orderId: _orderId,
+          url: paid.paymentUrl!,
+        );
+        if (!mounted) return;
+        if (result.order != null) _cubit.apply(result.order!);
+        GatewayPayment.showOutcome(context, result);
+        return;
+      }
+      context.showSuccessMessage('wallet_payment_success'.tr());
+      _notifyOrderChanged();
+    } finally {
+      _paying = false;
     }
   }
 
@@ -259,18 +243,6 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen>
   Widget build(BuildContext context) {
     return MultiBlocListener(
       listeners: [
-        BlocListener<PaymentLinkCubit, BaseState<String>>(
-          bloc: _paymentCubit,
-          listenWhen: (previous, current) =>
-              current.isSuccess || current.isFailure,
-          listener: (context, state) {
-            final url = state.data;
-            if (state.isSuccess && url != null) _openPayment(url);
-            if (state.isFailure) {
-              context.showErrorMessage(state.errorMessage ?? 'try_again'.tr());
-            }
-          },
-        ),
         // الطلب كان معروض بحالة تانية واتحول لـ Delivered (المندوب قفل الرحلة)
         BlocListener<OrderDetailsCubit, BaseState<OrderModel>>(
           bloc: _cubit,
@@ -284,10 +256,9 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen>
         ),
       ],
       child: Scaffold(
-        backgroundColor: AppColors.secondaryColor,
         appBar: CustomAppBar(
           title: 'order_details',
-          backgroundColor: AppColors.secondaryColor,
+          backgroundColor: AppColors.scaffoldBackgroundColor,
         ),
         body: BlocBuilder<OrderDetailsCubit, BaseState<OrderModel>>(
           bloc: _cubit,
@@ -331,6 +302,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen>
           OrderNextStepCard(
             order: order,
             onReviewAdjustment: () => _reviewAdjustment(order),
+            onPay: () => _pay(order),
             onRateLaundry: () => _rateLaundry(order),
             onChooseAnotherLaundry: () => context.go(AppRouter.initialRoot),
           ),
@@ -359,14 +331,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen>
           _buildItemsCard(order),
           if (OrderPaymentCard.isShownFor(order)) ...[
             Gap(14.h),
-            BlocBuilder<PaymentLinkCubit, BaseState<String>>(
-              bloc: _paymentCubit,
-              builder: (context, paymentState) => OrderPaymentCard(
-                order: order,
-                isLoading: paymentState.isLoading,
-                onPay: () => _pay(order),
-              ),
-            ),
+            OrderPaymentCard(order: order),
           ],
           Gap(14.h),
           _buildTotalsCard(context, order),
