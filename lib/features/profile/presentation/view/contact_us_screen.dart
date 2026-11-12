@@ -12,6 +12,7 @@ import 'package:maghsalati/features/profile/data/model/contact_info_model.dart';
 import 'package:maghsalati/features/profile/presentation/view/widget/retry_error_view.dart';
 import 'package:maghsalati/features/profile/presentation/view_model/contact_us_cubit.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:maghsalati/core/extensions/string_extension.dart';
 
 /// شاشة تواصل معنا: الأرقام والإيميل جايين من api/auth/contacts
 /// كل طريقة بتفتح التطبيق بتاعها، واللي بتيجي فاضية مابتظهرش
@@ -72,7 +73,7 @@ class _ContactUsScreenState extends State<ContactUsScreen> {
           icon: Icons.phone_in_talk_outlined,
           color: AppColors.primaryColor,
           titleKey: 'contact_phone',
-          value: contacts.phoneNumber1,
+          value: contacts.phoneNumber1.forceLtr,
           onTap: () => _launch(Uri.parse('tel:${contacts.phoneNumber1}')),
         ),
       if (contacts.phoneNumber2.isNotEmpty)
@@ -80,7 +81,7 @@ class _ContactUsScreenState extends State<ContactUsScreen> {
           icon: Icons.phone_outlined,
           color: AppColors.greenColor,
           titleKey: 'contact_phone_alt',
-          value: contacts.phoneNumber2,
+          value: contacts.phoneNumber2.forceLtr,
           onTap: () => _launch(Uri.parse('tel:${contacts.phoneNumber2}')),
         ),
       if (contacts.email.isNotEmpty)

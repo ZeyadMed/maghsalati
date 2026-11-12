@@ -130,4 +130,11 @@ extension StringExtensions on String {
       return 'اليوم ${DateFormat('hh:mm a').format(DateTime.now().toLocal())}';
     }
   }
+
+  /// بيلف النص في عزل من الشمال لليمين (LRI + LRM … PDI) عشان أرقام التليفون
+  /// اللي فيها + زي +218 تتعرض صح جوه الواجهة العربي (الـ + على الشمال) حتى
+  /// لو جنب كلام عربي في نفس السطر. الـ LRM جوه العزل احتياطي لو العزل نفسه
+  /// مش مدعوم، والنص الفاضي أو الملفوف قبل كده بيرجع زي ما هو
+  String get forceLtr =>
+      isEmpty || startsWith('\u2066') ? this : '\u2066\u200E$this\u2069';
 }

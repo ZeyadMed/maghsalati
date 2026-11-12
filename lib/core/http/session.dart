@@ -1,6 +1,7 @@
 import 'package:maghsalati/core/cache_manager/cache_manager.dart';
 import 'package:maghsalati/core/realtime/realtime_service.dart';
 import 'package:maghsalati/core/service_locator/service_locator.dart';
+import 'package:maghsalati/features/cart/presentation/view_model/cart_cubit.dart';
 import 'package:maghsalati/features/home/presentation/view_model/location_controller.dart';
 import 'package:maghsalati/features/laundry_details/presentation/view_model/selected_services_controller.dart';
 import 'package:maghsalati/features/saved_addresses/presentation/view_model/saved_addresses_cubit.dart';
@@ -26,6 +27,10 @@ abstract final class Session {
     // العناوين والعنوان الافتراضي بتوع الحساب ده، فاللي بعده يجيب بتوعه هو
     if (getIt.isRegistered<SavedAddressesCubit>()) {
       getIt<SavedAddressesCubit>().reset();
+    }
+    // العنوان اللي اختاره للطلب الجاي من عناوين الحساب ده
+    if (getIt.isRegistered<CartCubit>()) {
+      getIt<CartCubit>().resetDeliveryAddress();
     }
     if (getIt.isRegistered<LocationController>()) {
       getIt<LocationController>().reset();

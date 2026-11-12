@@ -8,15 +8,16 @@ import 'package:maghsalati/core/service_locator/service_locator.dart';
 import 'package:maghsalati/core/style/app_colors.dart';
 import 'package:maghsalati/core/theme/text_styles.dart';
 import 'package:maghsalati/features/cart/data/model/cart_model.dart';
-import 'package:maghsalati/features/cart/presentation/view/widget/cart_item_tile.dart';
+import 'package:maghsalati/features/orders/data/model/order_model.dart';
 import 'package:maghsalati/features/cart/presentation/view/widget/cart_state_view.dart';
-import 'package:maghsalati/features/cart/presentation/view/widget/cart_summary.dart';
+import 'package:maghsalati/features/cart/presentation/view/widget/checkout_form.dart';
 import 'package:maghsalati/features/cart/presentation/view/checkout_flow.dart';
 import 'package:maghsalati/features/cart/presentation/view_model/cart_cubit.dart';
 
-/// تاب السلة في البوتوم ناف: بيعرض سلة العميل الجاية من api/customer/cart
-/// الـ cubit singleton ومشترك مع شيت السلة، وبيتحدث كل ما التاب يتفتح
-/// أو قطعة تتضاف للسلة
+/// تاب السلة في البوتوم ناف: تفاصيل الطلب قبل التأكيد ([CheckoutForm]) على سلة
+/// العميل الجاية من api/customer/cart: الخريطة والعناوين، ملخص الطلب، طريقة
+/// الدفع، والفاتورة. الـ cubit singleton ومشترك مع شيت السلة، وبيتحدث كل ما
+/// التاب يتفتح أو قطعة تتضاف للسلة
 class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
 
@@ -34,11 +35,10 @@ class _CartScreenState extends State<CartScreen> {
     _cartCubit.getCart();
   }
 
-  /// شيت التأكيد والدفع، وبعدها شاشة انتظار المغسلة أو تفاصيل الطلب
-  /// لو لسه مادفعش ([CheckoutFlow])
-  Future<void> _onConfirmOrder(CartModel cart) async {
-    if (cart.isEmpty) return;
-    await CheckoutFlow.start(context, cart);
+  /// الطلب اتأكد من هنا على طول: البوابة لو محتاجها، وبعدين شاشة الانتظار
+  /// أو تفاصيل الطلب لو لسه مادفعش ([CheckoutFlow])
+  void _onConfirmed(OrderModel order, CartModel cart) {
+    CheckoutFlow.proceed(context, cart, order);
   }
 
   /// بنأكد قبل مسح السلة كلها عشان مايمسحهاش بالغلط
@@ -77,6 +77,7 @@ class _CartScreenState extends State<CartScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.whiteColor,
       appBar: _buildAppBar(),
       body: RefreshIndicator(
         color: AppColors.primaryColor,
@@ -84,11 +85,10 @@ class _CartScreenState extends State<CartScreen> {
         child: CartStateView(
           cubit: _cartCubit,
           fullEmptyState: true,
-          builder: (context, cart) => Column(
-            children: [
-              Expanded(child: _buildItemsList(cart)),
-              CartSummary(cart: cart, onConfirm: () => _onConfirmOrder(cart)),
-            ],
+          builder: (context, cart) => CheckoutForm(
+            cart: cart,
+            fillHeight: true,
+            onConfirmed: _onConfirmed,
           ),
         ),
       ),
@@ -148,60 +148,6 @@ class _CartScreenState extends State<CartScreen> {
             size: 22.r,
             color: AppColors.redColor2,
           ),
-        );
-      },
-    );
-  }
-
-  /// اسم المغسلة فوق اللستة عشان يعرف الطلب رايح لمين
-  Widget _buildLaundryBanner(String laundryName) {
-    return Container(
-      margin: EdgeInsets.only(bottom: 12.h),
-      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
-      decoration: BoxDecoration(
-        color: AppColors.whiteColor,
-        borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: AppColors.borderColor),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.local_laundry_service_outlined,
-            size: 20.r,
-            color: AppColors.primaryColor,
-          ),
-          SizedBox(width: 8.w),
-          Expanded(
-            child: Text(
-              laundryName,
-              style: TextStyles.darkBold14,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildItemsList(CartModel cart) {
-    return ListView.separated(
-      // عشان السحب للتحديث يشتغل حتى لو اللستة قصيرة
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-      // بانر المغسلة بيتحسب كأول عنصر في اللستة عشان يتسكرول معاها
-      itemCount: cart.items.length + 1,
-      separatorBuilder: (_, _) => SizedBox(height: 10.h),
-      itemBuilder: (context, index) {
-        if (index == 0) return _buildLaundryBanner(cart.laundryName);
-        final item = cart.items[index - 1];
-        return CartItemTile(
-          item: item,
-          boxed: true,
-          isUpdating: _cartCubit.isUpdating(item),
-          onQuantityChanged: (quantity) =>
-              _cartCubit.updateQuantity(item, quantity),
-          onRemove: () => _cartCubit.removeItem(item),
         );
       },
     );

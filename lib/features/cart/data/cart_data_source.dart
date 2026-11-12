@@ -8,7 +8,9 @@ import 'package:maghsalati/features/orders/data/model/order_model.dart';
 import 'package:maghsalati/features/orders/data/orders_data_source.dart';
 
 abstract interface class CartDataSource {
-  Future<Either<Failure, CartModel>> getCart();
+  /// [savedAddressId] بيخلي السيرفر يحسب رسوم التوصيل ونطاقه على العنوان ده،
+  /// و null يعني العنوان الافتراضي
+  Future<Either<Failure, CartModel>> getCart({int? savedAddressId});
 
   Future<Either<Failure, void>> updateQuantity({
     required int cartItemId,
@@ -29,9 +31,10 @@ class CartDataSourceImpl implements CartDataSource {
   CartDataSourceImpl(this._genericDataSource);
 
   @override
-  Future<Either<Failure, CartModel>> getCart() async {
+  Future<Either<Failure, CartModel>> getCart({int? savedAddressId}) async {
     final result = await _genericDataSource.fetchResult<CartModel>(
       endpoint: Endpoints.cart,
+      queryParameters: {'savedAddressId': ?savedAddressId},
       fromJson: (json) => CartModel.fromJson(json),
     );
     return result;

@@ -213,7 +213,7 @@
   "about_feature_tracking_title": "Track your order",
   "about_feature_tracking_body": "Follow your order step by step, from the moment it's collected until it's back in your hands.",
   "app_version": "Version",
-  "all_rights_reserved": "All rights reserved © Maghsalati",
+  "all_rights_reserved": "All rights reserved © Lavanderia",
   "your_order": "Your Order",
   "cart_empty": "Your cart is empty",
   "cart_empty_hint": "Browse nearby laundries and add what you need to your cart",
@@ -295,6 +295,10 @@
   "driver_total_trips": "Total trips",
   "driver_work_duration": "Time with us",
   "driver_new": "New",
+  "driver_vehicle_car": "Car",
+  "driver_vehicle_van": "Van",
+  "driver_vehicle_scooter": "Scooter",
+  "driver_vehicle_motorcycle": "Motorcycle",
   "driver_duration_less_than_month": "Under a month",
   "driver_duration_months": {
     "zero": "Under a month",
@@ -502,5 +506,43 @@
   "redeem_code_note": "Enter the code exactly as it's printed on the recharge card.",
   "redeem_code_empty": "Please enter the recharge code.",
   "redeem": "Top up",
-  "redeem_success": "{} was added to your wallet"
+  "redeem_success": "{} was added to your wallet",
+  "order_summary": "Order summary",
+  "items_price": "Items price",
+  "checkout_delivery_price": "Delivery price",
+  "delivery_price_includes": "pickup & drop-off included",
+  "free": "Free",
+  "cart_pieces_count": {
+    "zero": "No items",
+    "one": "1 item",
+    "two": "2 items",
+    "few": "{} items",
+    "many": "{} items",
+    "other": "{} items"
+  },
+  "delivery_fee_changed": "Delivery price changed from {} to {} based on the distance to the selected address.",
+  "address_out_of_range": "This laundry doesn't deliver to this address. Choose another address.",
+  "address_out_of_range_km": "This laundry delivers within {} km only, and this address is farther. Choose another address.",
+  "cart_prices_updated": "Prices were updated. Review the new total, then confirm your order.",
+  "delivery_unavailable": "Unavailable",
+  "days_count": {
+    "zero": "Less than a day",
+    "one": "1 day",
+    "other": "{} days"
+  },
+  "hours_count": {
+    "zero": "Less than an hour",
+    "one": "1 hour",
+    "other": "{} hours"
+  },
+  "minutes_count": {
+    "zero": "Less than a minute",
+    "one": "1 minute",
+    "other": "{} minutes"
+  },
+  "and_separator": "and",
+  "ready_within_after_receipt": "Ready within {} after the laundry receives your clothes",
+  "ready_by": "Ready by {}",
+  "ready_in": "{} left",
+  "overdue_by": "{} overdue"
 }

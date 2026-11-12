@@ -1,3 +1,4 @@
+import 'package:maghsalati/core/helpers/json_reader.dart';
 import 'package:maghsalati/features/cart/data/model/cart_item_model.dart';
 import 'package:maghsalati/features/order_pending/data/model/pending_order_model.dart';
 
@@ -12,6 +13,21 @@ class CartModel {
   final num dropoffFee;
   final num totalPrice;
 
+  /// العنوان المحفوظ اللي الرسوم اتحسبت عليه، و null لو السيرفر مابعتهوش
+  /// (الباك القديم بيحسب على حاجة مش معروفة، غالبًا الافتراضي)
+  final int? deliveryAddressId;
+
+  /// المغسلة بتوصّل للعنوان ده ولا لأ (false كمان لو مفيش موقع خالص).
+  /// لو false الرسوم بترجع null فبتبقى 0 هنا، والإجمالي = القطع بس
+  final bool isDeliverable;
+
+  /// سبب إن العنوان برا النطاق، نص جاهز للعرض من السيرفر
+  final String? undeliverableReason;
+
+  /// أقصى مسافة المغسلة بتوصّل لها، بتتعرض مع التنبيه لو السبب مش موجود.
+  /// السيرفر بيبعت 0 للسلة الفاضية فبتبقى null
+  final num? maxDeliveryDistanceKm;
+
   const CartModel({
     required this.laundryId,
     required this.laundryName,
@@ -21,6 +37,10 @@ class CartModel {
     required this.pickupFee,
     required this.dropoffFee,
     required this.totalPrice,
+    this.deliveryAddressId,
+    this.isDeliverable = true,
+    this.undeliverableReason,
+    this.maxDeliveryDistanceKm,
   });
 
   factory CartModel.fromJson(Map<String, dynamic> json) {
@@ -36,7 +56,19 @@ class CartModel {
       pickupFee: json['pickupFee'] as num? ?? 0,
       dropoffFee: json['dropoffFee'] as num? ?? 0,
       totalPrice: json['totalPrice'] as num? ?? 0,
+      deliveryAddressId: asInt(json['deliveryAddressId']),
+      isDeliverable: json['isDeliverable'] != false,
+      undeliverableReason: _nonEmpty(json['undeliverableReason']),
+      maxDeliveryDistanceKm: _positive(asNum(json['maxDeliveryDistanceKm'])),
     );
+  }
+
+  static num? _positive(num? value) =>
+      value != null && value > 0 ? value : null;
+
+  static String? _nonEmpty(Object? value) {
+    final text = value?.toString().trim() ?? '';
+    return text.isEmpty ? null : text;
   }
 
   bool get isEmpty => items.isEmpty;

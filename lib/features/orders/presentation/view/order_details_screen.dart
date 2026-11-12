@@ -27,6 +27,7 @@ import 'package:maghsalati/features/orders/presentation/view/widget/order_next_s
 import 'package:maghsalati/features/orders/presentation/view/widget/order_notes_card.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/order_payment_card.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/order_progress_tracker.dart';
+import 'package:maghsalati/features/orders/presentation/view/widget/order_ready_time.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/order_section_card.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/order_sheet_frame.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/order_status_style.dart';
@@ -403,6 +404,10 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen>
         mainAxisSize: MainAxisSize.min,
         children: [
           _buildOrderNumber(context, order),
+          if (OrderReadyTime.isVisibleFor(order)) ...[
+            Gap(14.h),
+            OrderReadyTime(order: order),
+          ],
           if (order.currentStage != null) ...[
             Gap(14.h),
             Divider(height: 1.h, color: AppColors.lightGreyColor),

@@ -8,6 +8,7 @@ import 'package:maghsalati/features/orders/data/model/order_model.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/order_items_chips.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/order_pay_button.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/order_progress_tracker.dart';
+import 'package:maghsalati/features/orders/presentation/view/widget/order_ready_time.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/order_status_badge.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/order_status_style.dart';
 
@@ -49,6 +50,10 @@ class CurrentOrderCard extends StatelessWidget {
           _buildHeader(context),
           Gap(16.h),
           OrderProgressTracker(order: order),
+          if (OrderReadyTime.isVisibleFor(order)) ...[
+            Gap(14.h),
+            OrderReadyTime(order: order),
+          ],
           Gap(16.h),
           Divider(height: 1.h, color: AppColors.lightGreyColor),
           Gap(10.h),

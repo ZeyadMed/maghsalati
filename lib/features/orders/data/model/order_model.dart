@@ -253,11 +253,23 @@ class OrderTripModel {
   final double? driverLatitude;
   final double? driverLongitude;
 
-  /// بيانات المندوب اللي العميل بيشوفها في كارته. لسه مش في الـ API
-  /// (طلبناها من الباك باسم driverPlateNumber و driverTotalTrips
-  /// و driverAverageRating و driverReviewsCount و driverJoinedAt)
-  /// فكل واحدة فاضية أو null لحد ما السيرفر يبعتها، والكارت بيخبيها
+  /// بيانات المندوب اللي العميل بيشوفها في كارته
+  /// (driverPlateNumber و driverTotalTrips و driverAverageRating
+  /// و driverReviewsCount و driverJoinedAt و driverProfileImageUrl
+  /// و vehicleType و vehicleMake و vehicleModel و vehicleYear)
+  /// أي واحدة السيرفر مابعتهاش بتبقى فاضية أو null، والكارت بيخبيها
   final String driverPlateNumber;
+
+  /// صورة المندوب الشخصية، null لو مارفعش صورة
+  final String? driverImageUrl;
+
+  /// Car أو Van أو Scooter أو Motorcycle زي ما السيرفر بيبعته
+  final String vehicleType;
+
+  /// ماركة المركبة زي Kia، وموديلها زي Picanto، وسنة الصنع
+  final String vehicleMake;
+  final String vehicleModel;
+  final int? vehicleYear;
 
   /// عدد الرحلات اللي المندوب خلصها بنجاح
   final int? driverTotalTrips;
@@ -285,6 +297,11 @@ class OrderTripModel {
     this.driverLatitude,
     this.driverLongitude,
     this.driverPlateNumber = '',
+    this.driverImageUrl,
+    this.vehicleType = '',
+    this.vehicleMake = '',
+    this.vehicleModel = '',
+    this.vehicleYear,
     this.driverTotalTrips,
     this.driverRating,
     this.driverReviewsCount,
@@ -296,6 +313,18 @@ class OrderTripModel {
 
   bool get hasDriverLocation =>
       isValidCoordinate(driverLatitude, driverLongitude);
+
+  /// الماركة والموديل والسنة في سطر واحد زي "Kia Picanto • 2018"
+  String get vehicleDescription {
+    final name = [
+      vehicleMake,
+      vehicleModel,
+    ].where((part) => part.isNotEmpty).join(' ');
+    return [
+      name,
+      if (vehicleYear != null) '$vehicleYear',
+    ].where((part) => part.isNotEmpty).join(' • ');
+  }
 
   bool get hasDriverRating =>
       driverRating != null || driverReviewsCount != null;
@@ -355,6 +384,23 @@ class OrderTripModel {
       driverPlateNumber: json
           .pickString(['driverPlateNumber', 'plateNumber'], inside: ['driver'])
           .trim(),
+      driverImageUrl: _nullIfEmpty(
+        json
+            .pickString(
+              ['driverProfileImageUrl', 'profileImageUrl'],
+              inside: ['driver'],
+            )
+            .trim(),
+      ),
+      vehicleType: json.pickString(['vehicleType'], inside: ['driver']).trim(),
+      vehicleMake: json.pickString(['vehicleMake'], inside: ['driver']).trim(),
+      vehicleModel: json
+          .pickString(['vehicleModel'], inside: ['driver'])
+          .trim(),
+      vehicleYear: switch (json.pickInt(['vehicleYear'], inside: ['driver'])) {
+        final int year when year > 0 => year,
+        _ => null,
+      },
       driverTotalTrips: json.pickInt(
         ['driverTotalTrips', 'totalTrips', 'completedTripsCount'],
         inside: ['driver'],
@@ -378,6 +424,8 @@ class OrderTripModel {
       },
     );
   }
+
+  static String? _nullIfEmpty(String value) => value.isEmpty ? null : value;
 
   /// "Laundry" أو "Customer" بالاسم
   static TripConfirmer? confirmerOf(Object? value) =>
@@ -686,6 +734,15 @@ class OrderModel {
   /// التعديل اللي مستني رد العميل، بيبقى موجود في AdjustmentPendingApproval
   final OrderAdjustmentModel? adjustment;
 
+  /// مدة التجهيز اللي المغسلة حددتها وهي بتقبل، null قبل القبول
+  final int? preparationDurationMinutes;
+
+  /// لحظة ما المغسلة أكّدت استلام الهدوم (UTC)، null قبلها
+  final DateTime? laundryReceivedAt;
+
+  /// موعد الجاهزية = الاستلام + مدة التجهيز (UTC)، null لحد ما المغسلة تستلم
+  final DateTime? promisedReadyAt;
+
   const OrderModel({
     required this.id,
     required this.laundryName,
@@ -725,6 +782,9 @@ class OrderModel {
     this.pickupTrip,
     this.dropoffTrip,
     this.adjustment,
+    this.preparationDurationMinutes,
+    this.laundryReceivedAt,
+    this.promisedReadyAt,
   });
 
   /// رقم الطلب اللي بيتعرض للمستخدم
@@ -913,6 +973,25 @@ class OrderModel {
       trip.isDriverReviewed != true &&
       isTripFinished(trip);
 
+  /// الهدوم عند المغسلة ولسه ماجهزتش، وموعد الجاهزية وصل: العدّاد شغال
+  bool get isPreparing =>
+      promisedReadyAt != null &&
+      const {
+        OrderStatus.atLaundryPendingMatch,
+        OrderStatus.adjustmentPendingApproval,
+        OrderStatus.inProgress,
+      }.contains(status);
+
+  /// المغسلة قبلت وحددت المدة بس لسه مااستلمتش الهدوم، فبنعرض المدة
+  /// "هيجهز خلال 4 ساعات من الاستلام" مش عدّاد
+  bool get showsPreparationDuration =>
+      preparationDurationMinutes != null &&
+      promisedReadyAt == null &&
+      const {
+        OrderStatus.awaitingPickup,
+        OrderStatus.pickupFailed,
+      }.contains(status);
+
   bool get hasLocation => isValidCoordinate(latitude, longitude);
 
   bool get hasLaundryLocation =>
@@ -967,6 +1046,9 @@ class OrderModel {
     pickupTrip: pickupTrip,
     dropoffTrip: dropoffTrip,
     adjustment: adjustment,
+    preparationDurationMinutes: preparationDurationMinutes,
+    laundryReceivedAt: laundryReceivedAt,
+    promisedReadyAt: promisedReadyAt,
   );
 
   /// حقول الدفع (paymentMethod و amountPaid و outstandingAmount و isPaid)
@@ -1092,6 +1174,29 @@ class OrderModel {
       pickupTrip: _readTrip(json, DeliveryTripType.pickup),
       dropoffTrip: _readTrip(json, DeliveryTripType.dropoff),
       adjustment: OrderAdjustmentModel.fromOrderJson(json),
+      preparationDurationMinutes: switch (json['preparationDurationMinutes']) {
+        final num minutes when minutes > 0 => minutes.toInt(),
+        _ => null,
+      },
+      laundryReceivedAt: _readUtc(json['laundryReceivedAt']),
+      promisedReadyAt: _readUtc(json['promisedReadyAt']),
+    );
+  }
+
+  /// الأوقات دي بتيجي ISO UTC (فيها Z)، ولو جت من غير Z بنعتبرها UTC برضه
+  static DateTime? _readUtc(Object? value) {
+    if (value is! String || value.isEmpty) return null;
+    final parsed = DateTime.tryParse(value);
+    if (parsed == null || parsed.isUtc) return parsed;
+    return DateTime.utc(
+      parsed.year,
+      parsed.month,
+      parsed.day,
+      parsed.hour,
+      parsed.minute,
+      parsed.second,
+      parsed.millisecond,
+      parsed.microsecond,
     );
   }
 

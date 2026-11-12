@@ -187,9 +187,8 @@ class _LaundryDetailsState extends State<LaundryDetails> {
           // من شاشة الانتظار يلاقي نفسه في شاشة التفاصيل
           // والطلب بيتبني من سلة السيرفر اللي في الشيت، بعد ما بيانات
           // الاستلام تتبعت والسيرفر يأكده
-          onConfirmOrder: (cart) => CheckoutFlow.start(
+          onConfirmOrder: (_) => CheckoutFlow.start(
             context,
-            cart,
             beforeNavigate: () => Navigator.of(context).maybePop(),
           ),
         ),
@@ -199,8 +198,7 @@ class _LaundryDetailsState extends State<LaundryDetails> {
 
   /// شيت التأكيد والدفع، وبعدها شاشة انتظار المغسلة أو تفاصيل الطلب
   /// لو لسه مادفعش ([CheckoutFlow])
-  Future<void> _confirmCart(CartModel cart) =>
-      CheckoutFlow.start(context, cart);
+  Future<void> _confirmCart(CartModel _) => CheckoutFlow.start(context);
 
   /// شيت السلة اللي فيه تعديل الكميات والمسح، والتأكيد من جواه نفس زرار البار
   void _openCart() {

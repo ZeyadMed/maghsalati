@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -7,9 +8,11 @@ import 'package:maghsalati/core/theme/text_styles.dart';
 import 'package:maghsalati/features/orders/data/model/order_model.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/driver_plate_badge.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/phone_call.dart';
+import 'package:maghsalati/core/extensions/string_extension.dart';
 
 /// كارت مندوب رحلة واحدة (الاستلام أو التسليم): فوق نوع الرحلة وحالتها في
-/// شارة ملونة، وتحتهم أيقونة واسم المندوب ورقمه وزرار اتصال مدوّر.
+/// شارة ملونة، وتحتهم صورة المندوب (أو أيقونة لو مفيش) واسمه ورقمه ومركبته
+/// وزرار اتصال مدوّر.
 /// الرحلة اللي المندوب شغال عليها دلوقتي لونها أزرق فاتح عشان تبان،
 /// واللي خلصت أو لسه مستنية مندوب رمادي.
 /// تحت الاسم لوحة المركبة، وتحتها شريط فيه التقييم وإجمالي الرحلات ومدة الشغل،
@@ -47,10 +50,7 @@ class OrderDriverTile extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           _buildHeader(context),
-          if (trip.driverPlateNumber.isNotEmpty) ...[
-            Gap(10.h),
-            _buildPlate(),
-          ],
+          if (trip.driverPlateNumber.isNotEmpty) ...[Gap(10.h), _buildPlate()],
           if (trip.hasDriverStats) ...[Gap(10.h), _buildStats()],
           if (onRate != null) ...[
             Gap(10.h),
@@ -67,24 +67,31 @@ class OrderDriverTile extends StatelessWidget {
   Widget _buildHeader(BuildContext context) {
     final (_, stageColor) = _stageStyle();
 
+    final icon = Container(
+      width: 44.r,
+      height: 44.r,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: AppColors.whiteColor,
+        borderRadius: BorderRadius.circular(12.r),
+      ),
+      child: Icon(
+        stage == DriverTripStage.awaitingDriver
+            ? Icons.hourglass_top_rounded
+            : Icons.delivery_dining_rounded,
+        size: 26.r,
+        color: stageColor,
+      ),
+    );
+    final imageUrl = trip.hasDriver ? trip.driverImageUrl : null;
+    final vehicleLine = _vehicleLine();
+
     return Row(
       children: [
-        Container(
-          width: 44.r,
-          height: 44.r,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: AppColors.whiteColor,
-            borderRadius: BorderRadius.circular(12.r),
-          ),
-          child: Icon(
-            stage == DriverTripStage.awaitingDriver
-                ? Icons.hourglass_top_rounded
-                : Icons.delivery_dining_rounded,
-            size: 26.r,
-            color: stageColor,
-          ),
-        ),
+        if (imageUrl == null)
+          icon
+        else
+          _DriverPhoto(imageUrl: imageUrl, placeholder: icon),
         Gap(12.w),
         Expanded(
           child: Column(
@@ -112,14 +119,23 @@ class OrderDriverTile extends StatelessWidget {
                 Text(
                   trip.driverName.isNotEmpty
                       ? trip.driverName
-                      : trip.driverPhone,
+                      : trip.driverPhone.forceLtr,
                   style: TextStyles.darkBold14,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
                 if (trip.driverName.isNotEmpty && trip.driverPhone.isNotEmpty)
                   Text(
-                    trip.driverPhone,
+                    trip.driverPhone.forceLtr,
+                    style: TextStyles.darkRegular12.copyWith(
+                      color: AppColors.greyColor3,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                if (vehicleLine.isNotEmpty)
+                  Text(
+                    vehicleLine,
                     style: TextStyles.darkRegular12.copyWith(
                       color: AppColors.greyColor3,
                     ),
@@ -142,6 +158,21 @@ class OrderDriverTile extends StatelessWidget {
         ],
       ],
     );
+  }
+
+  /// نوع المركبة وماركتها وموديلها وسنتها زي "سيارة • Kia Picanto • 2018"
+  String _vehicleLine() {
+    final type = switch (trip.vehicleType.toLowerCase()) {
+      'car' => 'driver_vehicle_car'.tr(),
+      'van' => 'driver_vehicle_van'.tr(),
+      'scooter' => 'driver_vehicle_scooter'.tr(),
+      'motorcycle' => 'driver_vehicle_motorcycle'.tr(),
+      _ => trip.vehicleType,
+    };
+    return [
+      type,
+      trip.vehicleDescription,
+    ].where((part) => part.isNotEmpty).join(' • ');
   }
 
   /// شارة حالة الرحلة بلونها
@@ -395,6 +426,42 @@ class _DriverStat extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// صورة المندوب، والضغط عليها بيفتحها بالحجم الكامل عشان العميل يتعرف عليه
+/// لو الصورة لسه بتحمّل أو فشلت بيظهر [placeholder]
+class _DriverPhoto extends StatelessWidget {
+  final String imageUrl;
+  final Widget placeholder;
+
+  const _DriverPhoto({required this.imageUrl, required this.placeholder});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => showDialog<void>(
+        context: context,
+        builder: (context) => Dialog(
+          backgroundColor: Colors.black,
+          insetPadding: EdgeInsets.all(16.r),
+          child: InteractiveViewer(
+            child: CachedNetworkImage(imageUrl: imageUrl, fit: BoxFit.contain),
+          ),
+        ),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12.r),
+        child: CachedNetworkImage(
+          imageUrl: imageUrl,
+          width: 44.r,
+          height: 44.r,
+          fit: BoxFit.cover,
+          placeholder: (_, _) => placeholder,
+          errorWidget: (_, _, _) => placeholder,
+        ),
       ),
     );
   }

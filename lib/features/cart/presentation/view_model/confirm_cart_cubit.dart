@@ -10,12 +10,15 @@ import 'package:maghsalati/features/orders/data/model/order_model.dart';
 class ConfirmCartCubit extends Cubit<BaseState<OrderModel>> {
   final CartDataSource _dataSource;
 
+  /// مفتاح في الـ metadata بيشيل status code بتاع الفشل
+  static const String _statusKey = 'statusCode';
+
   ConfirmCartCubit(this._dataSource) : super(const BaseState<OrderModel>());
 
   Future<void> confirm(ConfirmCartRequest request) async {
     // ريكوست واحد في المرة عشان الدبل كليك مايعملش طلبين
     if (state.isLoading) return;
-    emit(state.copyWith(status: Status.loading));
+    emit(state.copyWith(status: Status.loading, metadata: {}));
 
     final result = await _dataSource.confirmCart(request);
 
@@ -23,9 +26,24 @@ class ConfirmCartCubit extends Cubit<BaseState<OrderModel>> {
 
     result.fold(
       (failure) => emit(
-        state.copyWith(status: Status.failure, errorMessage: failure.message),
+        state.copyWith(
+          status: Status.failure,
+          errorMessage: failure.message,
+          metadata: {_statusKey: failure.statusCode},
+        ),
       ),
       (order) => emit(state.copyWith(status: Status.success, data: order)),
     );
   }
+
+  /// السيرفر حسب إجمالي غير اللي العميل شافه (409) ومااتعملش طلب،
+  /// فالسلة لازم تتحدث قبل ما يأكد تاني
+  bool get pricesChanged =>
+      state.isFailure && state.metadata[_statusKey] == 409;
+
+  /// 400 غالبًا العنوان طلع برا نطاق المغسلة، و409 الإجمالي اتغير: في
+  /// الحالتين السلة لازم تتحدث عشان التنبيه أو الإجمالي الجديد يبان
+  bool get shouldRefreshCart =>
+      state.isFailure &&
+      (state.metadata[_statusKey] == 400 || state.metadata[_statusKey] == 409);
 }

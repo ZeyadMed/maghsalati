@@ -27,6 +27,12 @@ class SavedAddressesCubit extends Cubit<BaseState<SavedAddressModel>> {
   SavedAddressModel? get defaultAddress =>
       state.items.where((address) => address.isDefault).firstOrNull;
 
+  /// العنوان ده لو لسه في الليستة، وإلا الافتراضي (زي عنوان اتختار لطلب
+  /// وبعدين اتمسح)
+  SavedAddressModel? addressOrDefault(int? id) =>
+      state.items.where((address) => address.id == id).firstOrNull ??
+      defaultAddress;
+
   /// الليستة اتجابت مرة على الأقل، حتى لو طلعت فاضية
   bool get hasLoaded => state.lastUpdated != null;
 

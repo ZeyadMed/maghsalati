@@ -8,7 +8,8 @@ import 'package:maghsalati/features/orders/data/model/order_model.dart';
 import 'package:maghsalati/features/orders/presentation/view/gateway_payment.dart';
 
 /// إتمام الطلب من السلة، نفس الخطوات من تاب السلة وشيت السلة في المغسلة:
-/// 1. شيت التأكيد (العنوان واللي هيسلّم وطريقة الدفع) بيبعت confirm
+/// 1. تفاصيل الطلب (العنوان واللي هيسلّم وطريقة الدفع) بتبعت confirm، من
+///    تاب السلة على طول أو من شيت التأكيد ([start])
 /// 2. لو بالبوابة: صفحة الدفع بتتفتح على طول
 /// 3. الطلب اتدفع (محفظة أو بوابة) → شاشة انتظار موافقة المغسلة
 ///    لسه مادفعش (خرج من البوابة أو النتيجة لسه) → تفاصيل الطلب وفيها زرار الدفع،
@@ -16,16 +17,27 @@ import 'package:maghsalati/features/orders/presentation/view/gateway_payment.dar
 abstract final class CheckoutFlow {
   /// [beforeNavigate] بيتنادى قبل ما نفتح الشاشة الجاية، زي قفل شاشة القطع
   static Future<void> start(
-    BuildContext context,
-    CartModel cart, {
+    BuildContext context, {
     VoidCallback? beforeNavigate,
   }) async {
-    final order = await ConfirmCartBottomSheet.show(
+    final confirmed = await ConfirmCartBottomSheet.show(context);
+    if (confirmed == null || !context.mounted) return;
+    await proceed(
       context,
-      total: cart.totalPrice,
+      confirmed.cart,
+      confirmed.order,
+      beforeNavigate: beforeNavigate,
     );
-    if (order == null || !context.mounted) return;
+  }
 
+  /// الطلب اتأكد (من الشيت أو من تاب السلة على طول): البوابة لو محتاجها،
+  /// وبعدين شاشة الانتظار أو تفاصيل الطلب. [cart] السلة وقت التأكيد
+  static Future<void> proceed(
+    BuildContext context,
+    CartModel cart,
+    OrderModel order, {
+    VoidCallback? beforeNavigate,
+  }) async {
     var current = order;
     if (order.status == OrderStatus.pendingPayment && order.hasPaymentUrl) {
       final result = await GatewayPayment.open(

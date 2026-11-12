@@ -15,6 +15,7 @@ import 'package:maghsalati/features/orders/presentation/view/widget/order_sectio
 import 'package:maghsalati/features/orders/presentation/view/widget/order_sheet_frame.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/rating_stars.dart';
 import 'package:maghsalati/features/orders/presentation/view_model/add_driver_review_cubit.dart';
+import 'package:maghsalati/core/extensions/string_extension.dart';
 
 /// شاشة تقييم مندوب رحلة خلصت: بياناته فوق (الاسم ونوع الرحلة واللوحة)،
 /// وتحتها النجوم بوصف لكل درجة وتعليق اختياري.
@@ -138,7 +139,7 @@ class _RateDriverScreenState extends State<RateDriverScreen> {
           ),
           Gap(12.h),
           Text(
-            _trip.driverName.isNotEmpty ? _trip.driverName : _trip.driverPhone,
+            _trip.driverName.isNotEmpty ? _trip.driverName : _trip.driverPhone.forceLtr,
             style: TextStyles.darkBold16,
             textAlign: TextAlign.center,
           ),

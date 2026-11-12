@@ -18,15 +18,46 @@ class CartCubit extends Cubit<BaseState<CartModel>> {
   /// مفتاح في الـ metadata بيتحط وقت مسح السلة كلها
   static const String _clearingKey = 'clearing';
 
-  CartCubit(this._dataSource) : super(const BaseState<CartModel>());
+  /// id العنوان الافتراضي من العناوين المحفوظة. السيرفر من غير savedAddressId
+  /// بيحسب من موقع البروفايل مش من الافتراضي، فبنبعت الافتراضي دايمًا
+  final int? Function() _defaultAddressId;
+
+  CartCubit(this._dataSource, {int? Function()? defaultAddressId})
+    : _defaultAddressId = defaultAddressId ?? _noAddress,
+      super(const BaseState<CartModel>());
+
+  static int? _noAddress() => null;
+
+  /// العنوان اللي العميل اختاره للطلب ده من تفاصيل الطلب، و null يعني الافتراضي.
+  /// متشال هنا عشان أي تحديث للسلة (كمية، إضافة قطعة) يفضل محسوب عليه
+  int? _deliveryAddressId;
+
+  int? get deliveryAddressId => _deliveryAddressId;
+
+  /// لو كذا تحميل راحوا ورا بعض (زي تغيير العنوان مرتين بسرعة) بناخد آخر واحد
+  int _requestId = 0;
+
+  /// بيغير عنوان الطلب ده بس (مش الافتراضي) ويجيب السلة محسوبة عليه
+  Future<void> selectDeliveryAddress(int? addressId) async {
+    _deliveryAddressId = addressId;
+    await getCart();
+  }
+
+  /// بعد ما الطلب يتأكد أو مع الخروج، الطلب الجاي يبدأ على الافتراضي
+  void resetDeliveryAddress() => _deliveryAddressId = null;
 
   Future<void> getCart() async {
+    final requestId = ++_requestId;
     // لو فيه سلة قديمة بتفضل ظاهرة لحد ما الجديدة توصل بدل ما الشاشة تفضى
     emit(state.copyWith(status: Status.loading));
 
-    final result = await _dataSource.getCart();
+    // لو العناوين لسه ماتجابتش بيروح من غير عنوان (موقع البروفايل)،
+    // وتفاصيل الطلب بتجيب السلة تاني أول ما الافتراضي يوصل
+    final result = await _dataSource.getCart(
+      savedAddressId: _deliveryAddressId ?? _defaultAddressId(),
+    );
 
-    if (isClosed) return;
+    if (isClosed || requestId != _requestId) return;
 
     result.fold(
       // الـ metadata بتتمسح في الحالتين عشان لودينج الكاونتر مايعلقش

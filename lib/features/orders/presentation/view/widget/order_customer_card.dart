@@ -6,6 +6,7 @@ import 'package:maghsalati/core/cache_manager/cache_manager.dart';
 import 'package:maghsalati/core/style/app_colors.dart';
 import 'package:maghsalati/features/orders/data/model/order_model.dart';
 import 'package:maghsalati/features/orders/presentation/view/widget/order_section_card.dart';
+import 'package:maghsalati/core/extensions/string_extension.dart';
 
 /// كارت بيانات العميل: اسمه ورقمه، واللي هيسلّم الهدوم لو حد تاني،
 /// وعنوان الاستلام والتوصيل (نفس العنوان للاتنين).
@@ -36,7 +37,7 @@ class OrderCustomerCard extends StatelessWidget {
         OrderInfoRow(
           icon: Icons.phone_outlined,
           label: 'phone_number'.tr(),
-          value: phone,
+          value: phone.forceLtr,
         ),
       if (handover.isNotEmpty)
         OrderInfoRow(
@@ -81,7 +82,7 @@ class OrderCustomerCard extends StatelessWidget {
         (contactName.isNotEmpty && contactName != customerName.trim()) ||
         (contactPhone.isNotEmpty && !_samePhone(contactPhone, customerPhone));
     if (!differs) return '';
-    return [contactName, contactPhone].where((s) => s.isNotEmpty).join(' • ');
+    return [contactName, contactPhone.forceLtr].where((s) => s.isNotEmpty).join(' • ');
   }
 
   /// نفس الرقم حتى لو واحد بكود الدولة والتاني من غيره (آخر 9 أرقام)
