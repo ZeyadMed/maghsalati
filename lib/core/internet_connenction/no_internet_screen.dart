@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:lottie/lottie.dart';
+import 'package:maghsalati/core/extensions/context_extension.dart';
 import 'package:maghsalati/core/internet_connenction/internet_connenction_cubit.dart';
 import 'package:maghsalati/core/style/app_colors.dart';
 import 'package:maghsalati/core/style/assets.dart';
@@ -11,9 +12,27 @@ import 'package:maghsalati/core/theme/text_styles.dart';
 import 'package:maghsalati/core/widget/custom_button.dart';
 
 /// بتظهر مكان الأبلكيشن كله لما النت يفصل، ولما يرجع بتختفي لوحدها؛
-/// وزرار إعادة المحاولة بيفحص الاتصال تاني فوراً من غير مايستنى تغيير الشبكة
-class NoInternetScreen extends StatelessWidget {
+/// وزرار إعادة المحاولة بيتأكد من الاتصال فعلاً، ولو النت لسه مش راجع
+/// بيقول كده بدل ما يفضل ساكت
+class NoInternetScreen extends StatefulWidget {
   const NoInternetScreen({super.key});
+
+  @override
+  State<NoInternetScreen> createState() => _NoInternetScreenState();
+}
+
+class _NoInternetScreenState extends State<NoInternetScreen> {
+  bool _checking = false;
+
+  Future<void> _retry() async {
+    if (_checking) return;
+    setState(() => _checking = true);
+    final online = await context.read<InternetCubit>().retry();
+    // لو النت رجع الشاشة بتتشال لوحدها
+    if (!mounted) return;
+    setState(() => _checking = false);
+    if (!online) context.showErrorMessage("stillNoInternet".tr());
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -48,10 +67,20 @@ class NoInternetScreen extends StatelessWidget {
                 Gap(30.h),
                 CustomButton(
                   title: "retry",
+                  isIcon: _checking,
+                  icon: _checking
+                      ? SizedBox.square(
+                          dimension: 18.r,
+                          child: const CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : null,
                   borderRadius: 30.r,
                   padding: EdgeInsets.symmetric(vertical: 16.h),
                   fontWeight: FontWeight.w500,
-                  onPressed: () => context.read<InternetCubit>().retry(),
+                  onPressed: _retry,
                 ),
               ],
             ),

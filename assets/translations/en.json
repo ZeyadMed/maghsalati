@@ -123,6 +123,7 @@
   "checkInternet": "Please check your internet connection and try again",
   "noInternet": "Connection error!",
   "retry": "Retry",
+  "stillNoInternet": "Still no internet connection",
   "tap_to_view": "Tap to\nview",
   "others": "Others",
   "no_items": "No items in this category",
